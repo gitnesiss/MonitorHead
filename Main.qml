@@ -334,6 +334,146 @@ ApplicationWindow {
             }
         }
 
+        // === ОТЛАДОЧНЫЙ БЛОК ===
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 100
+            color: "#2d2d2d"
+            radius: 8
+            border.color: "#555"
+            visible: true
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 5
+
+                Text {
+                    text: "ОТЛАДКА - РЕЖИМ COM-ПОРТА"
+                    color: "#FF9800"
+                    font.pixelSize: 12
+                    font.bold: true
+                }
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 3
+                    columnSpacing: 10
+                    rowSpacing: 5
+
+                    Text { text: "Подключен:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text {
+                        text: controller.connected ? "ДА" : "НЕТ"
+                        color: controller.connected ? "#4CAF50" : "#f44336"
+                        font.pixelSize: 10
+                    }
+                    Text { text: "" }
+
+                    Text { text: "Данные:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text {
+                        text: controller.headModel.hasData ? "ЕСТЬ" : "НЕТ"
+                        color: controller.headModel.hasData ? "#4CAF50" : "#f44336"
+                        font.pixelSize: 10
+                    }
+                    Text { text: "" }
+
+                    Text { text: "Pitch:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text {
+                        text: controller.headModel.hasData ? controller.headModel.pitch.toFixed(1) + "°" : "---"
+                        color: "white"
+                        font.pixelSize: 10
+                    }
+                    Text {
+                        text: controller.headModel.hasData ? controller.headModel.speedPitch.toFixed(1) + "°/с" : "---"
+                        color: "#BB86FC"
+                        font.pixelSize: 10
+                    }
+
+                    Text { text: "Roll:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text {
+                        text: controller.headModel.hasData ? controller.headModel.roll.toFixed(1) + "°" : "---"
+                        color: "white"
+                        font.pixelSize: 10
+                    }
+                    Text {
+                        text: controller.headModel.hasData ? controller.headModel.speedRoll.toFixed(1) + "°/с" : "---"
+                        color: "#03DAC6"
+                        font.pixelSize: 10
+                    }
+
+                    Text { text: "Yaw:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text {
+                        text: controller.headModel.hasData ? controller.headModel.yaw.toFixed(1) + "°" : "---"
+                        color: "white"
+                        font.pixelSize: 10
+                    }
+                    Text {
+                        text: controller.headModel.hasData ? controller.headModel.speedYaw.toFixed(1) + "°/с" : "---"
+                        color: "#CF6679"
+                        font.pixelSize: 10
+                    }
+                }
+            }
+        }
+
+        // // === ОТЛАДОЧНЫЙ БЛОК (временно) ===
+        // Rectangle {
+        //     Layout.fillWidth: true
+        //     Layout.preferredHeight: 80
+        //     color: "#2d2d2d"
+        //     radius: 8
+        //     border.color: "#555"
+        //     visible: true // Временно включим для отладки
+
+        //     ColumnLayout {
+        //         anchors.fill: parent
+        //         anchors.margins: 10
+        //         spacing: 5
+
+        //         Text {
+        //             text: "ОТЛАДКА СКОРОСТЕЙ"
+        //             color: "#FF9800"
+        //             font.pixelSize: 12
+        //             font.bold: true
+        //         }
+
+        //         RowLayout {
+        //             Layout.fillWidth: true
+        //             spacing: 10
+
+        //             Text {
+        //                 text: "Pitch: " + controller.headModel.speedPitch.toFixed(2)
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text {
+        //                 text: "Roll: " + controller.headModel.speedRoll.toFixed(2)
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text {
+        //                 text: "Yaw: " + controller.headModel.speedYaw.toFixed(2)
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text {
+        //                 text: "HasData: " + controller.headModel.hasData
+        //                 color: controller.headModel.hasData ? "#4CAF50" : "#f44336"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text {
+        //                 text: "COM: " + controller.connected
+        //                 color: controller.connected ? "#4CAF50" : "#f44336"
+        //                 font.pixelSize: 10
+        //             }
+        //         }
+        //     }
+        // }
+
         // === ОСНОВНАЯ ЧАСТЬ ЭКРАНА - РАЗДЕЛЕНА НА 2 СТОЛБЦА ===
         RowLayout {
             Layout.fillWidth: true
@@ -487,12 +627,18 @@ ApplicationWindow {
                                     }
 
                                     Text {
-                                        text: controller.logLoaded ?
-                                              formatSpeed(controller.headModel.speedPitch, controller.headModel.hasData) :
-                                              "нет данных"
-                                        color: (controller.logLoaded && controller.headModel.hasData) ? "white" : "#888"
-                                        font.pixelSize: (controller.logLoaded && controller.headModel.hasData) ? 16 : 14
-                                        font.bold: (controller.logLoaded && controller.headModel.hasData)
+                                        text: {
+                                            if (controller.connected && controller.headModel.hasData) {
+                                                return formatSpeed(controller.headModel.speedPitch, true)
+                                            } else if (controller.logLoaded && controller.headModel.hasData) {
+                                                return formatSpeed(controller.headModel.speedPitch, true)
+                                            } else {
+                                                return "нет данных"
+                                            }
+                                        }
+                                        color: (controller.connected || controller.logLoaded) && controller.headModel.hasData ? "white" : "#888"
+                                        font.pixelSize: ((controller.connected || controller.logLoaded) && controller.headModel.hasData) ? 16 : 14
+                                        font.bold: (controller.connected || controller.logLoaded) && controller.headModel.hasData
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
                                 }
@@ -695,12 +841,18 @@ ApplicationWindow {
                                     }
 
                                     Text {
-                                        text: controller.logLoaded ?
-                                              formatSpeed(controller.headModel.speedRoll, controller.headModel.hasData) :
-                                              "нет данных"
-                                        color: (controller.logLoaded && controller.headModel.hasData) ? "white" : "#888"
-                                        font.pixelSize: (controller.logLoaded && controller.headModel.hasData) ? 16 : 14
-                                        font.bold: (controller.logLoaded && controller.headModel.hasData)
+                                        text: {
+                                            if (controller.connected && controller.headModel.hasData) {
+                                                return formatSpeed(controller.headModel.speedRoll, true)
+                                            } else if (controller.logLoaded && controller.headModel.hasData) {
+                                                return formatSpeed(controller.headModel.speedRoll, true)
+                                            } else {
+                                                return "нет данных"
+                                            }
+                                        }
+                                        color: (controller.connected || controller.logLoaded) && controller.headModel.hasData ? "white" : "#888"
+                                        font.pixelSize: ((controller.connected || controller.logLoaded) && controller.headModel.hasData) ? 16 : 14
+                                        font.bold: (controller.connected || controller.logLoaded) && controller.headModel.hasData
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
                                 }
@@ -909,12 +1061,18 @@ ApplicationWindow {
                                     }
 
                                     Text {
-                                        text: controller.logLoaded ?
-                                              formatSpeed(controller.headModel.speedYaw, controller.headModel.hasData) :
-                                              "нет данных"
-                                        color: (controller.logLoaded && controller.headModel.hasData) ? "white" : "#888"
-                                        font.pixelSize: (controller.logLoaded && controller.headModel.hasData) ? 16 : 14
-                                        font.bold: (controller.logLoaded && controller.headModel.hasData)
+                                        text: {
+                                            if (controller.connected && controller.headModel.hasData) {
+                                                return formatSpeed(controller.headModel.speedYaw, true)
+                                            } else if (controller.logLoaded && controller.headModel.hasData) {
+                                                return formatSpeed(controller.headModel.speedYaw, true)
+                                            } else {
+                                                return "нет данных"
+                                            }
+                                        }
+                                        color: (controller.connected || controller.logLoaded) && controller.headModel.hasData ? "white" : "#888"
+                                        font.pixelSize: ((controller.connected || controller.logLoaded) && controller.headModel.hasData) ? 16 : 14
+                                        font.bold: (controller.connected || controller.logLoaded) && controller.headModel.hasData
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
                                 }
@@ -1391,19 +1549,6 @@ ApplicationWindow {
         }
     }
 
-    // Тестовое уведомление при запуске
-    Component.onCompleted: {
-        timer.start()
-    }
-
-    Timer {
-        id: timer
-        interval: 1000
-        onTriggered: {
-            showNotification("Система готова к работе", false)
-        }
-    }
-
     // Защита от сбоев COM-порта
     Connections {
         target: controller
@@ -1431,5 +1576,20 @@ ApplicationWindow {
         console.error("Critical error:", message)
         showNotification("Критическая ошибка: " + message, true)
         // Не закрываем приложение, просто показываем ошибку
+    }
+
+    // Тестовое уведомление при запуске
+    Component.onCompleted: {
+        timer.start()
+        console.log("Application started, headModel.hasData:", controller.headModel.hasData)
+        console.log("Initial roll value:", controller.headModel.roll)
+    }
+
+    Timer {
+        id: timer
+        interval: 1000
+        onTriggered: {
+            showNotification("Система готова к работе", false)
+        }
     }
 }

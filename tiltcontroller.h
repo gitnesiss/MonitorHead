@@ -10,7 +10,16 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <QByteArray>
+#include <deque>
 #include "headmodel.h"
+
+// Структура для хранения данных углов с временной меткой
+struct AngleData {
+    qint64 timestamp;
+    float pitch;
+    float roll;
+    float yaw;
+};
 
 class TiltController : public QObject
 {
@@ -72,6 +81,9 @@ private:
     void cleanupCOMPort();
     void safeDisconnect();
     void processCOMPortData(const QByteArray &data);
+    void calculateSpeeds(float pitch, float roll, float yaw);
+    void updateSpeedBuffers(float pitch, float roll, float yaw, qint64 timestamp);
+    void computeAverageSpeeds(float &avgSpeedPitch, float &avgSpeedRoll, float &avgSpeedYaw);
 
     HeadModel m_headModel;
     QTimer m_logTimer;
@@ -105,6 +117,10 @@ private:
 
     QByteArray m_incompleteData; // Для сборки неполных данных
     bool m_isCleaningUp = false; // Флаг для предотвращения рекурсивной очистки
+
+    // Буферы для хранения последних значений углов (для вычисления скоростей)
+    std::deque<AngleData> m_angleHistory;
+    const int m_maxHistorySize = 6; // Для частоты 60 Гц
 
 signals:
     void connectedChanged(bool connected);

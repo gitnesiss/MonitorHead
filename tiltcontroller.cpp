@@ -5,6 +5,7 @@
 #include <QtMath>
 #include <QDateTime>
 #include <QCoreApplication>
+#include <algorithm>
 
 TiltController::TiltController(QObject *parent) : QObject(parent)
 {
@@ -73,6 +74,8 @@ void TiltController::safeDisconnect()
     // Если не в режиме лога, сбрасываем данные
     if (!m_logMode) {
         m_headModel.resetData();
+        // Очищаем историю углов
+        m_angleHistory.clear();
     }
 
     addNotification("Отключено от COM-порта");
@@ -113,6 +116,7 @@ bool TiltController::setupCOMPort()
             }
 
             m_incompleteData.clear();
+            m_angleHistory.clear();
 
             addNotification("Успешное подключение к " + m_selectedPort);
             emit connectedChanged(m_connected);
@@ -150,6 +154,8 @@ void TiltController::cleanupCOMPort()
     }
 
     m_incompleteData.clear();
+    // Очищаем историю углов при отключении
+    m_angleHistory.clear();
 }
 
 void TiltController::readCOMPortData()
@@ -172,6 +178,85 @@ void TiltController::readCOMPortData()
         qDebug() << "Exception reading COM port:" << e.what();
         safeDisconnect();
     }
+}
+
+void TiltController::updateSpeedBuffers(float pitch, float roll, float yaw, qint64 timestamp)
+{
+    // Добавляем новые данные в историю
+    AngleData newData;
+    newData.timestamp = timestamp;
+    newData.pitch = pitch;
+    newData.roll = roll;
+    newData.yaw = yaw;
+
+    m_angleHistory.push_back(newData);
+
+    // Удаляем старые данные, если превышен лимит
+    while (m_angleHistory.size() > m_maxHistorySize) {
+        m_angleHistory.pop_front();
+    }
+}
+
+void TiltController::computeAverageSpeeds(float &avgSpeedPitch, float &avgSpeedRoll, float &avgSpeedYaw)
+{
+    if (m_angleHistory.size() < 2) {
+        avgSpeedPitch = 0.0f;
+        avgSpeedRoll = 0.0f;
+        avgSpeedYaw = 0.0f;
+        return;
+    }
+
+    float totalSpeedPitch = 0.0f;
+    float totalSpeedRoll = 0.0f;
+    float totalSpeedYaw = 0.0f;
+    int count = 0;
+
+    // Используем самую старую и самую новую точку для вычисления скорости
+    const AngleData &newest = m_angleHistory.back();
+    const AngleData &oldest = m_angleHistory.front();
+
+    qint64 timeDiff = newest.timestamp - oldest.timestamp;
+
+    if (timeDiff > 0) {
+        // Вычисляем скорость в градусах в секунду
+        avgSpeedPitch = (newest.pitch - oldest.pitch) * 1000.0f / timeDiff;
+        avgSpeedRoll = (newest.roll - oldest.roll) * 1000.0f / timeDiff;
+        avgSpeedYaw = (newest.yaw - oldest.yaw) * 1000.0f / timeDiff;
+
+        // Ограничиваем максимальную скорость для устранения шумов
+        const float maxSpeed = 180.0f;
+        avgSpeedPitch = qBound(-maxSpeed, avgSpeedPitch, maxSpeed);
+        avgSpeedRoll = qBound(-maxSpeed, avgSpeedRoll, maxSpeed);
+        avgSpeedYaw = qBound(-maxSpeed, avgSpeedYaw, maxSpeed);
+
+        qDebug() << "Computed speeds - Pitch:" << avgSpeedPitch
+                 << "Roll:" << avgSpeedRoll << "Yaw:" << avgSpeedYaw
+                 << "Time diff:" << timeDiff << "ms";
+    } else {
+        avgSpeedPitch = 0.0f;
+        avgSpeedRoll = 0.0f;
+        avgSpeedYaw = 0.0f;
+    }
+}
+
+void TiltController::calculateSpeeds(float pitch, float roll, float yaw)
+{
+    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+
+    // Добавляем данные в буфер
+    updateSpeedBuffers(pitch, roll, yaw, currentTime);
+
+    qDebug() << "Angle history size:" << m_angleHistory.size();
+
+    // Вычисляем усредненные скорости
+    float avgSpeedPitch, avgSpeedRoll, avgSpeedYaw;
+    computeAverageSpeeds(avgSpeedPitch, avgSpeedRoll, avgSpeedYaw);
+
+    qDebug() << "Calculated speeds - Pitch:" << avgSpeedPitch
+             << "Roll:" << avgSpeedRoll << "Yaw:" << avgSpeedYaw;
+
+    // Обновляем модель с вычисленными скоростями
+    updateHeadModel(pitch, roll, yaw, avgSpeedPitch, avgSpeedRoll, avgSpeedYaw, false);
 }
 
 void TiltController::processCOMPortData(const QByteArray &data)
@@ -209,8 +294,8 @@ void TiltController::processCOMPortData(const QByteArray &data)
                 float yaw = parts[3].replace(',', '.').toFloat(&ok3);
 
                 if (ok1 && ok2 && ok3) {
-                    // Для COM-порта скорости и головокружение не вычисляем
-                    updateHeadModel(pitch, roll, yaw, 0.0f, 0.0f, 0.0f, false);
+                    // В режиме COM-порта вычисляем скорости на основе изменения углов
+                    calculateSpeeds(pitch, roll, yaw);
                 }
             }
         } else if (dataString.contains(',')) {
@@ -223,7 +308,8 @@ void TiltController::processCOMPortData(const QByteArray &data)
                 float yaw = parts[2].toFloat(&ok3);
 
                 if (ok1 && ok2 && ok3) {
-                    updateHeadModel(pitch, roll, yaw, 0.0f, 0.0f, 0.0f, false);
+                    // В режиме COM-порта вычисляем скорости на основе изменения углов
+                    calculateSpeeds(pitch, roll, yaw);
                 }
             }
         }
@@ -297,6 +383,8 @@ void TiltController::switchToCOMPortMode()
 
         // Сбрасываем модель к состоянию "нет данных"
         m_headModel.resetData();
+        // Очищаем историю углов
+        m_angleHistory.clear();
 
         // Запускаем авто-подключение
         m_autoConnectTimer.start();
@@ -523,6 +611,10 @@ void TiltController::updateHeadModel(float pitch, float roll, float yaw,
                                      float speedPitch, float speedRoll, float speedYaw,
                                      bool dizziness)
 {
+    qDebug() << "Updating head model - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw
+             << "SpeedPitch:" << speedPitch << "SpeedRoll:" << speedRoll << "SpeedYaw:" << speedYaw
+             << "Has data: true";
+
     m_headModel.setMotionData(pitch, roll, yaw, speedPitch, speedRoll, speedYaw, dizziness);
 }
 
