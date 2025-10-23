@@ -23,6 +23,7 @@ qt_add_qml_module(appMonitorHead
         tiltcontroller.h
     QML_FILES
         Main.qml
+        GraphCanvas.qml
 )
 
 set_target_properties(appMonitorHead PROPERTIES

@@ -16,11 +16,21 @@ ApplicationWindow {
 
     // Функция для показа уведомлений
     function showNotification(message, isError) {
+        // Не показываем новые уведомления если приложение тормозит
+        if (notificationTimer.running) {
+            return
+        }
         notificationText.text = message
         notificationBackground.color = isError ? "#f44336" : "#4CAF50"
         notificationLayout.height = 40
         notificationTimer.restart()
     }
+    // function showNotification(message, isError) {
+    //     notificationText.text = message
+    //     notificationBackground.color = isError ? "#f44336" : "#4CAF50"
+    //     notificationLayout.height = 40
+    //     notificationTimer.restart()
+    // }
 
     // Функция для форматирования значений
     function formatValue(value, hasData) {
@@ -252,6 +262,8 @@ ApplicationWindow {
 
                 Item { Layout.fillWidth: true } // Распорка
 
+
+
                 // Правая часть - кнопки загрузки данных и калибровка
                 RowLayout {
                     spacing: 10
@@ -330,6 +342,228 @@ ApplicationWindow {
                             verticalAlignment: Text.AlignVCenter
                         }
                     }
+
+                    // В панель управления добавляем кнопку:
+                    Button {
+                        text: "🚀 Режим производительности"
+                        Layout.preferredWidth: 200
+                        Layout.preferredHeight: 40
+                        onClicked: {
+                            // Переключаем режим производительности
+                            var currentMode = !controller.highPerformanceMode
+                            controller.setPerformanceMode(currentMode)
+                            showNotification(currentMode ? "Включен режим высокой производительности" : "Включен экономичный режим", false)
+                        }
+                        background: Rectangle {
+                            color: parent.down ? "#5a3a7c" :
+                                   (controller.highPerformanceMode ? "#FF9800" : "#673ab7")
+                            radius: 6
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.pixelSize: 12
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+                    }
+
+                    RowLayout {
+                        spacing: 10
+                        visible: false // Скрываем в продакшене, оставляем для отладки
+
+                        Button {
+                            text: "🧪 Тест: Головокружение ДА"
+                            Layout.preferredWidth: 180
+                            Layout.preferredHeight: 40
+                            onClicked: controller.testDizziness(true)
+                            background: Rectangle {
+                                color: parent.down ? "#7c3a3a" : "#f44336"
+                                radius: 6
+                            }
+                            contentItem: Text {
+                                text: parent.text
+                                color: "white"
+                                font.pixelSize: 12
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+
+                        Button {
+                            text: "🧪 Тест: Головокружение НЕТ"
+                            Layout.preferredWidth: 180
+                            Layout.preferredHeight: 40
+                            onClicked: controller.testDizziness(false)
+                            background: Rectangle {
+                                color: parent.down ? "#3a5c42" : "#4CAF50"
+                                radius: 6
+                            }
+                            contentItem: Text {
+                                text: parent.text
+                                color: "white"
+                                font.pixelSize: 12
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+                    }
+
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 60
+                        color: "#2d2d2d"
+                        radius: 8
+                        border.color: "#444"
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 15
+
+                            Text {
+                                text: "Частота обновления:"
+                                color: "#aaa"
+                                font.pixelSize: 12
+                            }
+
+                            Slider {
+                                id: frequencySlider
+                                Layout.fillWidth: true
+                                from: 1
+                                to: 30
+                                value: controller.updateFrequency
+                                stepSize: 1
+                                onMoved: controller.setUpdateFrequency(Math.round(value))
+                                background: Rectangle {
+                                    color: "#3c3c3c"
+                                    radius: 2
+                                    height: 4
+                                }
+                                handle: Rectangle {
+                                    width: 16
+                                    height: 16
+                                    radius: 8
+                                    color: "#2196f3"
+                                    border.color: "#1976d2"
+                                    border.width: 2
+                                }
+                            }
+
+                            Text {
+                                text: controller.updateFrequency + " Гц"
+                                color: "#2196f3"
+                                font.pixelSize: 14
+                                font.bold: true
+                                Layout.preferredWidth: 60
+                            }
+
+                            // Кнопки быстрого выбора частоты
+                            RowLayout {
+                                spacing: 5
+
+                                Button {
+                                    text: "5 Гц"
+                                    Layout.preferredWidth: 60
+                                    Layout.preferredHeight: 30
+                                    onClicked: controller.setUpdateFrequency(5)
+                                    background: Rectangle {
+                                        color: parent.down ? "#1a4b6b" :
+                                               (controller.updateFrequency === 5 ? "#2196f3" : "#3c3c3c")
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: "white"
+                                        font.pixelSize: 10
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+
+                                Button {
+                                    text: "10 Гц"
+                                    Layout.preferredWidth: 60
+                                    Layout.preferredHeight: 30
+                                    onClicked: controller.setUpdateFrequency(10)
+                                    background: Rectangle {
+                                        color: parent.down ? "#1a4b6b" :
+                                               (controller.updateFrequency === 10 ? "#2196f3" : "#3c3c3c")
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: "white"
+                                        font.pixelSize: 10
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+
+                                Button {
+                                    text: "20 Гц"
+                                    Layout.preferredWidth: 60
+                                    Layout.preferredHeight: 30
+                                    onClicked: controller.setUpdateFrequency(20)
+                                    background: Rectangle {
+                                        color: parent.down ? "#1a4b6b" :
+                                               (controller.updateFrequency === 20 ? "#2196f3" : "#3c3c3c")
+                                        radius: 4
+                                    }
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: "white"
+                                        font.pixelSize: 10
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // В панель управления (после блока с кнопками) добавляем:
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    spacing: 10
+
+                    Text {
+                        text: "Длительность графика:"
+                        color: "#aaa"
+                        font.pixelSize: 12
+                    }
+
+                    Slider {
+                        id: graphDurationSlider
+                        Layout.fillWidth: true
+                        from: 5
+                        to: 120
+                        value: controller.graphDuration
+                        onMoved: controller.setGraphDuration(Math.round(value))
+                        background: Rectangle {
+                            color: "#3c3c3c"
+                            radius: 2
+                            height: 4
+                        }
+                        handle: Rectangle {
+                            width: 16
+                            height: 16
+                            radius: 8
+                            color: "#2196f3"
+                            border.color: "#1976d2"
+                            border.width: 2
+                        }
+                    }
+
+                    Text {
+                        text: controller.graphDuration + " сек"
+                        color: "#ccc"
+                        font.pixelSize: 12
+                        Layout.preferredWidth: 50
+                    }
                 }
             }
         }
@@ -337,7 +571,7 @@ ApplicationWindow {
         // === ОТЛАДОЧНЫЙ БЛОК ===
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 100
+            Layout.preferredHeight: 160
             color: "#2d2d2d"
             radius: 8
             border.color: "#555"
@@ -349,7 +583,7 @@ ApplicationWindow {
                 spacing: 5
 
                 Text {
-                    text: "ОТЛАДКА - РЕЖИМ COM-ПОРТА"
+                    text: "ОТЛАДКА - ВОССТАНОВЛЕНИЕ ГРАФИКОВ"
                     color: "#FF9800"
                     font.pixelSize: 12
                     font.bold: true
@@ -357,64 +591,327 @@ ApplicationWindow {
 
                 GridLayout {
                     Layout.fillWidth: true
-                    columns: 3
+                    columns: 2
                     columnSpacing: 10
                     rowSpacing: 5
 
-                    Text { text: "Подключен:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text { text: "График Pitch:"; color: "#aaa"; font.pixelSize: 10 }
                     Text {
-                        text: controller.connected ? "ДА" : "НЕТ"
-                        color: controller.connected ? "#4CAF50" : "#f44336"
+                        text: controller.pitchGraphData.length + " точек"
+                        color: controller.pitchGraphData.length > 0 ? "#BB86FC" : "#f44336"
                         font.pixelSize: 10
                     }
-                    Text { text: "" }
 
-                    Text { text: "Данные:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text { text: "График Roll:"; color: "#aaa"; font.pixelSize: 10 }
                     Text {
-                        text: controller.headModel.hasData ? "ЕСТЬ" : "НЕТ"
-                        color: controller.headModel.hasData ? "#4CAF50" : "#f44336"
+                        text: controller.rollGraphData.length + " точек"
+                        color: controller.rollGraphData.length > 0 ? "#03DAC6" : "#f44336"
                         font.pixelSize: 10
                     }
-                    Text { text: "" }
 
-                    Text { text: "Pitch:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text { text: "График Yaw:"; color: "#aaa"; font.pixelSize: 10 }
                     Text {
-                        text: controller.headModel.hasData ? controller.headModel.pitch.toFixed(1) + "°" : "---"
+                        text: controller.yawGraphData.length + " точек"
+                        color: controller.yawGraphData.length > 0 ? "#CF6679" : "#f44336"
+                        font.pixelSize: 10
+                    }
+
+                    Text { text: "Точек головокружения:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text {
+                        text: controller.dizzinessData.length
+                        color: controller.dizzinessData.length > 0 ? "#60FFB300" : "#aaa"
+                        font.pixelSize: 10
+                    }
+
+                    Text { text: "Статус:"; color: "#aaa"; font.pixelSize: 10 }
+                    Text {
+                        text: {
+                            if (controller.pitchGraphData.length === 0 &&
+                                controller.rollGraphData.length === 0 &&
+                                controller.yawGraphData.length === 0) {
+                                return "ГРАФИКИ ПУСТЫ ⚠️"
+                            } else {
+                                return "ГРАФИКИ АКТИВНЫ ✅"
+                            }
+                        }
+                        color: (controller.pitchGraphData.length === 0 &&
+                               controller.rollGraphData.length === 0 &&
+                               controller.yawGraphData.length === 0) ? "#f44336" : "#4CAF50"
+                        font.pixelSize: 10
+                        font.bold: true
+                    }
+                }
+
+                // Кнопка принудительного восстановления графиков
+                Button {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 30
+                    text: "🔄 Восстановить графики"
+                    onClicked: {
+                        console.log("Manual graph restoration triggered")
+                        // Принудительно запрашиваем перерисовку всех графиков
+                        pitchGraph.requestPaint()
+                        rollGraph.requestPaint()
+                        yawGraph.requestPaint()
+                        showNotification("Графики восстановлены", false)
+                    }
+                    background: Rectangle {
+                        color: parent.down ? "#3a5c42" : "#4CAF50"
+                        radius: 4
+                    }
+                    contentItem: Text {
+                        text: parent.text
                         color: "white"
-                        font.pixelSize: 10
-                    }
-                    Text {
-                        text: controller.headModel.hasData ? controller.headModel.speedPitch.toFixed(1) + "°/с" : "---"
-                        color: "#BB86FC"
-                        font.pixelSize: 10
-                    }
-
-                    Text { text: "Roll:"; color: "#aaa"; font.pixelSize: 10 }
-                    Text {
-                        text: controller.headModel.hasData ? controller.headModel.roll.toFixed(1) + "°" : "---"
-                        color: "white"
-                        font.pixelSize: 10
-                    }
-                    Text {
-                        text: controller.headModel.hasData ? controller.headModel.speedRoll.toFixed(1) + "°/с" : "---"
-                        color: "#03DAC6"
-                        font.pixelSize: 10
-                    }
-
-                    Text { text: "Yaw:"; color: "#aaa"; font.pixelSize: 10 }
-                    Text {
-                        text: controller.headModel.hasData ? controller.headModel.yaw.toFixed(1) + "°" : "---"
-                        color: "white"
-                        font.pixelSize: 10
-                    }
-                    Text {
-                        text: controller.headModel.hasData ? controller.headModel.speedYaw.toFixed(1) + "°/с" : "---"
-                        color: "#CF6679"
-                        font.pixelSize: 10
+                        font.pixelSize: 12
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
             }
         }
+
+        // Rectangle {
+        //     Layout.fillWidth: true
+        //     Layout.preferredHeight: 140
+        //     color: "#2d2d2d"
+        //     radius: 8
+        //     border.color: "#555"
+        //     visible: true // Для отладки
+
+        //     ColumnLayout {
+        //         anchors.fill: parent
+        //         anchors.margins: 10
+        //         spacing: 5
+
+        //         Text {
+        //             text: "ОТЛАДКА - ПРОИЗВОДИТЕЛЬНОСТЬ"
+        //             color: "#FF9800"
+        //             font.pixelSize: 12
+        //             font.bold: true
+        //         }
+
+        //         GridLayout {
+        //             Layout.fillWidth: true
+        //             columns: 2
+        //             columnSpacing: 10
+        //             rowSpacing: 5
+
+        //             Text { text: "Частота обновления:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.updateFrequency + " Гц"
+        //                 color: "#2196f3"
+        //                 font.pixelSize: 10
+        //                 font.bold: true
+        //             }
+
+        //             Text { text: "Режим производительности:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.highPerformanceMode ? "ВЫСОКИЙ 🚀" : "ЭКОНОМНЫЙ 💾"
+        //                 color: controller.highPerformanceMode ? "#FF9800" : "#4CAF50"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "Точек головокружения:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.dizzinessData.length
+        //                 color: controller.dizzinessData.length > 0 ? "#60FFB300" : "#aaa"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "Данные Pitch:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.pitchGraphData.length
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "COM подключен:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.connected ? "ДА ✅" : "НЕТ ❌"
+        //                 color: controller.connected ? "#4CAF50" : "#f44336"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "Головокружение:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.dizziness ? "ДА 😵" : "НЕТ 😊"
+        //                 color: controller.headModel.dizziness ? "#60FFB300" : "#4CAF50"
+        //                 font.pixelSize: 10
+        //             }
+        //         }
+        //     }
+        // }
+
+
+
+        // // В отладочный блок добавляем более детальную информацию:
+        // Rectangle {
+        //     Layout.fillWidth: true
+        //     Layout.preferredHeight: 140
+        //     color: "#2d2d2d"
+        //     radius: 8
+        //     border.color: "#555"
+        //     visible: true // Временно для отладки
+
+        //     ColumnLayout {
+        //         anchors.fill: parent
+        //         anchors.margins: 10
+        //         spacing: 5
+
+        //         Text {
+        //             text: "ОТЛАДКА - ДАННЫЕ COM-ПОРТА"
+        //             color: "#FF9800"
+        //             font.pixelSize: 12
+        //             font.bold: true
+        //         }
+
+        //         GridLayout {
+        //             Layout.fillWidth: true
+        //             columns: 2
+        //             columnSpacing: 10
+        //             rowSpacing: 5
+
+        //             Text { text: "COM подключен:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.connected ? "ДА ✅" : "НЕТ ❌"
+        //                 color: controller.connected ? "#4CAF50" : "#f44336"
+        //                 font.pixelSize: 10
+        //                 font.bold: true
+        //             }
+
+        //             Text { text: "Текущее головокружение:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.dizziness ? "ДА 😵" : "НЕТ 😊"
+        //                 color: controller.headModel.dizziness ? "#FF0000" : "#4CAF50"
+        //                 font.pixelSize: 10
+        //                 font.bold: true
+        //             }
+
+        //             Text { text: "Точек головокружения:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.dizzinessData.length
+        //                 color: controller.dizzinessData.length > 0 ? "#FFA000" : "#aaa"
+        //                 font.pixelSize: 10
+        //                 font.bold: controller.dizzinessData.length > 0
+        //             }
+
+        //             Text { text: "Pitch:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.pitch.toFixed(1) + "°" : "---"
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "Roll:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.roll.toFixed(1) + "°" : "---"
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "Yaw:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.yaw.toFixed(1) + "°" : "---"
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "Данные:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.hasData ? "ЕСТЬ 📊" : "НЕТ ❓"
+        //                 color: controller.headModel.hasData ? "#4CAF50" : "#f44336"
+        //                 font.pixelSize: 10
+        //             }
+        //         }
+        //     }
+        // }
+
+        // Rectangle {
+        //     Layout.fillWidth: true
+        //     Layout.preferredHeight: 100
+        //     color: "#2d2d2d"
+        //     radius: 8
+        //     border.color: "#555"
+        //     visible: true
+
+        //     ColumnLayout {
+        //         anchors.fill: parent
+        //         anchors.margins: 10
+        //         spacing: 5
+
+        //         Text {
+        //             text: "ОТЛАДКА - РЕЖИМ COM-ПОРТА"
+        //             color: "#FF9800"
+        //             font.pixelSize: 12
+        //             font.bold: true
+        //         }
+
+        //         GridLayout {
+        //             Layout.fillWidth: true
+        //             columns: 3
+        //             columnSpacing: 10
+        //             rowSpacing: 5
+
+        //             Text { text: "Подключен:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.connected ? "ДА" : "НЕТ"
+        //                 color: controller.connected ? "#4CAF50" : "#f44336"
+        //                 font.pixelSize: 10
+        //             }
+        //             Text { text: "" }
+
+        //             Text { text: "Данные:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.hasData ? "ЕСТЬ" : "НЕТ"
+        //                 color: controller.headModel.hasData ? "#4CAF50" : "#f44336"
+        //                 font.pixelSize: 10
+        //             }
+        //             Text { text: "" }
+
+        //             Text { text: "Pitch:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.pitch.toFixed(1) + "°" : "---"
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.speedPitch.toFixed(1) + "°/с" : "---"
+        //                 color: "#BB86FC"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "Roll:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.roll.toFixed(1) + "°" : "---"
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.speedRoll.toFixed(1) + "°/с" : "---"
+        //                 color: "#03DAC6"
+        //                 font.pixelSize: 10
+        //             }
+
+        //             Text { text: "Yaw:"; color: "#aaa"; font.pixelSize: 10 }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.yaw.toFixed(1) + "°" : "---"
+        //                 color: "white"
+        //                 font.pixelSize: 10
+        //             }
+        //             Text {
+        //                 text: controller.headModel.hasData ? controller.headModel.speedYaw.toFixed(1) + "°/с" : "---"
+        //                 color: "#CF6679"
+        //                 font.pixelSize: 10
+        //             }
+        //         }
+        //     }
+            // Timer {
+            //     interval: 1000 // Обновляем раз в секунду
+            //     running: parent.visible
+            //     repeat: true
+            //     onTriggered: parent.update()
+            // }
+        // }
 
         // // === ОТЛАДОЧНЫЙ БЛОК (временно) ===
         // Rectangle {
@@ -645,68 +1142,127 @@ ApplicationWindow {
                             }
                         }
 
-                        // График PITCH
+                        // ЗАМЕНЯЕМ весь блок графика PITCH на:
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            color: "#1a1a1a"
-                            radius: 6
-                            border.color: "#333"
+                            Layout.preferredHeight: 200
+                            color: "#252525"
+                            radius: 8
+                            border.color: "#444"
+                            border.width: 1
 
-                            Text {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.topMargin: 5
-                                text: "График PITCH (30 сек)"
-                                color: "#666"
-                                font.pixelSize: 12
-                            }
-
-                            Canvas {
+                            ColumnLayout {
                                 anchors.fill: parent
-                                anchors.margins: 10
-                                anchors.topMargin: 25
+                                spacing: 0
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.clearRect(0, 0, width, height)
-
-                                    // Ось X
-                                    ctx.strokeStyle = "#555"
-                                    ctx.lineWidth = 1
-                                    ctx.beginPath()
-                                    ctx.moveTo(0, height/2)
-                                    ctx.lineTo(width, height/2)
-                                    ctx.stroke()
-
-                                    if (controller.headModel.hasData) {
-                                        // Синусоида для демонстрации
-                                        ctx.strokeStyle = "#BB86FC"
-                                        ctx.lineWidth = 2
-                                        ctx.beginPath()
-                                        for (var x = 0; x < width; x++) {
-                                            var y = height/2 + Math.sin(x/20 + Date.now()/1000) * height/3
-                                            if (x === 0) ctx.moveTo(x, y)
-                                            else ctx.lineTo(x, y)
-                                        }
-                                        ctx.stroke()
-                                    } else {
-                                        // Текст "нет данных"
-                                        ctx.fillStyle = "#666"
-                                        ctx.font = "14px Arial"
-                                        ctx.textAlign = "center"
-                                        ctx.fillText("нет данных", width/2, height/2)
-                                    }
+                                Text {
+                                    text: "График PITCH (" + controller.graphDuration + " сек)"
+                                    color: "#666"
+                                    font.pixelSize: 12
+                                    Layout.topMargin: 5
+                                    Layout.alignment: Qt.AlignHCenter
                                 }
 
-                                Timer {
-                                    interval: 50
-                                    running: true
-                                    repeat: true
-                                    onTriggered: parent.requestPaint()
+                                GraphCanvas {
+                                    id: pitchGraph
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    graphData: controller.pitchGraphData
+                                    dizzinessData: controller.dizzinessData
+                                    graphDuration: controller.graphDuration
+                                    lineColor: "#BB86FC"
+                                    minValue: -90
+                                    maxValue: 90
+
+                                    Component.onCompleted: {
+                                        console.log("GraphCanvas loaded for", lineColor)
+
+                                        // Автоматическое восстановление при потере контекста
+                                        recoveryTimer.start()
+                                    }
+
+                                    Timer {
+                                        id: recoveryTimer
+                                        interval: 1000
+                                        running: true
+                                        repeat: true
+                                        onTriggered: {
+                                            // Проверяем, что график все еще активен
+                                            if (graphData.length > 0) {
+                                                var ctx = getContext("2d")
+                                                if (!ctx) {
+                                                    console.warn("Canvas context lost, attempting recovery...")
+                                                    requestPaint()
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
+
+                        // График PITCH
+                        // Rectangle {
+                        //     Layout.fillWidth: true
+                        //     Layout.fillHeight: true
+                        //     color: "#1a1a1a"
+                        //     radius: 6
+                        //     border.color: "#333"
+
+                        //     Text {
+                        //         anchors.top: parent.top
+                        //         anchors.horizontalCenter: parent.horizontalCenter
+                        //         anchors.topMargin: 5
+                        //         text: "График PITCH (30 сек)"
+                        //         color: "#666"
+                        //         font.pixelSize: 12
+                        //     }
+
+                        //     Canvas {
+                        //         anchors.fill: parent
+                        //         anchors.margins: 10
+                        //         anchors.topMargin: 25
+
+                        //         onPaint: {
+                        //             var ctx = getContext("2d")
+                        //             ctx.clearRect(0, 0, width, height)
+
+                        //             // Ось X
+                        //             ctx.strokeStyle = "#555"
+                        //             ctx.lineWidth = 1
+                        //             ctx.beginPath()
+                        //             ctx.moveTo(0, height/2)
+                        //             ctx.lineTo(width, height/2)
+                        //             ctx.stroke()
+
+                        //             if (controller.headModel.hasData) {
+                        //                 // Синусоида для демонстрации
+                        //                 ctx.strokeStyle = "#BB86FC"
+                        //                 ctx.lineWidth = 2
+                        //                 ctx.beginPath()
+                        //                 for (var x = 0; x < width; x++) {
+                        //                     var y = height/2 + Math.sin(x/20 + Date.now()/1000) * height/3
+                        //                     if (x === 0) ctx.moveTo(x, y)
+                        //                     else ctx.lineTo(x, y)
+                        //                 }
+                        //                 ctx.stroke()
+                        //             } else {
+                        //                 // Текст "нет данных"
+                        //                 ctx.fillStyle = "#666"
+                        //                 ctx.font = "14px Arial"
+                        //                 ctx.textAlign = "center"
+                        //                 ctx.fillText("нет данных", width/2, height/2)
+                        //             }
+                        //         }
+
+                        //         Timer {
+                        //             interval: 50
+                        //             running: true
+                        //             repeat: true
+                        //             onTriggered: parent.requestPaint()
+                        //         }
+                        //     }
+                        // }
                     }
                 }
 
@@ -860,65 +1416,125 @@ ApplicationWindow {
                         }
 
                         // График ROLL
+
+                        // Аналогично заменяем график ROLL:
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            color: "#1a1a1a"
-                            radius: 6
-                            border.color: "#333"
+                            Layout.preferredHeight: 200
+                            color: "#252525"
+                            radius: 8
+                            border.color: "#444"
+                            border.width: 1
 
-                            Text {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.topMargin: 5
-                                text: "График ROLL (30 сек)"
-                                color: "#666"
-                                font.pixelSize: 12
-                            }
-
-                            Canvas {
+                            ColumnLayout {
                                 anchors.fill: parent
-                                anchors.margins: 10
-                                anchors.topMargin: 25
+                                spacing: 0
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.clearRect(0, 0, width, height)
-
-                                    ctx.strokeStyle = "#555"
-                                    ctx.lineWidth = 1
-                                    ctx.beginPath()
-                                    ctx.moveTo(0, height/2)
-                                    ctx.lineTo(width, height/2)
-                                    ctx.stroke()
-
-                                    if (controller.headModel.hasData) {
-                                        ctx.strokeStyle = "#03DAC6"
-                                        ctx.lineWidth = 2
-                                        ctx.beginPath()
-                                        for (var x = 0; x < width; x++) {
-                                            var y = height/2 + Math.cos(x/25 + Date.now()/800) * height/3
-                                            if (x === 0) ctx.moveTo(x, y)
-                                            else ctx.lineTo(x, y)
-                                        }
-                                        ctx.stroke()
-                                    } else {
-                                        // Текст "нет данных"
-                                        ctx.fillStyle = "#666"
-                                        ctx.font = "14px Arial"
-                                        ctx.textAlign = "center"
-                                        ctx.fillText("нет данных", width/2, height/2)
-                                    }
+                                Text {
+                                    text: "График ROLL (" + controller.graphDuration + " сек)"
+                                    color: "#666"
+                                    font.pixelSize: 12
+                                    Layout.topMargin: 5
+                                    Layout.alignment: Qt.AlignHCenter
                                 }
 
-                                Timer {
-                                    interval: 50
-                                    running: true
-                                    repeat: true
-                                    onTriggered: parent.requestPaint()
+                                GraphCanvas {
+                                    id: rollGraph
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    graphData: controller.rollGraphData
+                                    dizzinessData: controller.dizzinessData
+                                    graphDuration: controller.graphDuration
+                                    lineColor: "#03DAC6"
+                                    minValue: -90
+                                    maxValue: 90
+
+                                    Component.onCompleted: {
+                                        console.log("GraphCanvas loaded for", lineColor)
+
+                                        // Автоматическое восстановление при потере контекста
+                                        recoveryTimer2.start()
+                                    }
+
+                                    Timer {
+                                        id: recoveryTimer2
+                                        interval: 1000
+                                        running: true
+                                        repeat: true
+                                        onTriggered: {
+                                            // Проверяем, что график все еще активен
+                                            if (graphData.length > 0) {
+                                                var ctx = getContext("2d")
+                                                if (!ctx) {
+                                                    console.warn("Canvas context lost, attempting recovery...")
+                                                    requestPaint()
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
+
+                        // Rectangle {
+                        //     Layout.fillWidth: true
+                        //     Layout.fillHeight: true
+                        //     color: "#1a1a1a"
+                        //     radius: 6
+                        //     border.color: "#333"
+
+                        //     Text {
+                        //         anchors.top: parent.top
+                        //         anchors.horizontalCenter: parent.horizontalCenter
+                        //         anchors.topMargin: 5
+                        //         text: "График ROLL (30 сек)"
+                        //         color: "#666"
+                        //         font.pixelSize: 12
+                        //     }
+
+                        //     Canvas {
+                        //         anchors.fill: parent
+                        //         anchors.margins: 10
+                        //         anchors.topMargin: 25
+
+                        //         onPaint: {
+                        //             var ctx = getContext("2d")
+                        //             ctx.clearRect(0, 0, width, height)
+
+                        //             ctx.strokeStyle = "#555"
+                        //             ctx.lineWidth = 1
+                        //             ctx.beginPath()
+                        //             ctx.moveTo(0, height/2)
+                        //             ctx.lineTo(width, height/2)
+                        //             ctx.stroke()
+
+                        //             if (controller.headModel.hasData) {
+                        //                 ctx.strokeStyle = "#03DAC6"
+                        //                 ctx.lineWidth = 2
+                        //                 ctx.beginPath()
+                        //                 for (var x = 0; x < width; x++) {
+                        //                     var y = height/2 + Math.cos(x/25 + Date.now()/800) * height/3
+                        //                     if (x === 0) ctx.moveTo(x, y)
+                        //                     else ctx.lineTo(x, y)
+                        //                 }
+                        //                 ctx.stroke()
+                        //             } else {
+                        //                 // Текст "нет данных"
+                        //                 ctx.fillStyle = "#666"
+                        //                 ctx.font = "14px Arial"
+                        //                 ctx.textAlign = "center"
+                        //                 ctx.fillText("нет данных", width/2, height/2)
+                        //             }
+                        //         }
+
+                        //         Timer {
+                        //             interval: 50
+                        //             running: true
+                        //             repeat: true
+                        //             onTriggered: parent.requestPaint()
+                        //         }
+                        //     }
+                        // }
                     }
                 }
 
@@ -1080,65 +1696,125 @@ ApplicationWindow {
                         }
 
                         // График YAW
+
+                        // Аналогично заменяем график YAW:
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            color: "#1a1a1a"
-                            radius: 6
-                            border.color: "#333"
+                            Layout.preferredHeight: 200
+                            color: "#252525"
+                            radius: 8
+                            border.color: "#444"
+                            border.width: 1
 
-                            Text {
-                                anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.topMargin: 5
-                                text: "График YAW (30 сек)"
-                                color: "#666"
-                                font.pixelSize: 12
-                            }
-
-                            Canvas {
+                            ColumnLayout {
                                 anchors.fill: parent
-                                anchors.margins: 10
-                                anchors.topMargin: 25
+                                spacing: 0
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.clearRect(0, 0, width, height)
-
-                                    ctx.strokeStyle = "#555"
-                                    ctx.lineWidth = 1
-                                    ctx.beginPath()
-                                    ctx.moveTo(0, height/2)
-                                    ctx.lineTo(width, height/2)
-                                    ctx.stroke()
-
-                                    if (controller.headModel.hasData) {
-                                        ctx.strokeStyle = "#CF6679"
-                                        ctx.lineWidth = 2
-                                        ctx.beginPath()
-                                        for (var x = 0; x < width; x++) {
-                                            var y = height/2 + Math.sin(x/30 + Date.now()/1200) * height/3
-                                            if (x === 0) ctx.moveTo(x, y)
-                                            else ctx.lineTo(x, y)
-                                        }
-                                        ctx.stroke()
-                                    } else {
-                                        // Текст "нет данных"
-                                        ctx.fillStyle = "#666"
-                                        ctx.font = "14px Arial"
-                                        ctx.textAlign = "center"
-                                        ctx.fillText("нет данных", width/2, height/2)
-                                    }
+                                Text {
+                                    text: "График YAW (" + controller.graphDuration + " сек)"
+                                    color: "#666"
+                                    font.pixelSize: 12
+                                    Layout.topMargin: 5
+                                    Layout.alignment: Qt.AlignHCenter
                                 }
 
-                                Timer {
-                                    interval: 50
-                                    running: true
-                                    repeat: true
-                                    onTriggered: parent.requestPaint()
+                                GraphCanvas {
+                                    id: yawGraph
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    graphData: controller.yawGraphData
+                                    dizzinessData: controller.dizzinessData
+                                    graphDuration: controller.graphDuration
+                                    lineColor: "#CF6679"
+                                    minValue: -180
+                                    maxValue: 180
+
+                                    Component.onCompleted: {
+                                        console.log("GraphCanvas loaded for", lineColor)
+
+                                        // Автоматическое восстановление при потере контекста
+                                        recoveryTimer3.start()
+                                    }
+
+                                    Timer {
+                                        id: recoveryTimer3
+                                        interval: 1000
+                                        running: true
+                                        repeat: true
+                                        onTriggered: {
+                                            // Проверяем, что график все еще активен
+                                            if (graphData.length > 0) {
+                                                var ctx = getContext("2d")
+                                                if (!ctx) {
+                                                    console.warn("Canvas context lost, attempting recovery...")
+                                                    requestPaint()
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
+
+                        // Rectangle {
+                        //     Layout.fillWidth: true
+                        //     Layout.fillHeight: true
+                        //     color: "#1a1a1a"
+                        //     radius: 6
+                        //     border.color: "#333"
+
+                        //     Text {
+                        //         anchors.top: parent.top
+                        //         anchors.horizontalCenter: parent.horizontalCenter
+                        //         anchors.topMargin: 5
+                        //         text: "График YAW (30 сек)"
+                        //         color: "#666"
+                        //         font.pixelSize: 12
+                        //     }
+
+                        //     Canvas {
+                        //         anchors.fill: parent
+                        //         anchors.margins: 10
+                        //         anchors.topMargin: 25
+
+                        //         onPaint: {
+                        //             var ctx = getContext("2d")
+                        //             ctx.clearRect(0, 0, width, height)
+
+                        //             ctx.strokeStyle = "#555"
+                        //             ctx.lineWidth = 1
+                        //             ctx.beginPath()
+                        //             ctx.moveTo(0, height/2)
+                        //             ctx.lineTo(width, height/2)
+                        //             ctx.stroke()
+
+                        //             if (controller.headModel.hasData) {
+                        //                 ctx.strokeStyle = "#CF6679"
+                        //                 ctx.lineWidth = 2
+                        //                 ctx.beginPath()
+                        //                 for (var x = 0; x < width; x++) {
+                        //                     var y = height/2 + Math.sin(x/30 + Date.now()/1200) * height/3
+                        //                     if (x === 0) ctx.moveTo(x, y)
+                        //                     else ctx.lineTo(x, y)
+                        //                 }
+                        //                 ctx.stroke()
+                        //             } else {
+                        //                 // Текст "нет данных"
+                        //                 ctx.fillStyle = "#666"
+                        //                 ctx.font = "14px Arial"
+                        //                 ctx.textAlign = "center"
+                        //                 ctx.fillText("нет данных", width/2, height/2)
+                        //             }
+                        //         }
+
+                        //         Timer {
+                        //             interval: 50
+                        //             running: true
+                        //             repeat: true
+                        //             onTriggered: parent.requestPaint()
+                        //         }
+                        //     }
+                        // }
                     }
                 }
             }

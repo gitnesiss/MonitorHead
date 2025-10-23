@@ -36,6 +36,13 @@ class TiltController : public QObject
     Q_PROPERTY(bool logMode READ logMode NOTIFY logModeChanged)
     Q_PROPERTY(bool logControlsEnabled READ logControlsEnabled NOTIFY logControlsEnabledChanged)
     Q_PROPERTY(QString studyInfo READ studyInfo NOTIFY studyInfoChanged)
+    Q_PROPERTY(int graphDuration READ graphDuration WRITE setGraphDuration NOTIFY graphDurationChanged)
+    Q_PROPERTY(QVariantList pitchGraphData READ pitchGraphData NOTIFY graphDataChanged)
+    Q_PROPERTY(QVariantList rollGraphData READ rollGraphData NOTIFY graphDataChanged)
+    Q_PROPERTY(QVariantList yawGraphData READ yawGraphData NOTIFY graphDataChanged)
+    Q_PROPERTY(QVariantList dizzinessData READ dizzinessData NOTIFY graphDataChanged)
+    Q_PROPERTY(bool highPerformanceMode READ highPerformanceMode NOTIFY performanceModeChanged)
+    Q_PROPERTY(int updateFrequency READ updateFrequency WRITE setUpdateFrequency NOTIFY updateFrequencyChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -53,6 +60,16 @@ public:
     bool logMode() const { return m_logMode; }
     bool logControlsEnabled() const { return m_logMode && m_logLoaded; }
     QString studyInfo() const { return m_studyInfo; }
+    int graphDuration() const { return m_graphDuration; }
+    void setGraphDuration(int duration);
+
+    QVariantList pitchGraphData() const { return m_pitchGraphData; }
+    QVariantList rollGraphData() const { return m_rollGraphData; }
+    QVariantList yawGraphData() const { return m_yawGraphData; }
+    QVariantList dizzinessData() const { return m_dizzinessData; }
+    bool highPerformanceMode() const { return m_highPerformanceMode; }
+    int updateFrequency() const { return m_updateFrequency; }
+    void setUpdateFrequency(int frequency);
 
 public slots:
     void connectDevice();
@@ -67,11 +84,14 @@ public slots:
     void autoConnect();
     void switchToCOMPortMode();
     void setTestData();
+    void setPerformanceMode(bool highPerformance);
+    void testDizziness(bool dizziness);
 
 private slots:
     void updateLogPlayback();
     void readCOMPortData();
     void handleCOMPortError(QSerialPort::SerialPortError error);
+    void updateDataDisplay();
 
 private:
     void parseLogData(const QString &data);
@@ -81,7 +101,7 @@ private:
     void cleanupCOMPort();
     void safeDisconnect();
     void processCOMPortData(const QByteArray &data);
-    void calculateSpeeds(float pitch, float roll, float yaw);
+    void calculateSpeeds(float pitch, float roll, float yaw, bool dizziness);
     void updateSpeedBuffers(float pitch, float roll, float yaw, qint64 timestamp);
     void computeAverageSpeeds(float &avgSpeedPitch, float &avgSpeedRoll, float &avgSpeedYaw);
 
@@ -122,6 +142,32 @@ private:
     std::deque<AngleData> m_angleHistory;
     const int m_maxHistorySize = 6; // Для частоты 60 Гц
 
+    // Данные для графиков
+    void updateGraphData(float pitch, float roll, float yaw, bool dizziness);
+    void cleanupOldData();
+
+    int m_graphDuration = 30; // длительность графика по умолчанию (секунды)
+    QVariantList m_pitchGraphData;
+    QVariantList m_rollGraphData;
+    QVariantList m_yawGraphData;
+    QVariantList m_dizzinessData; // временные метки головокружения
+
+    struct GraphPoint {
+        qint64 timestamp;
+        float value;
+    };
+    QList<GraphPoint> m_pitchHistory;
+    QList<GraphPoint> m_rollHistory;
+    QList<GraphPoint> m_yawHistory;
+    QList<qint64> m_dizzinessHistory;
+
+    int m_updateCounter = 0;
+    int m_updateThrottle;
+    bool m_highPerformanceMode = false;
+
+    int m_updateFrequency = 10; // Hz по умолчанию
+    QTimer m_dataUpdateTimer;
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -134,6 +180,10 @@ signals:
     void logModeChanged(bool logMode);
     void logControlsEnabledChanged(bool enabled);
     void studyInfoChanged(const QString &studyInfo);
+    void graphDurationChanged(int duration);
+    void graphDataChanged();
+    void performanceModeChanged(bool highPerformance);
+    void updateFrequencyChanged(int frequency);
 };
 
 #endif // TILTCONTROLLER_H
