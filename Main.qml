@@ -439,7 +439,7 @@ ApplicationWindow {
                 // === PITCH (тангаж) - ПЕРВАЯ СТРОКА ===
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 200  // Фиксированная высота для строки
+                    Layout.preferredHeight: 200
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -450,83 +450,82 @@ ApplicationWindow {
                         anchors.margins: 10
                         spacing: 10
 
-                        // Профиль лица (PITCH) - уменьшаем ширину чтобы график поместился
+                        // Профиль лица (PITCH) - квадратная область
                         Rectangle {
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: 150  // Уменьшено с 200
+                            Layout.preferredWidth: 180
+                            Layout.preferredHeight: 180
+                            Layout.alignment: Qt.AlignCenter
                             color: "#1a1a1a"
                             radius: 6
                             border.color: "#333"
 
+                            // Схематичный профиль головы (вид сбоку)
                             Canvas {
                                 anchors.fill: parent
+                                anchors.margins: 10
+
                                 onPaint: {
                                     var ctx = getContext("2d")
-                                    ctx.strokeStyle = "#333"
-                                    ctx.lineWidth = 1
+                                    ctx.clearRect(0, 0, width, height)
 
-                                    // Вертикальные линии
-                                    for (var x = 0; x <= width; x += 20) {
-                                        ctx.beginPath()
-                                        ctx.moveTo(x, 0)
-                                        ctx.lineTo(x, height)
-                                        ctx.stroke()
-                                    }
+                                    ctx.strokeStyle = "#BB86FC"
+                                    ctx.lineWidth = 2
+                                    ctx.fillStyle = "transparent"
 
-                                    // Горизонтальные линии
-                                    for (var y = 0; y <= height; y += 20) {
-                                        ctx.beginPath()
-                                        ctx.moveTo(0, y)
-                                        ctx.lineTo(width, y)
-                                        ctx.stroke()
-                                    }
+                                    // Контур головы (овал)
+                                    ctx.beginPath()
+                                    ctx.ellipse(25, 20, 100, 110) // x, y, width, height
+                                    ctx.stroke()
+
+                                    // Нос
+                                    ctx.beginPath()
+                                    ctx.moveTo(75, 40)
+                                    ctx.lineTo(85, 60)
+                                    ctx.lineTo(65, 60)
+                                    ctx.closePath()
+                                    ctx.stroke()
+
+                                    // Шея
+                                    ctx.beginPath()
+                                    ctx.moveTo(65, 130)
+                                    ctx.lineTo(85, 130)
+                                    ctx.stroke()
+
+                                    // Индикатор наклона (линия через центр)
+                                    ctx.strokeStyle = controller.headModel.hasData ? "#FFA000" : "#666"
+                                    ctx.lineWidth = 2
+                                    ctx.beginPath()
+                                    ctx.moveTo(20, 75)
+                                    ctx.lineTo(130, 75)
+                                    ctx.stroke()
+
+                                    // Точка вращения (центр)
+                                    ctx.fillStyle = "#FFA000"
+                                    ctx.beginPath()
+                                    ctx.arc(75, 75, 3, 0, Math.PI * 2)
+                                    ctx.fill()
                                 }
                             }
 
-                            // Линия профиля (упрощенная голова)
-                            Shape {
+                            // Индикатор текущего наклона
+                            Rectangle {
+                                width: 120
+                                height: 3
+                                color: controller.headModel.hasData ? "#FFA000" : "#666"
+                                rotation: controller.headModel.pitch
                                 anchors.centerIn: parent
-                                width: 150
-                                height: 150
-
-                                ShapePath {
-                                    strokeColor: "#BB86FC"
-                                    strokeWidth: 3
-                                    fillColor: "transparent"
-
-                                    startX: 0; startY: 75
-                                    PathLine { x: 150; y: 75 } // Базовая линия
-                                }
-
-                                // Индикатор наклона
-                                Rectangle {
-                                    width: 120
-                                    height: 4
-                                    color: controller.headModel.hasData ? "#BB86FC" : "#666"
-                                    rotation: controller.headModel.pitch
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            Text {
-                                anchors.bottom: parent.bottom
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.bottomMargin: 5
-                                text: "Вид сбоку (PITCH)"
-                                color: "#888"
-                                font.pixelSize: 12
+                                transformOrigin: Item.Center
                             }
                         }
 
-                        // Блоки данных PITCH
+                        // Блоки данных PITCH (остаются без изменений)
                         ColumnLayout {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 100  // Уменьшено с 120
+                            Layout.preferredWidth: 100
                             spacing: 10
 
-                            // Угол наклона
                             Rectangle {
-                                Layout.preferredWidth: 180
+                                Layout.preferredWidth: 120
                                 Layout.preferredHeight: 70
                                 color: "#2d2d2d"
                                 radius: 6
@@ -555,9 +554,8 @@ ApplicationWindow {
                                 }
                             }
 
-                            // Скорость поворота
                             Rectangle {
-                                Layout.preferredWidth: 180
+                                Layout.preferredWidth: 120
                                 Layout.preferredHeight: 70
                                 color: "#2d2d2d"
                                 radius: 6
@@ -594,10 +592,10 @@ ApplicationWindow {
                             }
                         }
 
-                        // График PITCH - теперь занимает больше места
+                        // График PITCH (без изменений)
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.fillHeight: true  // Заполняем всю доступную высоту
+                            Layout.fillHeight: true
                             color: "#252525"
                             radius: 8
                             border.color: "#444"
@@ -623,8 +621,8 @@ ApplicationWindow {
                                     dizzinessData: controller.dizzinessData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#BB86FC"
-                                    minValue: -120  // Изменено с -90
-                                    maxValue: 120   // Изменено с 90
+                                    minValue: -120
+                                    maxValue: 120
                                 }
                             }
                         }
@@ -634,7 +632,7 @@ ApplicationWindow {
                 // === ROLL (крен) - ВТОРАЯ СТРОКА ===
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 200  // Фиксированная высота
+                    Layout.preferredHeight: 200
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -645,75 +643,83 @@ ApplicationWindow {
                         anchors.margins: 10
                         spacing: 10
 
-                        // Вид сзади (ROLL) - уменьшаем ширину
+                        // Вид сзади (ROLL) - квадратная область
                         Rectangle {
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: 150  // Уменьшено с 200
+                            Layout.preferredWidth: 180
+                            Layout.preferredHeight: 180
+                            Layout.alignment: Qt.AlignCenter
                             color: "#1a1a1a"
                             radius: 6
                             border.color: "#333"
 
+                            // Схематичный вид сзади головы
                             Canvas {
                                 anchors.fill: parent
+                                anchors.margins: 10
+
                                 onPaint: {
                                     var ctx = getContext("2d")
-                                    ctx.strokeStyle = "#333"
-                                    ctx.lineWidth = 1
+                                    ctx.clearRect(0, 0, width, height)
 
-                                    for (var x = 0; x <= width; x += 20) {
-                                        ctx.beginPath()
-                                        ctx.moveTo(x, 0)
-                                        ctx.lineTo(x, height)
-                                        ctx.stroke()
-                                    }
+                                    ctx.strokeStyle = "#03DAC6"
+                                    ctx.lineWidth = 2
+                                    ctx.fillStyle = "transparent"
 
-                                    for (var y = 0; y <= height; y += 20) {
-                                        ctx.beginPath()
-                                        ctx.moveTo(0, y)
-                                        ctx.lineTo(width, y)
-                                        ctx.stroke()
-                                    }
+                                    // Контур головы (круг)
+                                    ctx.beginPath()
+                                    ctx.arc(75, 75, 50, 0, Math.PI * 2)
+                                    ctx.stroke()
+
+                                    // Уши
+                                    ctx.beginPath()
+                                    ctx.arc(25, 75, 8, 0, Math.PI * 2)
+                                    ctx.stroke()
+
+                                    ctx.beginPath()
+                                    ctx.arc(125, 75, 8, 0, Math.PI * 2)
+                                    ctx.stroke()
+
+                                    // Шея
+                                    ctx.beginPath()
+                                    ctx.moveTo(60, 125)
+                                    ctx.lineTo(90, 125)
+                                    ctx.stroke()
+
+                                    // Индикатор горизонта
+                                    ctx.strokeStyle = controller.headModel.hasData ? "#FFA000" : "#666"
+                                    ctx.lineWidth = 2
+                                    ctx.beginPath()
+                                    ctx.moveTo(20, 75)
+                                    ctx.lineTo(130, 75)
+                                    ctx.stroke()
+
+                                    // Точка вращения (центр)
+                                    ctx.fillStyle = "#FFA000"
+                                    ctx.beginPath()
+                                    ctx.arc(75, 75, 3, 0, Math.PI * 2)
+                                    ctx.fill()
                                 }
                             }
 
-                            // Круг для вида сверху/сзади
+                            // Индикатор текущего крена
                             Rectangle {
-                                width: 100
-                                height: 100
-                                radius: 50
-                                color: "transparent"
-                                border.color: "#03DAC6"
-                                border.width: 2
+                                width: 120
+                                height: 3
+                                color: controller.headModel.hasData ? "#FFA000" : "#666"
+                                rotation: controller.headModel.roll
                                 anchors.centerIn: parent
-
-                                // Индикатор крена
-                                Rectangle {
-                                    width: 80
-                                    height: 4
-                                    color: controller.headModel.hasData ? "#03DAC6" : "#666"
-                                    rotation: controller.headModel.roll
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            Text {
-                                anchors.bottom: parent.bottom
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.bottomMargin: 5
-                                text: "Вид сзади (ROLL)"
-                                color: "#888"
-                                font.pixelSize: 12
+                                transformOrigin: Item.Center
                             }
                         }
 
-                        // Блоки данных ROLL
+                        // Блоки данных ROLL (остаются без изменений)
                         ColumnLayout {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 100  // Уменьшено с 120
+                            Layout.preferredWidth: 100
                             spacing: 10
 
                             Rectangle {
-                                Layout.preferredWidth: 180
+                                Layout.preferredWidth: 120
                                 Layout.preferredHeight: 70
                                 color: "#2d2d2d"
                                 radius: 6
@@ -743,7 +749,7 @@ ApplicationWindow {
                             }
 
                             Rectangle {
-                                Layout.preferredWidth: 180
+                                Layout.preferredWidth: 120
                                 Layout.preferredHeight: 70
                                 color: "#2d2d2d"
                                 radius: 6
@@ -780,7 +786,7 @@ ApplicationWindow {
                             }
                         }
 
-                        // График ROLL
+                        // График ROLL (без изменений)
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -809,8 +815,8 @@ ApplicationWindow {
                                     dizzinessData: controller.dizzinessData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#03DAC6"
-                                    minValue: -120  // Изменено с -90
-                                    maxValue: 120   // Изменено с 90
+                                    minValue: -120
+                                    maxValue: 120
                                 }
                             }
                         }
@@ -820,7 +826,7 @@ ApplicationWindow {
                 // === YAW (рыскание) - ТРЕТЬЯ СТРОКА ===
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 200  // Фиксированная высота
+                    Layout.preferredHeight: 200
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -831,84 +837,76 @@ ApplicationWindow {
                         anchors.margins: 10
                         spacing: 10
 
-                        // Вид сверху (YAW) - уменьшаем ширину
+                        // Вид сверху (YAW) - квадратная область
                         Rectangle {
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: 150  // Уменьшено с 200
+                            Layout.preferredWidth: 180
+                            Layout.preferredHeight: 180
+                            Layout.alignment: Qt.AlignCenter
                             color: "#1a1a1a"
                             radius: 6
                             border.color: "#333"
 
-                            // График ROLL
+                            // Схематичный вид сверху головы
                             Canvas {
                                 anchors.fill: parent
+                                anchors.margins: 10
+
                                 onPaint: {
                                     var ctx = getContext("2d")
-                                    ctx.strokeStyle = "#333"
-                                    ctx.lineWidth = 1
+                                    ctx.clearRect(0, 0, width, height)
 
-                                    for (var x = 0; x <= width; x += 20) {
-                                        ctx.beginPath()
-                                        ctx.moveTo(x, 0)
-                                        ctx.lineTo(x, height)
-                                        ctx.stroke()
-                                    }
+                                    ctx.strokeStyle = "#CF6679"
+                                    ctx.lineWidth = 2
+                                    ctx.fillStyle = "transparent"
 
-                                    for (var y = 0; y <= height; y += 20) {
-                                        ctx.beginPath()
-                                        ctx.moveTo(0, y)
-                                        ctx.lineTo(width, y)
-                                        ctx.stroke()
-                                    }
+                                    // Контур головы (овал)
+                                    ctx.beginPath()
+                                    ctx.ellipse(25, 45, 100, 60) // x, y, width, height
+                                    ctx.stroke()
+
+                                    // Нос (стрелка)
+                                    ctx.beginPath()
+                                    ctx.moveTo(75, 30)
+                                    ctx.lineTo(85, 45)
+                                    ctx.lineTo(65, 45)
+                                    ctx.closePath()
+                                    ctx.stroke()
+
+                                    // Индикатор направления
+                                    ctx.strokeStyle = controller.headModel.hasData ? "#FFA000" : "#666"
+                                    ctx.lineWidth = 2
+                                    ctx.beginPath()
+                                    ctx.moveTo(75, 105)
+                                    ctx.lineTo(75, 45)
+                                    ctx.stroke()
+
+                                    // Точка вращения (центр)
+                                    ctx.fillStyle = "#FFA000"
+                                    ctx.beginPath()
+                                    ctx.arc(75, 75, 3, 0, Math.PI * 2)
+                                    ctx.fill()
                                 }
                             }
 
-                            // Стрелка для вида сверху
-                            Shape {
+                            // Индикатор текущего поворота
+                            Rectangle {
+                                width: 3
+                                height: 80
+                                color: controller.headModel.hasData ? "#FFA000" : "#666"
+                                rotation: controller.headModel.yaw
                                 anchors.centerIn: parent
-                                width: 100
-                                height: 100
-
-                                ShapePath {
-                                    strokeColor: "#CF6679"
-                                    strokeWidth: 3
-                                    fillColor: "transparent"
-
-                                    startX: 50; startY: 80
-                                    PathLine { x: 50; y: 20 }
-                                    PathLine { x: 40; y: 40 }
-                                    PathMove { x: 50; y: 20 }
-                                    PathLine { x: 60; y: 40 }
-                                }
-
-                                // Индикатор поворота
-                                Rectangle {
-                                    width: 4
-                                    height: 60
-                                    color: controller.headModel.hasData ? "#CF6679" : "#666"
-                                    rotation: controller.headModel.yaw
-                                    anchors.centerIn: parent
-                                }
-                            }
-
-                            Text {
-                                anchors.bottom: parent.bottom
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.bottomMargin: 5
-                                text: "Вид сверху (YAW)"
-                                color: "#888"
-                                font.pixelSize: 12
+                                transformOrigin: Item.Center
                             }
                         }
 
-                        // Блоки данных YAW
+                        // Блоки данных YAW (остаются без изменений)
                         ColumnLayout {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 100  // Уменьшено с 120
+                            Layout.preferredWidth: 100
                             spacing: 10
 
                             Rectangle {
-                                Layout.preferredWidth: 180
+                                Layout.preferredWidth: 120
                                 Layout.preferredHeight: 70
                                 color: "#2d2d2d"
                                 radius: 6
@@ -938,7 +936,7 @@ ApplicationWindow {
                             }
 
                             Rectangle {
-                                Layout.preferredWidth: 180
+                                Layout.preferredWidth: 120
                                 Layout.preferredHeight: 70
                                 color: "#2d2d2d"
                                 radius: 6
@@ -975,7 +973,7 @@ ApplicationWindow {
                             }
                         }
 
-                        // График YAW
+                        // График YAW (без изменений)
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -1004,8 +1002,8 @@ ApplicationWindow {
                                     dizzinessData: controller.dizzinessData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#CF6679"
-                                    minValue: -120  // Изменено с -180
-                                    maxValue: 120   // Изменено с 180
+                                    minValue: -120
+                                    maxValue: 120
                                 }
                             }
                         }
