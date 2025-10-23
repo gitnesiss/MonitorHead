@@ -16,7 +16,6 @@ ApplicationWindow {
 
     // Функция для показа уведомлений
     function showNotification(message, isError) {
-        // Не показываем новые уведомления если приложение тормозит
         if (notificationTimer.running) {
             return
         }
@@ -256,8 +255,6 @@ ApplicationWindow {
 
                 Item { Layout.fillWidth: true } // Распорка
 
-
-
                 // Правая часть - кнопки загрузки данных и калибровка
                 RowLayout {
                     spacing: 10
@@ -267,7 +264,6 @@ ApplicationWindow {
                         Layout.preferredWidth: 180
                         Layout.preferredHeight: 40
                         onClicked: {
-                            // Будет реализовано через текстовое поле для пути
                             showNotification("Используйте поле ввода для загрузки файла", false)
                         }
                         background: Rectangle {
@@ -318,252 +314,11 @@ ApplicationWindow {
                             verticalAlignment: Text.AlignVCenter
                         }
                     }
-
-                    Button {
-                        text: "🧪 Тест данные"
-                        Layout.preferredWidth: 120
-                        Layout.preferredHeight: 40
-                        onClicked: controller.setTestData()
-                        background: Rectangle {
-                            color: parent.down ? "#5a3a7c" : "#673ab7"
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-
-                    // В панель управления добавляем кнопку:
-                    Button {
-                        text: "🚀 Режим производительности"
-                        Layout.preferredWidth: 200
-                        Layout.preferredHeight: 40
-                        onClicked: {
-                            // Переключаем режим производительности
-                            var currentMode = !controller.highPerformanceMode
-                            controller.setPerformanceMode(currentMode)
-                            showNotification(currentMode ? "Включен режим высокой производительности" : "Включен экономичный режим", false)
-                        }
-                        background: Rectangle {
-                            color: parent.down ? "#5a3a7c" :
-                                   (controller.highPerformanceMode ? "#FF9800" : "#673ab7")
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            font.pixelSize: 12
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-
-                    RowLayout {
-                        spacing: 10
-                        visible: false // Скрываем в продакшене, оставляем для отладки
-
-                        Button {
-                            text: "🧪 Тест: Головокружение ДА"
-                            Layout.preferredWidth: 180
-                            Layout.preferredHeight: 40
-                            onClicked: controller.testDizziness(true)
-                            background: Rectangle {
-                                color: parent.down ? "#7c3a3a" : "#f44336"
-                                radius: 6
-                            }
-                            contentItem: Text {
-                                text: parent.text
-                                color: "white"
-                                font.pixelSize: 12
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                        }
-
-                        Button {
-                            text: "🧪 Тест: Головокружение НЕТ"
-                            Layout.preferredWidth: 180
-                            Layout.preferredHeight: 40
-                            onClicked: controller.testDizziness(false)
-                            background: Rectangle {
-                                color: parent.down ? "#3a5c42" : "#4CAF50"
-                                radius: 6
-                            }
-                            contentItem: Text {
-                                text: parent.text
-                                color: "white"
-                                font.pixelSize: 12
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                            }
-                        }
-                    }
-
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 60
-                        color: "#2d2d2d"
-                        radius: 8
-                        border.color: "#444"
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 15
-
-                            Text {
-                                text: "Частота обновления:"
-                                color: "#aaa"
-                                font.pixelSize: 12
-                            }
-
-                            Slider {
-                                id: frequencySlider
-                                Layout.fillWidth: true
-                                from: 1
-                                to: 30
-                                value: controller.updateFrequency
-                                stepSize: 1
-                                onMoved: controller.setUpdateFrequency(Math.round(value))
-                                background: Rectangle {
-                                    color: "#3c3c3c"
-                                    radius: 2
-                                    height: 4
-                                }
-                                handle: Rectangle {
-                                    width: 16
-                                    height: 16
-                                    radius: 8
-                                    color: "#2196f3"
-                                    border.color: "#1976d2"
-                                    border.width: 2
-                                }
-                            }
-
-                            Text {
-                                text: controller.updateFrequency + " Гц"
-                                color: "#2196f3"
-                                font.pixelSize: 14
-                                font.bold: true
-                                Layout.preferredWidth: 60
-                            }
-
-                            // Кнопки быстрого выбора частоты
-                            RowLayout {
-                                spacing: 5
-
-                                Button {
-                                    text: "5 Гц"
-                                    Layout.preferredWidth: 60
-                                    Layout.preferredHeight: 30
-                                    onClicked: controller.setUpdateFrequency(5)
-                                    background: Rectangle {
-                                        color: parent.down ? "#1a4b6b" :
-                                               (controller.updateFrequency === 5 ? "#2196f3" : "#3c3c3c")
-                                        radius: 4
-                                    }
-                                    contentItem: Text {
-                                        text: parent.text
-                                        color: "white"
-                                        font.pixelSize: 10
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
-                                }
-
-                                Button {
-                                    text: "10 Гц"
-                                    Layout.preferredWidth: 60
-                                    Layout.preferredHeight: 30
-                                    onClicked: controller.setUpdateFrequency(10)
-                                    background: Rectangle {
-                                        color: parent.down ? "#1a4b6b" :
-                                               (controller.updateFrequency === 10 ? "#2196f3" : "#3c3c3c")
-                                        radius: 4
-                                    }
-                                    contentItem: Text {
-                                        text: parent.text
-                                        color: "white"
-                                        font.pixelSize: 10
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
-                                }
-
-                                Button {
-                                    text: "20 Гц"
-                                    Layout.preferredWidth: 60
-                                    Layout.preferredHeight: 30
-                                    onClicked: controller.setUpdateFrequency(20)
-                                    background: Rectangle {
-                                        color: parent.down ? "#1a4b6b" :
-                                               (controller.updateFrequency === 20 ? "#2196f3" : "#3c3c3c")
-                                        radius: 4
-                                    }
-                                    contentItem: Text {
-                                        text: parent.text
-                                        color: "white"
-                                        font.pixelSize: 10
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // В панель управления (после блока с кнопками) добавляем:
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 40
-                    spacing: 10
-
-                    Text {
-                        text: "Длительность графика:"
-                        color: "#aaa"
-                        font.pixelSize: 12
-                    }
-
-                    Slider {
-                        id: graphDurationSlider
-                        Layout.fillWidth: true
-                        from: 5
-                        to: 120
-                        value: controller.graphDuration
-                        onMoved: controller.setGraphDuration(Math.round(value))
-                        background: Rectangle {
-                            color: "#3c3c3c"
-                            radius: 2
-                            height: 4
-                        }
-                        handle: Rectangle {
-                            width: 16
-                            height: 16
-                            radius: 8
-                            color: "#2196f3"
-                            border.color: "#1976d2"
-                            border.width: 2
-                        }
-                    }
-
-                    Text {
-                        text: controller.graphDuration + " сек"
-                        color: "#ccc"
-                        font.pixelSize: 12
-                        Layout.preferredWidth: 50
-                    }
                 }
             }
         }
 
         // === ОТЛАДОЧНЫЙ БЛОК ===
-        // В отладочный блок добавляем информацию об интервалах:
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 160
@@ -668,408 +423,6 @@ ApplicationWindow {
             }
         }
 
-        // Rectangle {
-        //     Layout.fillWidth: true
-        //     Layout.preferredHeight: 160
-        //     color: "#2d2d2d"
-        //     radius: 8
-        //     border.color: "#555"
-        //     visible: true
-
-        //     ColumnLayout {
-        //         anchors.fill: parent
-        //         anchors.margins: 10
-        //         spacing: 5
-
-        //         Text {
-        //             text: "ОТЛАДКА - ВОССТАНОВЛЕНИЕ ГРАФИКОВ"
-        //             color: "#FF9800"
-        //             font.pixelSize: 12
-        //             font.bold: true
-        //         }
-
-        //         GridLayout {
-        //             Layout.fillWidth: true
-        //             columns: 2
-        //             columnSpacing: 10
-        //             rowSpacing: 5
-
-        //             Text { text: "График Pitch:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.pitchGraphData.length + " точек"
-        //                 color: controller.pitchGraphData.length > 0 ? "#BB86FC" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "График Roll:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.rollGraphData.length + " точек"
-        //                 color: controller.rollGraphData.length > 0 ? "#03DAC6" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "График Yaw:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.yawGraphData.length + " точек"
-        //                 color: controller.yawGraphData.length > 0 ? "#CF6679" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Точек головокружения:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.dizzinessData.length
-        //                 color: controller.dizzinessData.length > 0 ? "#60FFB300" : "#aaa"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Статус:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: {
-        //                     if (controller.pitchGraphData.length === 0 &&
-        //                         controller.rollGraphData.length === 0 &&
-        //                         controller.yawGraphData.length === 0) {
-        //                         return "ГРАФИКИ ПУСТЫ ⚠️"
-        //                     } else {
-        //                         return "ГРАФИКИ АКТИВНЫ ✅"
-        //                     }
-        //                 }
-        //                 color: (controller.pitchGraphData.length === 0 &&
-        //                        controller.rollGraphData.length === 0 &&
-        //                        controller.yawGraphData.length === 0) ? "#f44336" : "#4CAF50"
-        //                 font.pixelSize: 10
-        //                 font.bold: true
-        //             }
-        //         }
-
-        //         // Кнопка принудительного восстановления графиков
-        //         Button {
-        //             Layout.fillWidth: true
-        //             Layout.preferredHeight: 30
-        //             text: "🔄 Восстановить графики"
-        //             onClicked: {
-        //                 console.log("Manual graph restoration triggered")
-        //                 // Принудительно запрашиваем перерисовку всех графиков
-        //                 pitchGraph.requestPaint()
-        //                 rollGraph.requestPaint()
-        //                 yawGraph.requestPaint()
-        //                 showNotification("Графики восстановлены", false)
-        //             }
-        //             background: Rectangle {
-        //                 color: parent.down ? "#3a5c42" : "#4CAF50"
-        //                 radius: 4
-        //             }
-        //             contentItem: Text {
-        //                 text: parent.text
-        //                 color: "white"
-        //                 font.pixelSize: 12
-        //                 horizontalAlignment: Text.AlignHCenter
-        //                 verticalAlignment: Text.AlignVCenter
-        //             }
-        //         }
-        //     }
-        // }
-
-        // Rectangle {
-        //     Layout.fillWidth: true
-        //     Layout.preferredHeight: 140
-        //     color: "#2d2d2d"
-        //     radius: 8
-        //     border.color: "#555"
-        //     visible: true // Для отладки
-
-        //     ColumnLayout {
-        //         anchors.fill: parent
-        //         anchors.margins: 10
-        //         spacing: 5
-
-        //         Text {
-        //             text: "ОТЛАДКА - ПРОИЗВОДИТЕЛЬНОСТЬ"
-        //             color: "#FF9800"
-        //             font.pixelSize: 12
-        //             font.bold: true
-        //         }
-
-        //         GridLayout {
-        //             Layout.fillWidth: true
-        //             columns: 2
-        //             columnSpacing: 10
-        //             rowSpacing: 5
-
-        //             Text { text: "Частота обновления:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.updateFrequency + " Гц"
-        //                 color: "#2196f3"
-        //                 font.pixelSize: 10
-        //                 font.bold: true
-        //             }
-
-        //             Text { text: "Режим производительности:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.highPerformanceMode ? "ВЫСОКИЙ 🚀" : "ЭКОНОМНЫЙ 💾"
-        //                 color: controller.highPerformanceMode ? "#FF9800" : "#4CAF50"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Точек головокружения:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.dizzinessData.length
-        //                 color: controller.dizzinessData.length > 0 ? "#60FFB300" : "#aaa"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Данные Pitch:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.pitchGraphData.length
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "COM подключен:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.connected ? "ДА ✅" : "НЕТ ❌"
-        //                 color: controller.connected ? "#4CAF50" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Головокружение:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.dizziness ? "ДА 😵" : "НЕТ 😊"
-        //                 color: controller.headModel.dizziness ? "#60FFB300" : "#4CAF50"
-        //                 font.pixelSize: 10
-        //             }
-        //         }
-        //     }
-        // }
-
-
-
-        // // В отладочный блок добавляем более детальную информацию:
-        // Rectangle {
-        //     Layout.fillWidth: true
-        //     Layout.preferredHeight: 140
-        //     color: "#2d2d2d"
-        //     radius: 8
-        //     border.color: "#555"
-        //     visible: true // Временно для отладки
-
-        //     ColumnLayout {
-        //         anchors.fill: parent
-        //         anchors.margins: 10
-        //         spacing: 5
-
-        //         Text {
-        //             text: "ОТЛАДКА - ДАННЫЕ COM-ПОРТА"
-        //             color: "#FF9800"
-        //             font.pixelSize: 12
-        //             font.bold: true
-        //         }
-
-        //         GridLayout {
-        //             Layout.fillWidth: true
-        //             columns: 2
-        //             columnSpacing: 10
-        //             rowSpacing: 5
-
-        //             Text { text: "COM подключен:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.connected ? "ДА ✅" : "НЕТ ❌"
-        //                 color: controller.connected ? "#4CAF50" : "#f44336"
-        //                 font.pixelSize: 10
-        //                 font.bold: true
-        //             }
-
-        //             Text { text: "Текущее головокружение:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.dizziness ? "ДА 😵" : "НЕТ 😊"
-        //                 color: controller.headModel.dizziness ? "#FF0000" : "#4CAF50"
-        //                 font.pixelSize: 10
-        //                 font.bold: true
-        //             }
-
-        //             Text { text: "Точек головокружения:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.dizzinessData.length
-        //                 color: controller.dizzinessData.length > 0 ? "#FFA000" : "#aaa"
-        //                 font.pixelSize: 10
-        //                 font.bold: controller.dizzinessData.length > 0
-        //             }
-
-        //             Text { text: "Pitch:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.pitch.toFixed(1) + "°" : "---"
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Roll:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.roll.toFixed(1) + "°" : "---"
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Yaw:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.yaw.toFixed(1) + "°" : "---"
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Данные:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.hasData ? "ЕСТЬ 📊" : "НЕТ ❓"
-        //                 color: controller.headModel.hasData ? "#4CAF50" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-        //         }
-        //     }
-        // }
-
-        // Rectangle {
-        //     Layout.fillWidth: true
-        //     Layout.preferredHeight: 100
-        //     color: "#2d2d2d"
-        //     radius: 8
-        //     border.color: "#555"
-        //     visible: true
-
-        //     ColumnLayout {
-        //         anchors.fill: parent
-        //         anchors.margins: 10
-        //         spacing: 5
-
-        //         Text {
-        //             text: "ОТЛАДКА - РЕЖИМ COM-ПОРТА"
-        //             color: "#FF9800"
-        //             font.pixelSize: 12
-        //             font.bold: true
-        //         }
-
-        //         GridLayout {
-        //             Layout.fillWidth: true
-        //             columns: 3
-        //             columnSpacing: 10
-        //             rowSpacing: 5
-
-        //             Text { text: "Подключен:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.connected ? "ДА" : "НЕТ"
-        //                 color: controller.connected ? "#4CAF50" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-        //             Text { text: "" }
-
-        //             Text { text: "Данные:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.hasData ? "ЕСТЬ" : "НЕТ"
-        //                 color: controller.headModel.hasData ? "#4CAF50" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-        //             Text { text: "" }
-
-        //             Text { text: "Pitch:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.pitch.toFixed(1) + "°" : "---"
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.speedPitch.toFixed(1) + "°/с" : "---"
-        //                 color: "#BB86FC"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Roll:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.roll.toFixed(1) + "°" : "---"
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.speedRoll.toFixed(1) + "°/с" : "---"
-        //                 color: "#03DAC6"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text { text: "Yaw:"; color: "#aaa"; font.pixelSize: 10 }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.yaw.toFixed(1) + "°" : "---"
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-        //             Text {
-        //                 text: controller.headModel.hasData ? controller.headModel.speedYaw.toFixed(1) + "°/с" : "---"
-        //                 color: "#CF6679"
-        //                 font.pixelSize: 10
-        //             }
-        //         }
-        //     }
-            // Timer {
-            //     interval: 1000 // Обновляем раз в секунду
-            //     running: parent.visible
-            //     repeat: true
-            //     onTriggered: parent.update()
-            // }
-        // }
-
-        // // === ОТЛАДОЧНЫЙ БЛОК (временно) ===
-        // Rectangle {
-        //     Layout.fillWidth: true
-        //     Layout.preferredHeight: 80
-        //     color: "#2d2d2d"
-        //     radius: 8
-        //     border.color: "#555"
-        //     visible: true // Временно включим для отладки
-
-        //     ColumnLayout {
-        //         anchors.fill: parent
-        //         anchors.margins: 10
-        //         spacing: 5
-
-        //         Text {
-        //             text: "ОТЛАДКА СКОРОСТЕЙ"
-        //             color: "#FF9800"
-        //             font.pixelSize: 12
-        //             font.bold: true
-        //         }
-
-        //         RowLayout {
-        //             Layout.fillWidth: true
-        //             spacing: 10
-
-        //             Text {
-        //                 text: "Pitch: " + controller.headModel.speedPitch.toFixed(2)
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text {
-        //                 text: "Roll: " + controller.headModel.speedRoll.toFixed(2)
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text {
-        //                 text: "Yaw: " + controller.headModel.speedYaw.toFixed(2)
-        //                 color: "white"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text {
-        //                 text: "HasData: " + controller.headModel.hasData
-        //                 color: controller.headModel.hasData ? "#4CAF50" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-
-        //             Text {
-        //                 text: "COM: " + controller.connected
-        //                 color: controller.connected ? "#4CAF50" : "#f44336"
-        //                 font.pixelSize: 10
-        //             }
-        //         }
-        //     }
-        // }
-
         // === ОСНОВНАЯ ЧАСТЬ ЭКРАНА - РАЗДЕЛЕНА НА 2 СТОЛБЦА ===
         RowLayout {
             Layout.fillWidth: true
@@ -1086,7 +439,7 @@ ApplicationWindow {
                 // === PITCH (тангаж) - ПЕРВАЯ СТРОКА ===
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 200
+                    Layout.preferredHeight: 200  // Фиксированная высота для строки
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -1097,10 +450,10 @@ ApplicationWindow {
                         anchors.margins: 10
                         spacing: 10
 
-                        // Профиль лица (PITCH)
+                        // Профиль лица (PITCH) - уменьшаем ширину чтобы график поместился
                         Rectangle {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: 150  // Уменьшено с 200
                             color: "#1a1a1a"
                             radius: 6
                             border.color: "#333"
@@ -1168,7 +521,7 @@ ApplicationWindow {
                         // Блоки данных PITCH
                         ColumnLayout {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 120
+                            Layout.preferredWidth: 100  // Уменьшено с 120
                             spacing: 10
 
                             // Угол наклона
@@ -1241,10 +594,10 @@ ApplicationWindow {
                             }
                         }
 
-                        // График PITCH
+                        // График PITCH - теперь занимает больше места
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 200
+                            Layout.fillHeight: true  // Заполняем всю доступную высоту
                             color: "#252525"
                             radius: 8
                             border.color: "#444"
@@ -1270,32 +623,8 @@ ApplicationWindow {
                                     dizzinessData: controller.dizzinessData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#BB86FC"
-                                    minValue: -90
-                                    maxValue: 90
-
-                                    Component.onCompleted: {
-                                        console.log("GraphCanvas loaded for", lineColor)
-
-                                        // Автоматическое восстановление при потере контекста
-                                        recoveryTimer.start()
-                                    }
-
-                                    Timer {
-                                        id: recoveryTimer
-                                        interval: 1000
-                                        running: true
-                                        repeat: true
-                                        onTriggered: {
-                                            // Проверяем, что график все еще активен
-                                            if (graphData.length > 0) {
-                                                var ctx = getContext("2d")
-                                                if (!ctx) {
-                                                    console.warn("Canvas context lost, attempting recovery...")
-                                                    requestPaint()
-                                                }
-                                            }
-                                        }
-                                    }
+                                    minValue: -120  // Изменено с -90
+                                    maxValue: 120   // Изменено с 90
                                 }
                             }
                         }
@@ -1305,7 +634,7 @@ ApplicationWindow {
                 // === ROLL (крен) - ВТОРАЯ СТРОКА ===
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 200
+                    Layout.preferredHeight: 200  // Фиксированная высота
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -1316,10 +645,10 @@ ApplicationWindow {
                         anchors.margins: 10
                         spacing: 10
 
-                        // Вид сзади (ROLL)
+                        // Вид сзади (ROLL) - уменьшаем ширину
                         Rectangle {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: 150  // Уменьшено с 200
                             color: "#1a1a1a"
                             radius: 6
                             border.color: "#333"
@@ -1380,7 +709,7 @@ ApplicationWindow {
                         // Блоки данных ROLL
                         ColumnLayout {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 120
+                            Layout.preferredWidth: 100  // Уменьшено с 120
                             spacing: 10
 
                             Rectangle {
@@ -1452,11 +781,9 @@ ApplicationWindow {
                         }
 
                         // График ROLL
-
-                        // Аналогично заменяем график ROLL:
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 200
+                            Layout.fillHeight: true
                             color: "#252525"
                             radius: 8
                             border.color: "#444"
@@ -1482,32 +809,8 @@ ApplicationWindow {
                                     dizzinessData: controller.dizzinessData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#03DAC6"
-                                    minValue: -90
-                                    maxValue: 90
-
-                                    Component.onCompleted: {
-                                        console.log("GraphCanvas loaded for", lineColor)
-
-                                        // Автоматическое восстановление при потере контекста
-                                        recoveryTimer2.start()
-                                    }
-
-                                    Timer {
-                                        id: recoveryTimer2
-                                        interval: 1000
-                                        running: true
-                                        repeat: true
-                                        onTriggered: {
-                                            // Проверяем, что график все еще активен
-                                            if (graphData.length > 0) {
-                                                var ctx = getContext("2d")
-                                                if (!ctx) {
-                                                    console.warn("Canvas context lost, attempting recovery...")
-                                                    requestPaint()
-                                                }
-                                            }
-                                        }
-                                    }
+                                    minValue: -120  // Изменено с -90
+                                    maxValue: 120   // Изменено с 90
                                 }
                             }
                         }
@@ -1517,7 +820,7 @@ ApplicationWindow {
                 // === YAW (рыскание) - ТРЕТЬЯ СТРОКА ===
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 200
+                    Layout.preferredHeight: 200  // Фиксированная высота
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -1528,14 +831,15 @@ ApplicationWindow {
                         anchors.margins: 10
                         spacing: 10
 
-                        // Вид сверху (YAW)
+                        // Вид сверху (YAW) - уменьшаем ширину
                         Rectangle {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 200
+                            Layout.preferredWidth: 150  // Уменьшено с 200
                             color: "#1a1a1a"
                             radius: 6
                             border.color: "#333"
 
+                            // График ROLL
                             Canvas {
                                 anchors.fill: parent
                                 onPaint: {
@@ -1600,7 +904,7 @@ ApplicationWindow {
                         // Блоки данных YAW
                         ColumnLayout {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 120
+                            Layout.preferredWidth: 100  // Уменьшено с 120
                             spacing: 10
 
                             Rectangle {
@@ -1672,11 +976,9 @@ ApplicationWindow {
                         }
 
                         // График YAW
-
-                        // Аналогично заменяем график YAW:
                         Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 200
+                            Layout.fillHeight: true
                             color: "#252525"
                             radius: 8
                             border.color: "#444"
@@ -1702,32 +1004,8 @@ ApplicationWindow {
                                     dizzinessData: controller.dizzinessData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#CF6679"
-                                    minValue: -180
-                                    maxValue: 180
-
-                                    Component.onCompleted: {
-                                        console.log("GraphCanvas loaded for", lineColor)
-
-                                        // Автоматическое восстановление при потере контекста
-                                        recoveryTimer3.start()
-                                    }
-
-                                    Timer {
-                                        id: recoveryTimer3
-                                        interval: 1000
-                                        running: true
-                                        repeat: true
-                                        onTriggered: {
-                                            // Проверяем, что график все еще активен
-                                            if (graphData.length > 0) {
-                                                var ctx = getContext("2d")
-                                                if (!ctx) {
-                                                    console.warn("Canvas context lost, attempting recovery...")
-                                                    requestPaint()
-                                                }
-                                            }
-                                        }
-                                    }
+                                    minValue: -120  // Изменено с -180
+                                    maxValue: 120   // Изменено с 180
                                 }
                             }
                         }
@@ -1833,6 +1111,17 @@ ApplicationWindow {
                                         ctx.moveTo(width/2 - 40, height/2 + 50)
                                         ctx.lineTo(width/2 - 20, height/2 + 30)
                                         ctx.stroke()
+
+                                        // Индикатор головокружения
+                                        if (controller.headModel.dizziness) {
+                                            ctx.fillStyle = "rgba(255, 160, 0, 0.3)";
+                                            ctx.fillRect(0, 0, width, height);
+
+                                            ctx.fillStyle = "#FFA000";
+                                            ctx.font = "bold 24px Arial";
+                                            ctx.textAlign = "center";
+                                            ctx.fillText("ГОЛОВОКРУЖЕНИЕ", width/2, height/2);
+                                        }
                                     } else {
                                         // Текст "нет данных"
                                         ctx.fillStyle = "#666"
@@ -1873,50 +1162,6 @@ ApplicationWindow {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                 }
                             }
-                        }
-                    }
-                }
-
-                // Индикатор головокружения
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 100
-                    color: "#252525"
-                    radius: 8
-                    border.color: controller.headModel.dizziness ? "#f44336" : "#444"
-                    border.width: controller.headModel.dizziness ? 3 : 1
-
-                    Column {
-                        anchors.centerIn: parent
-                        spacing: 10
-
-                        Text {
-                            text: "СОСТОЯНИЕ ПАЦИЕНТА"
-                            color: "#aaa"
-                            font.pixelSize: 14
-                            anchors.horizontalCenter: parent.horizontalCenter
-                        }
-
-                        Rectangle {
-                            width: 60
-                            height: 60
-                            radius: 30
-                            color: controller.headModel.dizziness ? "#f44336" : "#4CAF50"
-                            anchors.horizontalCenter: parent.horizontalCenter
-
-                            Text {
-                                text: controller.headModel.dizziness ? "😵" : "😊"
-                                font.pixelSize: 24
-                                anchors.centerIn: parent
-                            }
-                        }
-
-                        Text {
-                            text: controller.headModel.dizziness ? "ГОЛОВОКРУЖЕНИЕ" : "НОРМА"
-                            color: controller.headModel.dizziness ? "#f44336" : "#4CAF50"
-                            font.pixelSize: 16
-                            font.bold: true
-                            anchors.horizontalCenter: parent.horizontalCenter
                         }
                     }
                 }
@@ -2146,7 +1391,6 @@ ApplicationWindow {
         target: controller
         function onConnectedChanged(connected) {
             if (!connected) {
-                // При отключении даем время на очистку
                 cleanupTimer.restart()
             }
         }
@@ -2156,7 +1400,6 @@ ApplicationWindow {
         id: cleanupTimer
         interval: 100
         onTriggered: {
-            // Принудительно обновляем состояние
             if (controller && controller.headModel) {
                 // Ничего не делаем - просто даем время системе стабилизироваться
             }
@@ -2167,7 +1410,6 @@ ApplicationWindow {
     function handleCriticalError(message) {
         console.error("Critical error:", message)
         showNotification("Критическая ошибка: " + message, true)
-        // Не закрываем приложение, просто показываем ошибку
     }
 
     // Тестовое уведомление при запуске

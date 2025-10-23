@@ -8,19 +8,16 @@
 #include <algorithm>
 
 TiltController::TiltController(QObject *parent) : QObject(parent)
-    , m_updateThrottle(3) // начальное значение
 {
-    m_logTimer.setInterval(16); // ~60 FPS
+    m_logTimer.setInterval(16);
     connect(&m_logTimer, &QTimer::timeout, this, &TiltController::updateLogPlayback);
 
-    m_autoConnectTimer.setInterval(5000); // Попытка авто-подключения каждые 2 секунды
+    m_autoConnectTimer.setInterval(5000);
     connect(&m_autoConnectTimer, &QTimer::timeout, this, &TiltController::autoConnect);
 
-    // Таймер безопасности для проверки состояния порта
     m_safetyTimer.setInterval(2000);
     connect(&m_safetyTimer, &QTimer::timeout, this, [this]() {
         if (m_serialPort && m_serialPort->isOpen()) {
-            // Проверяем, жив ли еще порт
             if (m_serialPort->error() == QSerialPort::ResourceError) {
                 qDebug() << "Safety timer detected port error, cleaning up...";
                 safeDisconnect();
@@ -28,19 +25,17 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
         }
     });
 
-    // Сбрасываем данные при старте
     m_headModel.resetData();
 
     refreshPorts();
 
-    // Запускаем авто-подключение
     m_autoConnectTimer.start();
     addNotification("Программа запущена. Попытка автоматического подключения к COM-порту...");
 
     m_graphDuration = 30;
 
-    m_updateFrequency = 10; // 10 Hz по умолчанию
-    m_dataUpdateTimer.setInterval(1000 / m_updateFrequency); // 100ms для 10Hz
+    m_updateFrequency = 10;
+    m_dataUpdateTimer.setInterval(1000 / m_updateFrequency);
     connect(&m_dataUpdateTimer, &QTimer::timeout, this, &TiltController::updateDataDisplay);
     m_dataUpdateTimer.start();
 
@@ -82,10 +77,8 @@ void TiltController::safeDisconnect()
     cleanupCOMPort();
     m_connected = false;
 
-    // Если не в режиме лога, сбрасываем данные
     if (!m_logMode) {
         m_headModel.resetData();
-        // Очищаем историю углов
         m_angleHistory.clear();
     }
 
@@ -108,7 +101,6 @@ bool TiltController::setupCOMPort()
     m_serialPort->setStopBits(QSerialPort::OneStop);
     m_serialPort->setFlowControl(QSerialPort::NoFlowControl);
 
-    // Подключаем сигналы с осторожностью
     connect(m_serialPort, &QSerialPort::readyRead, this, &TiltController::readCOMPortData, Qt::QueuedConnection);
     connect(m_serialPort, &QSerialPort::errorOccurred, this, &TiltController::handleCOMPortError, Qt::QueuedConnection);
 
@@ -118,7 +110,6 @@ bool TiltController::setupCOMPort()
             m_autoConnectTimer.stop();
             m_safetyTimer.start();
 
-            // Переключаемся в режим COM-порта
             if (m_logMode) {
                 stopLog();
                 m_logMode = false;
@@ -149,7 +140,6 @@ void TiltController::cleanupCOMPort()
     m_safetyTimer.stop();
 
     if (m_serialPort) {
-        // Отключаем все сигналы в первую очередь
         disconnect(m_serialPort, nullptr, this, nullptr);
 
         if (m_serialPort->isOpen()) {
@@ -165,7 +155,6 @@ void TiltController::cleanupCOMPort()
     }
 
     m_incompleteData.clear();
-    // Очищаем историю углов при отключении
     m_angleHistory.clear();
 }
 
@@ -182,7 +171,6 @@ void TiltController::readCOMPortData()
             return;
         }
 
-        // Обрабатываем данные
         processCOMPortData(data);
 
     } catch (const std::exception& e) {
@@ -193,7 +181,6 @@ void TiltController::readCOMPortData()
 
 void TiltController::updateSpeedBuffers(float pitch, float roll, float yaw, qint64 timestamp)
 {
-    // Добавляем новые данные в историю
     AngleData newData;
     newData.timestamp = timestamp;
     newData.pitch = pitch;
@@ -202,7 +189,6 @@ void TiltController::updateSpeedBuffers(float pitch, float roll, float yaw, qint
 
     m_angleHistory.push_back(newData);
 
-    // Удаляем старые данные, если превышен лимит
     while (m_angleHistory.size() > m_maxHistorySize) {
         m_angleHistory.pop_front();
     }
@@ -217,24 +203,16 @@ void TiltController::computeAverageSpeeds(float &avgSpeedPitch, float &avgSpeedR
         return;
     }
 
-    float totalSpeedPitch = 0.0f;
-    float totalSpeedRoll = 0.0f;
-    float totalSpeedYaw = 0.0f;
-    int count = 0;
-
-    // Используем самую старую и самую новую точку для вычисления скорости
     const AngleData &newest = m_angleHistory.back();
     const AngleData &oldest = m_angleHistory.front();
 
     qint64 timeDiff = newest.timestamp - oldest.timestamp;
 
     if (timeDiff > 0) {
-        // Вычисляем скорость в градусах в секунду
         avgSpeedPitch = (newest.pitch - oldest.pitch) * 1000.0f / timeDiff;
         avgSpeedRoll = (newest.roll - oldest.roll) * 1000.0f / timeDiff;
         avgSpeedYaw = (newest.yaw - oldest.yaw) * 1000.0f / timeDiff;
 
-        // Ограничиваем максимальную скорость для устранения шумов
         const float maxSpeed = 180.0f;
         avgSpeedPitch = qBound(-maxSpeed, avgSpeedPitch, maxSpeed);
         avgSpeedRoll = qBound(-maxSpeed, avgSpeedRoll, maxSpeed);
@@ -254,10 +232,8 @@ void TiltController::calculateSpeeds(float pitch, float roll, float yaw, bool di
 {
     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
 
-    // Добавляем данные в буфер
     updateSpeedBuffers(pitch, roll, yaw, currentTime);
 
-    // Вычисляем усредненные скорости
     float avgSpeedPitch, avgSpeedRoll, avgSpeedYaw;
     computeAverageSpeeds(avgSpeedPitch, avgSpeedRoll, avgSpeedYaw);
 
@@ -265,24 +241,19 @@ void TiltController::calculateSpeeds(float pitch, float roll, float yaw, bool di
              << "Roll:" << avgSpeedRoll << "Yaw:" << avgSpeedYaw
              << "Dizziness:" << dizziness;
 
-    // Обновляем модель с вычисленными скоростями И ПЕРЕДАННЫМ ГОЛОВОКРУЖЕНИЕМ
     updateHeadModel(pitch, roll, yaw, avgSpeedPitch, avgSpeedRoll, avgSpeedYaw, dizziness);
 }
 
 void TiltController::processCOMPortData(const QByteArray &data)
 {
-    // Добавляем новые данные к неполным данным
     m_incompleteData.append(data);
 
-    // Ищем полные строки (разделитель - новая строка)
     while (true) {
         int newlinePos = m_incompleteData.indexOf('\n');
         if (newlinePos == -1) {
-            // Нет полных строк, ждем еще данных
             break;
         }
 
-        // Извлекаем полную строку
         QByteArray completeLine = m_incompleteData.left(newlinePos).trimmed();
         m_incompleteData = m_incompleteData.mid(newlinePos + 1);
 
@@ -293,22 +264,17 @@ void TiltController::processCOMPortData(const QByteArray &data)
         QString dataString = QString::fromUtf8(completeLine);
         qDebug() << "COM Port complete line:" << dataString;
 
-        // Парсим данные - ожидаем формат из лог-файла или простой CSV
         if (dataString.contains(';')) {
-            // Формат лог-файла: время;pitch;roll;yaw;speedPitch;speedRoll;speedYaw;dizziness
             QStringList parts = dataString.split(';');
-            if (parts.size() >= 8) { // УБЕДИТЕСЬ, ЧТО ЕСТЬ 8 ПОЛЕЙ!
+            if (parts.size() >= 8) {
                 bool ok1, ok2, ok3, ok8;
                 float pitch = parts[1].replace(',', '.').toFloat(&ok1);
                 float roll = parts[2].replace(',', '.').toFloat(&ok2);
                 float yaw = parts[3].replace(',', '.').toFloat(&ok3);
-                bool dizziness = (parts[7].toInt(&ok8) == 1); // ИЗВЛЕКАЕМ ГОЛОВОКРУЖЕНИЕ
+                bool dizziness = (parts[7].toInt(&ok8) == 1);
 
                 if (ok1 && ok2 && ok3 && ok8) {
                     qDebug() << "Parsed COM data - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw << "Dizziness:" << dizziness;
-
-                    // В режиме COM-порта вычисляем скорости на основе изменения углов
-                    // И ПЕРЕДАЕМ ГОЛОВОКРУЖЕНИЕ
                     calculateSpeeds(pitch, roll, yaw, dizziness);
                 } else {
                     qDebug() << "Failed to parse COM data. ok1:" << ok1 << "ok2:" << ok2 << "ok3:" << ok3 << "ok8:" << ok8;
@@ -317,7 +283,6 @@ void TiltController::processCOMPortData(const QByteArray &data)
                 qDebug() << "Invalid COM data format. Expected 8 fields, got:" << parts.size();
             }
         } else if (dataString.contains(',')) {
-            // Простой CSV формат: pitch,roll,yaw
             QStringList parts = dataString.split(',');
             if (parts.size() >= 3) {
                 bool ok1, ok2, ok3;
@@ -326,15 +291,12 @@ void TiltController::processCOMPortData(const QByteArray &data)
                 float yaw = parts[2].toFloat(&ok3);
 
                 if (ok1 && ok2 && ok3) {
-                    // В режиме COM-порта вычисляем скорости на основе изменения углов
-                    // Для простого формата головокружение = false
                     calculateSpeeds(pitch, roll, yaw, false);
                 }
             }
         }
     }
 
-    // Защита от переполнения буфера
     if (m_incompleteData.size() > 1024) {
         qDebug() << "Incomplete data buffer too large, clearing";
         m_incompleteData.clear();
@@ -352,7 +314,6 @@ void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
         return;
 
     case QSerialPort::ResourceError:
-        // Физическое отключение устройства - это нормально, не показываем ошибку
         qDebug() << "COM port resource error (device disconnected)";
         safeDisconnect();
         break;
@@ -368,7 +329,6 @@ void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
         break;
 
     default:
-        // Для остальных ошибок показываем сообщение
         if (m_serialPort) {
             addNotification("Ошибка COM-порта: " + m_serialPort->errorString());
         } else {
@@ -400,12 +360,9 @@ void TiltController::switchToCOMPortMode()
         emit logModeChanged(m_logMode);
         emit logControlsEnabledChanged(logControlsEnabled());
 
-        // Сбрасываем модель к состоянию "нет данных"
         m_headModel.resetData();
-        // Очищаем историю углов
         m_angleHistory.clear();
 
-        // Запускаем авто-подключение
         m_autoConnectTimer.start();
         addNotification("Переключено в режим COM-порта");
     }
@@ -443,7 +400,7 @@ void TiltController::loadLogFile(const QString &filePath)
         lineNumber++;
 
         if (lineNumber <= 5 && line.startsWith('#')) {
-            studyLines << line.mid(1).trimmed(); // Убираем # и обрезаем пробелы
+            studyLines << line.mid(1).trimmed();
             continue;
         }
 
@@ -477,7 +434,6 @@ void TiltController::loadLogFile(const QString &filePath)
 
     file.close();
 
-    // Формируем информацию об исследовании
     if (!studyLines.isEmpty()) {
         m_studyInfo = studyLines.join(" | ");
     } else {
@@ -496,13 +452,11 @@ void TiltController::loadLogFile(const QString &filePath)
     m_totalTime = m_logData.last().time;
     m_currentTime = 0;
 
-    // Останавливаем COM-порт если был подключен
     if (m_connected) {
         disconnectDevice();
     }
     m_autoConnectTimer.stop();
 
-    // Устанавливаем первую запись
     if (!m_logData.isEmpty()) {
         const LogEntry &firstEntry = m_logData.first();
         updateHeadModel(firstEntry.pitch, firstEntry.roll, firstEntry.yaw,
@@ -562,7 +516,6 @@ void TiltController::seekLog(int time)
 
     m_currentTime = qBound(0, time, m_totalTime);
 
-    // Находим ближайшую запись в логе
     for (int i = 0; i < m_logData.size(); ++i) {
         if (m_logData[i].time >= m_currentTime) {
             m_currentLogIndex = i;
@@ -587,7 +540,6 @@ void TiltController::updateLogPlayback()
     if (m_currentLogIndex < m_logData.size()) {
         const LogEntry &entry = m_logData[m_currentLogIndex];
 
-        // ОБНОВЛЯЕМ МОДЕЛЬ С ПЕРЕДАЧЕЙ ГОЛОВОКРУЖЕНИЯ
         updateHeadModel(entry.pitch, entry.roll, entry.yaw,
                         entry.speedPitch, entry.speedRoll, entry.speedYaw,
                         entry.dizziness);
@@ -596,7 +548,6 @@ void TiltController::updateLogPlayback()
         emit currentTimeChanged(m_currentTime);
         m_currentLogIndex++;
 
-        // Отладочный вывод для головокружения
         if (entry.dizziness) {
             qDebug() << "Log playback: Dizziness at time" << entry.time << "seconds";
         }
@@ -615,13 +566,11 @@ void TiltController::refreshPorts()
 {
     m_availablePorts.clear();
 
-    // Получаем реальные COM-порты
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
     for (const QSerialPortInfo &port : ports) {
         m_availablePorts << port.portName();
     }
 
-    // Если портов нет, добавляем симуляционные для тестирования
     if (m_availablePorts.isEmpty()) {
         m_availablePorts << "COM1" << "COM2" << "COM3";
         qDebug() << "No real COM ports found, using simulation ports";
@@ -638,14 +587,11 @@ void TiltController::updateHeadModel(float pitch, float roll, float yaw,
                                      float speedPitch, float speedRoll, float speedYaw,
                                      bool dizziness)
 {
-    // Обновляем модель данных (это происходит при получении новых данных)
     m_headModel.setMotionData(pitch, roll, yaw, speedPitch, speedRoll, speedYaw, dizziness);
 
-    // Обновляем графики с учетом текущей частоты обновления
     static qint64 lastGraphUpdate = 0;
     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
 
-    // Обновляем графики не чаще, чем позволяет текущая частота обновления
     if (currentTime - lastGraphUpdate >= (1000 / m_updateFrequency)) {
         updateGraphData(pitch, roll, yaw, dizziness);
         lastGraphUpdate = currentTime;
@@ -659,16 +605,6 @@ void TiltController::addNotification(const QString &message)
     qDebug() << message;
 }
 
-void TiltController::setTestData()
-{
-    // Устанавливаем тестовые данные
-    updateHeadModel(15.5f, -8.2f, 3.7f, 2.1f, 1.5f, 0.8f, false);
-    addNotification("Тестовые данные установлены");
-
-    qDebug() << "Test data set - Pitch: 15.5, Roll: -8.2, Yaw: 3.7";
-}
-
-// Новые методы для работы с графиками:
 void TiltController::setGraphDuration(int duration)
 {
     if (duration < 5) duration = 5;
@@ -682,13 +618,11 @@ void TiltController::setGraphDuration(int duration)
     }
 }
 
-// Полностью переписываем updateGraphData для работы с интервалами:
 void TiltController::updateGraphData(float pitch, float roll, float yaw, bool dizziness)
 {
     static qint64 lastUpdateTime = 0;
     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
 
-    // Режим троттлинга
     static int updateCounter = 0;
     updateCounter++;
     if (updateCounter % m_updateThrottle != 0) {
@@ -700,14 +634,11 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
     }
     lastUpdateTime = currentTime;
 
-    // Обработка интервалов головокружения
     if (dizziness != m_lastDizzinessState) {
         if (dizziness) {
-            // Начало нового интервала головокружения
             m_currentDizzinessStart = currentTime;
             qDebug() << "Dizziness interval started at:" << currentTime;
         } else if (m_currentDizzinessStart != 0) {
-            // Завершение интервала головокружения
             DizzinessInterval interval;
             interval.startTime = m_currentDizzinessStart;
             interval.endTime = currentTime;
@@ -720,29 +651,18 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
         m_lastDizzinessState = dizziness;
     }
 
-    // Если головокружение активно, обновляем текущий интервал
-    if (dizziness && m_currentDizzinessStart != 0) {
-        // Обновляем "текущий" активный интервал (он еще не добавлен в список)
-        // Для отображения в реальном времени
-    }
-
-    // Ограничиваем количество точек в истории
     const int maxHistoryPoints = m_graphDuration * 10;
 
-    // Проверки на корректность данных
     if (!std::isfinite(pitch) || !std::isfinite(roll) || !std::isfinite(yaw)) {
         return;
     }
 
-    // Добавляем новые точки данных
     m_pitchHistory.append({currentTime, pitch});
     m_rollHistory.append({currentTime, roll});
     m_yawHistory.append({currentTime, yaw});
 
-    // Очищаем старые данные
     cleanupOldData();
 
-    // Ограничиваем размер истории
     while (m_pitchHistory.size() > maxHistoryPoints) {
         m_pitchHistory.removeFirst();
     }
@@ -753,16 +673,13 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
         m_yawHistory.removeFirst();
     }
 
-    // Очищаем старые интервалы головокружения
     qint64 minTime = currentTime - m_graphDuration * 1000;
     while (!m_dizzinessIntervals.isEmpty() && m_dizzinessIntervals.first().endTime < minTime) {
         m_dizzinessIntervals.removeFirst();
     }
 
-    // Обновляем QVariantList для QML
     QVariantList newPitchData, newRollData, newYawData, newDizzinessData;
 
-    // Заполняем данные для графиков
     for (const auto& point : m_pitchHistory) {
         if (point.timestamp >= minTime) {
             QVariantMap dataPoint;
@@ -790,7 +707,6 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
         }
     }
 
-    // Данные головокружения - теперь интервалы
     for (const auto& interval : m_dizzinessIntervals) {
         if (interval.endTime >= minTime) {
             QVariantMap intervalData;
@@ -800,16 +716,14 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
         }
     }
 
-    // Добавляем текущий активный интервал (если есть)
     if (m_currentDizzinessStart != 0 && m_currentDizzinessStart >= minTime) {
         QVariantMap currentInterval;
         currentInterval["startTime"] = m_currentDizzinessStart;
-        currentInterval["endTime"] = currentTime; // текущее время как конец
+        currentInterval["endTime"] = currentTime;
         currentInterval["active"] = true;
         newDizzinessData.append(currentInterval);
     }
 
-    // Обновляем только если есть изменения
     if (m_pitchGraphData != newPitchData || m_rollGraphData != newRollData ||
         m_yawGraphData != newYawData || m_dizzinessData != newDizzinessData) {
 
@@ -828,7 +742,6 @@ void TiltController::cleanupOldData()
     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
     qint64 minTime = currentTime - m_graphDuration * 1000;
 
-    // Очищаем только если накопилось много данных
     if (m_pitchHistory.size() > m_graphDuration * 15) {
         while (!m_pitchHistory.isEmpty() && m_pitchHistory.first().timestamp < minTime) {
             m_pitchHistory.removeFirst();
@@ -846,59 +759,11 @@ void TiltController::cleanupOldData()
             m_yawHistory.removeFirst();
         }
     }
-
-    // Интервалы головокружения очищаются в updateGraphData
-}
-
-void TiltController::setPerformanceMode(bool highPerformance)
-{
-    if (m_highPerformanceMode == highPerformance) {
-        return;
-    }
-
-    m_highPerformanceMode = highPerformance;
-    if (highPerformance) {
-        m_updateThrottle = 1; // Высокая производительность
-    } else {
-        m_updateThrottle = 3; // Экономичный режим
-    }
-
-    qDebug() << "Performance mode:" << (highPerformance ? "high" : "economy")
-             << "update throttle:" << m_updateThrottle;
-
-    emit performanceModeChanged(highPerformance);
-}
-
-void TiltController::testDizziness(bool dizziness)
-{
-    // Устанавливаем тестовые данные с указанным состоянием головокружения
-    updateHeadModel(15.5f, -8.2f, 3.7f, 2.1f, 1.5f, 0.8f, dizziness);
-    addNotification(QString("Тестовые данные установлены. Головокружение: %1").arg(dizziness ? "ДА" : "НЕТ"));
-
-    qDebug() << "Test data set - Pitch: 15.5, Roll: -8.2, Yaw: 3.7, Dizziness:" << dizziness;
-}
-
-void TiltController::setUpdateFrequency(int frequency)
-{
-    if (frequency < 1) frequency = 1;
-    if (frequency > 60) frequency = 60;
-
-    if (m_updateFrequency != frequency) {
-        m_updateFrequency = frequency;
-        m_dataUpdateTimer.setInterval(1000 / frequency);
-        emit updateFrequencyChanged(m_updateFrequency);
-        addNotification(QString("Частота обновления установлена: %1 Гц").arg(frequency));
-    }
 }
 
 void TiltController::updateDataDisplay()
 {
-    // Этот метод вызывается с заданной частотой для обновления цифровых значений
-    // Мы эмулируем обновление данных для тестирования частоты
-    // В реальной работе данные будут приходить из updateHeadModel
     if (m_connected || m_logPlaying) {
-        // Если есть реальные данные, они уже обновляются через updateHeadModel
-        // Здесь мы просто обеспечиваем синхронизацию с заданной частотой
-        emit graphDataChanged(); // Принудительно обновляем отображение
+        emit graphDataChanged();
     }
 }

@@ -41,8 +41,7 @@ class TiltController : public QObject
     Q_PROPERTY(QVariantList rollGraphData READ rollGraphData NOTIFY graphDataChanged)
     Q_PROPERTY(QVariantList yawGraphData READ yawGraphData NOTIFY graphDataChanged)
     Q_PROPERTY(QVariantList dizzinessData READ dizzinessData NOTIFY graphDataChanged)
-    Q_PROPERTY(bool highPerformanceMode READ highPerformanceMode NOTIFY performanceModeChanged)
-    Q_PROPERTY(int updateFrequency READ updateFrequency WRITE setUpdateFrequency NOTIFY updateFrequencyChanged)
+    Q_PROPERTY(int updateFrequency READ updateFrequency NOTIFY updateFrequencyChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -67,9 +66,7 @@ public:
     QVariantList rollGraphData() const { return m_rollGraphData; }
     QVariantList yawGraphData() const { return m_yawGraphData; }
     QVariantList dizzinessData() const { return m_dizzinessData; }
-    bool highPerformanceMode() const { return m_highPerformanceMode; }
     int updateFrequency() const { return m_updateFrequency; }
-    void setUpdateFrequency(int frequency);
 
 public slots:
     void connectDevice();
@@ -83,9 +80,6 @@ public slots:
     void refreshPorts();
     void autoConnect();
     void switchToCOMPortMode();
-    void setTestData();
-    void setPerformanceMode(bool highPerformance);
-    void testDizziness(bool dizziness);
 
 private slots:
     void updateLogPlayback();
@@ -94,7 +88,6 @@ private slots:
     void updateDataDisplay();
 
 private:
-    void parseLogData(const QString &data);
     void updateHeadModel(float pitch, float roll, float yaw, float speedPitch, float speedRoll, float speedYaw, bool dizziness);
     void addNotification(const QString &message);
     bool setupCOMPort();
@@ -135,22 +128,22 @@ private:
     QVector<LogEntry> m_logData;
     int m_currentLogIndex = 0;
 
-    QByteArray m_incompleteData; // Для сборки неполных данных
-    bool m_isCleaningUp = false; // Флаг для предотвращения рекурсивной очистки
+    QByteArray m_incompleteData;
+    bool m_isCleaningUp = false;
 
     // Буферы для хранения последних значений углов (для вычисления скоростей)
     std::deque<AngleData> m_angleHistory;
-    const int m_maxHistorySize = 6; // Для частоты 60 Гц
+    const int m_maxHistorySize = 6;
 
     // Данные для графиков
     void updateGraphData(float pitch, float roll, float yaw, bool dizziness);
     void cleanupOldData();
 
-    int m_graphDuration = 30; // длительность графика по умолчанию (секунды)
+    int m_graphDuration = 30;
     QVariantList m_pitchGraphData;
     QVariantList m_rollGraphData;
     QVariantList m_yawGraphData;
-    QVariantList m_dizzinessData; // временные метки головокружения
+    QVariantList m_dizzinessData;
 
     struct GraphPoint {
         qint64 timestamp;
@@ -170,10 +163,9 @@ private:
     bool m_lastDizzinessState = false;
 
     int m_updateCounter = 0;
-    int m_updateThrottle;
-    bool m_highPerformanceMode = false;
+    int m_updateThrottle = 2;
 
-    int m_updateFrequency = 10; // Hz по умолчанию
+    int m_updateFrequency = 10;
     QTimer m_dataUpdateTimer;
 
 signals:
@@ -190,7 +182,6 @@ signals:
     void studyInfoChanged(const QString &studyInfo);
     void graphDurationChanged(int duration);
     void graphDataChanged();
-    void performanceModeChanged(bool highPerformance);
     void updateFrequencyChanged(int frequency);
 };
 

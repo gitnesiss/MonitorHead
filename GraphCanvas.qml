@@ -1,24 +1,24 @@
-// GraphCanvas.qml
 import QtQuick
 
 Canvas {
     id: canvas
     property var graphData: []
-    property var dizzinessData: [] // Теперь содержит интервалы {startTime, endTime}
+    property var dizzinessData: []
     property int graphDuration: 30
     property color lineColor: "white"
-    property real minValue: -90
-    property real maxValue: 90
+    property real minValue: -120
+    property real maxValue: 120
     property real valueRange: maxValue - minValue
 
     // Настройки внешнего вида
     property color gridColor: "#333"
-    property color textColor: "#666"
+    property color textColor: "#888"
+    property color axisColor: "white"
 
-    // Улучшенные настройки головокружения
-    property color dizzinessColor: "#40FFA000" // Очень прозрачный оранжевый
-    property color dizzinessBorderColor: "#80FFA000" // Полупрозрачная граница
-    property real dizzinessOpacity: 0.15 // Еще более прозрачный
+    // Настройки головокружения
+    property color dizzinessColor: "#40FFA000"        // основной цвет заливки (полупрозрачный оранжевый)
+    property color dizzinessBorderColor: "#80FFA000"  // цвет границы интервалов головокружения
+    property real dizzinessOpacity: 0.50              // прозрачность заливки (0.15 = 15%)
 
     onPaint: {
         try {
@@ -34,10 +34,8 @@ Canvas {
                 return
             }
 
-            // Новый порядок: сначала головокружение, потом график
             drawDizzinessIntervals(ctx)
             drawGraphLine(ctx)
-            drawCurrentTime(ctx)
         } catch (error) {
             console.error("Canvas paint error:", error)
         }
@@ -51,43 +49,84 @@ Canvas {
     }
 
     function drawGrid(ctx) {
+        // Рисуем основную сетку
         ctx.strokeStyle = gridColor
         ctx.lineWidth = 1
         ctx.fillStyle = textColor
         ctx.font = "10px Arial"
 
-        // Горизонтальные линии
-        var horizontalLines = 5
-        for (var i = 0; i <= horizontalLines; i++) {
-            var y = height - (i * height / horizontalLines)
-            var value = minValue + (i * valueRange / horizontalLines)
+        // Вычисляем положение нулевой линии (посередине)
+        var zeroY = height - ((0 - minValue) / valueRange) * height
 
+        // Определяем отступ для вертикальной оси (справа)
+        var verticalAxisMargin = 40
+        var verticalAxisX = width - verticalAxisMargin
+
+        // Горизонтальные линии и подписи углов
+        var horizontalValues = [-90, -45, 0, 45, 90]
+        for (var i = 0; i < horizontalValues.length; i++) {
+            var value = horizontalValues[i]
+            var y = height - ((value - minValue) / valueRange) * height
+
+            // Линия сетки
             ctx.beginPath()
             ctx.moveTo(0, y)
             ctx.lineTo(width, y)
             ctx.stroke()
 
-            ctx.textAlign = "left"
-            ctx.fillText(value.toFixed(0) + "°", 5, y - 2)
+            // Подпись угла справа (с отступом от правого края)
+            ctx.textAlign = "right"
+            ctx.fillText(value.toFixed(0) + "°", width - 5, y - 2)
         }
 
-        // Вертикальные линии
+        // Вертикальные линии и подписи времени
         var verticalLines = 6
         for (var j = 0; j <= verticalLines; j++) {
-            var x = j * width / verticalLines
+            var x = j * (verticalAxisX) / verticalLines  // Учитываем отступ для оси
             var secondsAgo = (verticalLines - j) * graphDuration / verticalLines
 
+            // Линия сетки
             ctx.beginPath()
             ctx.moveTo(x, 0)
             ctx.lineTo(x, height)
             ctx.stroke()
 
-            ctx.textAlign = "center"
-            ctx.fillText("t-" + secondsAgo.toFixed(0) + "с", x, height - 5)
+            // Подпись времени (без "t-", нулевую не показываем)
+            if (secondsAgo > 0) {
+                ctx.textAlign = "center"
+                // Смещаем подписи времени вниз (ниже оси)
+                var textX = x
+                // Для самой левой цифры (30) делаем сдвиг вправо
+                if (j === 0) {
+                    textX = x + 10 // Сдвигаем цифру 30 вправо, чтобы была полностью видна
+                }
+                ctx.fillText(secondsAgo.toFixed(0), textX, zeroY + 15)
+            }
         }
 
-        ctx.textAlign = "center"
-        ctx.fillText("t, с", width / 2, height - 5)
+        // Подпись оси времени слева сверху
+        ctx.textAlign = "left"
+        ctx.fillText("t, с", 5, zeroY - 5)
+
+        // Подпись оси углов сверху справа
+        ctx.textAlign = "right"
+        ctx.fillText("угол, °", width - 5, 8)
+
+        // Рисуем яркие белые оси
+        ctx.strokeStyle = axisColor
+        ctx.lineWidth = 2
+
+        // Горизонтальная ось (посередине - на уровне нулевого градуса)
+        ctx.beginPath()
+        ctx.moveTo(0, zeroY)
+        ctx.lineTo(width, zeroY)
+        ctx.stroke()
+
+        // Вертикальная ось (справа с небольшим отступом)
+        ctx.beginPath()
+        ctx.moveTo(verticalAxisX, 0)
+        ctx.lineTo(verticalAxisX, height)
+        ctx.stroke()
     }
 
     function drawDizzinessIntervals(ctx) {
@@ -96,10 +135,13 @@ Canvas {
         var currentTime = new Date().getTime()
         var minTime = currentTime - graphDuration * 1000
 
+        // Определяем отступ для вертикальной оси (справа)
+        var verticalAxisMargin = 40
+        var verticalAxisX = width - verticalAxisMargin
+
         ctx.fillStyle = dizzinessColor
         ctx.globalAlpha = dizzinessOpacity
 
-        // Рисуем интервалы как сплошные зоны
         for (var i = 0; i < dizzinessData.length; i++) {
             var interval = dizzinessData[i]
             if (!interval || !interval.startTime || !interval.endTime) continue
@@ -107,20 +149,17 @@ Canvas {
             var startTime = interval.startTime
             var endTime = interval.endTime
 
-            // Вычисляем координаты начала и конца интервала
-            var xStart = width - (currentTime - startTime) / (graphDuration * 1000) * width
-            var xEnd = width - (currentTime - endTime) / (graphDuration * 1000) * width
+            // Учитываем отступ для вертикальной оси при расчете координат
+            var availableWidth = verticalAxisX
+            var xStart = availableWidth - (currentTime - startTime) / (graphDuration * 1000) * availableWidth
+            var xEnd = availableWidth - (currentTime - endTime) / (graphDuration * 1000) * availableWidth
 
-            // Ограничиваем координаты видимой областью
             xStart = Math.max(0, xStart)
-            xEnd = Math.min(width, xEnd)
+            xEnd = Math.min(availableWidth, xEnd)
 
-            // Рисуем только если интервал видим
-            if (xEnd > xStart && xStart < width && xEnd > 0) {
-                // Основная заливка интервала
+            if (xEnd > xStart && xStart < availableWidth && xEnd > 0) {
                 ctx.fillRect(xStart, 0, xEnd - xStart, height)
 
-                // Легкая граница для лучшего визуального разделения
                 ctx.strokeStyle = dizzinessBorderColor
                 ctx.lineWidth = 1
                 ctx.globalAlpha = 0.3
@@ -138,6 +177,11 @@ Canvas {
         var currentTime = new Date().getTime()
         var minTime = currentTime - graphDuration * 1000
 
+        // Определяем отступ для вертикальной оси (справа)
+        var verticalAxisMargin = 40
+        var verticalAxisX = width - verticalAxisMargin
+        var availableWidth = verticalAxisX
+
         ctx.strokeStyle = lineColor
         ctx.lineWidth = 2
         ctx.beginPath()
@@ -153,10 +197,11 @@ Canvas {
             }
 
             if (point.time >= minTime) {
-                var x = width - (currentTime - point.time) / (graphDuration * 1000) * width
+                // Учитываем отступ для вертикальной оси при расчете координат
+                var x = availableWidth - (currentTime - point.time) / (graphDuration * 1000) * availableWidth
                 var y = height - ((point.value - minValue) / valueRange) * height
 
-                x = Math.max(0, Math.min(width, x))
+                x = Math.max(0, Math.min(availableWidth, x))
                 y = Math.max(0, Math.min(height, y))
 
                 if (pointsDrawn === 0) {
@@ -176,10 +221,10 @@ Canvas {
         if (graphData.length > 0) {
             var lastPoint = graphData[graphData.length - 1]
             if (lastPoint && typeof lastPoint.time === 'number' && typeof lastPoint.value === 'number') {
-                var lastX = width - (currentTime - lastPoint.time) / (graphDuration * 1000) * width
+                var lastX = availableWidth - (currentTime - lastPoint.time) / (graphDuration * 1000) * availableWidth
                 var lastY = height - ((lastPoint.value - minValue) / valueRange) * height
 
-                lastX = Math.max(3, Math.min(width - 3, lastX))
+                lastX = Math.max(3, Math.min(availableWidth - 3, lastX))
                 lastY = Math.max(3, Math.min(height - 3, lastY))
 
                 // Тень для объемности
@@ -205,17 +250,6 @@ Canvas {
                 ctx.stroke()
             }
         }
-    }
-
-    function drawCurrentTime(ctx) {
-        ctx.strokeStyle = "rgba(136, 136, 136, 0.7)"
-        ctx.lineWidth = 1
-        ctx.setLineDash([5, 5])
-        ctx.beginPath()
-        ctx.moveTo(width, 0)
-        ctx.lineTo(width, height)
-        ctx.stroke()
-        ctx.setLineDash([])
     }
 
     Timer {
