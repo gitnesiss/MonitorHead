@@ -159,7 +159,15 @@ private:
     QList<GraphPoint> m_pitchHistory;
     QList<GraphPoint> m_rollHistory;
     QList<GraphPoint> m_yawHistory;
-    QList<qint64> m_dizzinessHistory;
+    struct DizzinessInterval {
+        qint64 startTime;
+        qint64 endTime;
+        bool active;
+    };
+    QList<DizzinessInterval> m_dizzinessIntervals;
+
+    qint64 m_currentDizzinessStart = 0;
+    bool m_lastDizzinessState = false;
 
     int m_updateCounter = 0;
     int m_updateThrottle;

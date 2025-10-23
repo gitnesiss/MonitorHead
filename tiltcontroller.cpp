@@ -43,6 +43,9 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_dataUpdateTimer.setInterval(1000 / m_updateFrequency); // 100ms для 10Hz
     connect(&m_dataUpdateTimer, &QTimer::timeout, this, &TiltController::updateDataDisplay);
     m_dataUpdateTimer.start();
+
+    m_lastDizzinessState = false;
+    m_currentDizzinessStart = 0;
 }
 
 TiltController::~TiltController()
@@ -266,26 +269,6 @@ void TiltController::calculateSpeeds(float pitch, float roll, float yaw, bool di
     updateHeadModel(pitch, roll, yaw, avgSpeedPitch, avgSpeedRoll, avgSpeedYaw, dizziness);
 }
 
-// void TiltController::calculateSpeeds(float pitch, float roll, float yaw)
-// {
-//     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
-
-//     // Добавляем данные в буфер
-//     updateSpeedBuffers(pitch, roll, yaw, currentTime);
-
-//     qDebug() << "Angle history size:" << m_angleHistory.size();
-
-//     // Вычисляем усредненные скорости
-//     float avgSpeedPitch, avgSpeedRoll, avgSpeedYaw;
-//     computeAverageSpeeds(avgSpeedPitch, avgSpeedRoll, avgSpeedYaw);
-
-//     qDebug() << "Calculated speeds - Pitch:" << avgSpeedPitch
-//              << "Roll:" << avgSpeedRoll << "Yaw:" << avgSpeedYaw;
-
-//     // Обновляем модель с вычисленными скоростями
-//     updateHeadModel(pitch, roll, yaw, avgSpeedPitch, avgSpeedRoll, avgSpeedYaw, false);
-// }
-
 void TiltController::processCOMPortData(const QByteArray &data)
 {
     // Добавляем новые данные к неполным данным
@@ -357,69 +340,6 @@ void TiltController::processCOMPortData(const QByteArray &data)
         m_incompleteData.clear();
     }
 }
-
-// void TiltController::processCOMPortData(const QByteArray &data)
-// {
-//     // Добавляем новые данные к неполным данным
-//     m_incompleteData.append(data);
-
-//     // Ищем полные строки (разделитель - новая строка)
-//     while (true) {
-//         int newlinePos = m_incompleteData.indexOf('\n');
-//         if (newlinePos == -1) {
-//             // Нет полных строк, ждем еще данных
-//             break;
-//         }
-
-//         // Извлекаем полную строку
-//         QByteArray completeLine = m_incompleteData.left(newlinePos).trimmed();
-//         m_incompleteData = m_incompleteData.mid(newlinePos + 1);
-
-//         if (completeLine.isEmpty()) {
-//             continue;
-//         }
-
-//         QString dataString = QString::fromUtf8(completeLine);
-//         qDebug() << "COM Port complete line:" << dataString;
-
-//         // Парсим данные - ожидаем формат из лог-файла или простой CSV
-//         if (dataString.contains(';')) {
-//             // Формат лог-файла: время;pitch;roll;yaw;speedPitch;speedRoll;speedYaw;dizziness
-//             QStringList parts = dataString.split(';');
-//             if (parts.size() >= 4) {
-//                 bool ok1, ok2, ok3;
-//                 float pitch = parts[1].replace(',', '.').toFloat(&ok1);
-//                 float roll = parts[2].replace(',', '.').toFloat(&ok2);
-//                 float yaw = parts[3].replace(',', '.').toFloat(&ok3);
-
-//                 if (ok1 && ok2 && ok3) {
-//                     // В режиме COM-порта вычисляем скорости на основе изменения углов
-//                     calculateSpeeds(pitch, roll, yaw);
-//                 }
-//             }
-//         } else if (dataString.contains(',')) {
-//             // Простой CSV формат: pitch,roll,yaw
-//             QStringList parts = dataString.split(',');
-//             if (parts.size() >= 3) {
-//                 bool ok1, ok2, ok3;
-//                 float pitch = parts[0].toFloat(&ok1);
-//                 float roll = parts[1].toFloat(&ok2);
-//                 float yaw = parts[2].toFloat(&ok3);
-
-//                 if (ok1 && ok2 && ok3) {
-//                     // В режиме COM-порта вычисляем скорости на основе изменения углов
-//                     calculateSpeeds(pitch, roll, yaw);
-//                 }
-//             }
-//         }
-//     }
-
-//     // Защита от переполнения буфера
-//     if (m_incompleteData.size() > 1024) {
-//         qDebug() << "Incomplete data buffer too large, clearing";
-//         m_incompleteData.clear();
-//     }
-// }
 
 void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 {
@@ -683,49 +603,6 @@ void TiltController::updateLogPlayback()
     }
 }
 
-// void TiltController::updateLogPlayback()
-// {
-//     if (m_currentLogIndex >= m_logData.size()) {
-//         stopLog();
-//         return;
-//     }
-
-//     if (m_currentLogIndex < m_logData.size()) {
-//         const LogEntry &entry = m_logData[m_currentLogIndex];
-
-//         // Используем время из лога для синхронизации графиков
-//         qint64 logTime = entry.time * 1000; // преобразуем секунды в миллисекунды
-
-//         updateHeadModel(entry.pitch, entry.roll, entry.yaw,
-//                         entry.speedPitch, entry.speedRoll, entry.speedYaw,
-//                         entry.dizziness);
-
-//         // Для графиков в режиме лога используем относительное время
-//         if (m_logMode) {
-//             updateGraphData(entry.pitch, entry.roll, entry.yaw, entry.dizziness);
-//         }
-
-//         m_currentTime = entry.time;
-//         emit currentTimeChanged(m_currentTime);
-//         m_currentLogIndex++;
-//     }
-
-//     // if (m_currentLogIndex >= m_logData.size()) {
-//     //     stopLog();
-//     //     return;
-//     // }
-
-//     // if (m_currentLogIndex < m_logData.size()) {
-//     //     const LogEntry &entry = m_logData[m_currentLogIndex];
-//     //     updateHeadModel(entry.pitch, entry.roll, entry.yaw,
-//     //                     entry.speedPitch, entry.speedRoll, entry.speedYaw,
-//     //                     entry.dizziness);
-//     //     m_currentTime = entry.time;
-//     //     emit currentTimeChanged(m_currentTime);
-//     //     m_currentLogIndex++;
-//     // }
-// }
-
 void TiltController::setSelectedPort(const QString &port)
 {
     if (m_selectedPort != port) {
@@ -775,34 +652,6 @@ void TiltController::updateHeadModel(float pitch, float roll, float yaw,
     }
 }
 
-// void TiltController::updateHeadModel(float pitch, float roll, float yaw,
-//                                      float speedPitch, float speedRoll, float speedYaw,
-//                                      bool dizziness)
-// {
-//     qDebug() << "Updating head model - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw
-//              << "SpeedPitch:" << speedPitch << "SpeedRoll:" << speedRoll << "SpeedYaw:" << speedYaw
-//              << "Dizziness:" << dizziness << "Has data: true";
-
-//     m_headModel.setMotionData(pitch, roll, yaw, speedPitch, speedRoll, speedYaw, dizziness);
-
-//     // Обновляем данные графиков
-//     updateGraphData(pitch, roll, yaw, dizziness);
-// }
-
-// void TiltController::updateHeadModel(float pitch, float roll, float yaw,
-//                                      float speedPitch, float speedRoll, float speedYaw,
-//                                      bool dizziness)
-// {
-//     qDebug() << "Updating head model - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw
-//              << "SpeedPitch:" << speedPitch << "SpeedRoll:" << speedRoll << "SpeedYaw:" << speedYaw
-//              << "Has data: true";
-
-//     m_headModel.setMotionData(pitch, roll, yaw, speedPitch, speedRoll, speedYaw, dizziness);
-
-//     // Обновляем данные графиков
-//     updateGraphData(pitch, roll, yaw, dizziness);
-// }
-
 void TiltController::addNotification(const QString &message)
 {
     m_notification = QDateTime::currentDateTime().toString("[hh:mm:ss] ") + message;
@@ -833,30 +682,55 @@ void TiltController::setGraphDuration(int duration)
     }
 }
 
+// Полностью переписываем updateGraphData для работы с интервалами:
 void TiltController::updateGraphData(float pitch, float roll, float yaw, bool dizziness)
 {
     static qint64 lastUpdateTime = 0;
     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
 
-    // Режим троттлинга - обновляем не каждый раз
+    // Режим троттлинга
     static int updateCounter = 0;
     updateCounter++;
     if (updateCounter % m_updateThrottle != 0) {
         return;
     }
 
-    // Обновляем графики не чаще чем раз в 150ms (~6.5 FPS)
     if (currentTime - lastUpdateTime < 150) {
         return;
     }
     lastUpdateTime = currentTime;
 
+    // Обработка интервалов головокружения
+    if (dizziness != m_lastDizzinessState) {
+        if (dizziness) {
+            // Начало нового интервала головокружения
+            m_currentDizzinessStart = currentTime;
+            qDebug() << "Dizziness interval started at:" << currentTime;
+        } else if (m_currentDizzinessStart != 0) {
+            // Завершение интервала головокружения
+            DizzinessInterval interval;
+            interval.startTime = m_currentDizzinessStart;
+            interval.endTime = currentTime;
+            interval.active = false;
+            m_dizzinessIntervals.append(interval);
+            m_currentDizzinessStart = 0;
+            qDebug() << "Dizziness interval ended at:" << currentTime
+                     << "duration:" << (currentTime - interval.startTime) << "ms";
+        }
+        m_lastDizzinessState = dizziness;
+    }
+
+    // Если головокружение активно, обновляем текущий интервал
+    if (dizziness && m_currentDizzinessStart != 0) {
+        // Обновляем "текущий" активный интервал (он еще не добавлен в список)
+        // Для отображения в реальном времени
+    }
+
     // Ограничиваем количество точек в истории
     const int maxHistoryPoints = m_graphDuration * 10;
 
-    // ДОБАВЛЯЕМ ПРОВЕРКИ НА КОРРЕКТНОСТЬ ДАННЫХ
+    // Проверки на корректность данных
     if (!std::isfinite(pitch) || !std::isfinite(roll) || !std::isfinite(yaw)) {
-        qDebug() << "Invalid data received, skipping graph update";
         return;
     }
 
@@ -864,11 +738,6 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
     m_pitchHistory.append({currentTime, pitch});
     m_rollHistory.append({currentTime, roll});
     m_yawHistory.append({currentTime, yaw});
-
-    if (dizziness) {
-        m_dizzinessHistory.append(currentTime);
-        qDebug() << "Dizziness added to graph at time:" << currentTime;
-    }
 
     // Очищаем старые данные
     cleanupOldData();
@@ -883,14 +752,15 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
     while (m_yawHistory.size() > maxHistoryPoints) {
         m_yawHistory.removeFirst();
     }
-    while (m_dizzinessHistory.size() > maxHistoryPoints * 2) {
-        m_dizzinessHistory.removeFirst();
+
+    // Очищаем старые интервалы головокружения
+    qint64 minTime = currentTime - m_graphDuration * 1000;
+    while (!m_dizzinessIntervals.isEmpty() && m_dizzinessIntervals.first().endTime < minTime) {
+        m_dizzinessIntervals.removeFirst();
     }
 
     // Обновляем QVariantList для QML
     QVariantList newPitchData, newRollData, newYawData, newDizzinessData;
-
-    qint64 minTime = currentTime - m_graphDuration * 1000;
 
     // Заполняем данные для графиков
     for (const auto& point : m_pitchHistory) {
@@ -920,11 +790,23 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
         }
     }
 
-    // Данные головокружения
-    for (qint64 timestamp : m_dizzinessHistory) {
-        if (timestamp >= minTime) {
-            newDizzinessData.append(timestamp);
+    // Данные головокружения - теперь интервалы
+    for (const auto& interval : m_dizzinessIntervals) {
+        if (interval.endTime >= minTime) {
+            QVariantMap intervalData;
+            intervalData["startTime"] = interval.startTime;
+            intervalData["endTime"] = interval.endTime;
+            newDizzinessData.append(intervalData);
         }
+    }
+
+    // Добавляем текущий активный интервал (если есть)
+    if (m_currentDizzinessStart != 0 && m_currentDizzinessStart >= minTime) {
+        QVariantMap currentInterval;
+        currentInterval["startTime"] = m_currentDizzinessStart;
+        currentInterval["endTime"] = currentTime; // текущее время как конец
+        currentInterval["active"] = true;
+        newDizzinessData.append(currentInterval);
     }
 
     // Обновляем только если есть изменения
@@ -936,296 +818,10 @@ void TiltController::updateGraphData(float pitch, float roll, float yaw, bool di
         m_yawGraphData = newYawData;
         m_dizzinessData = newDizzinessData;
 
-        qDebug() << "Graph data updated successfully. Points - Pitch:" << m_pitchGraphData.size()
-                 << "Roll:" << m_rollGraphData.size() << "Yaw:" << m_yawGraphData.size()
-                 << "Dizziness:" << m_dizzinessData.size();
-
+        qDebug() << "Graph data updated. Dizziness intervals:" << m_dizzinessData.size();
         emit graphDataChanged();
     }
 }
-
-// void TiltController::updateGraphData(float pitch, float roll, float yaw, bool dizziness)
-// {
-//     static qint64 lastUpdateTime = 0;
-//     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
-
-//     // Режим троттлинга - обновляем не каждый раз
-//     static int updateCounter = 0;
-//     updateCounter++;
-//     if (updateCounter % m_updateThrottle != 0) {
-//         return;
-//     }
-
-//     // Обновляем графики не чаще чем раз в 150ms (~6.5 FPS)
-//     if (currentTime - lastUpdateTime < 150) {
-//         return;
-//     }
-//     lastUpdateTime = currentTime;
-
-//     // Ограничиваем количество точек в истории
-//     const int maxHistoryPoints = m_graphDuration * 10;
-
-//     // Добавляем новые точки данных
-//     m_pitchHistory.append({currentTime, pitch});
-//     m_rollHistory.append({currentTime, roll});
-//     m_yawHistory.append({currentTime, yaw});
-
-//     // УЛУЧШЕННАЯ ЛОГИКА ГОЛОВОКРУЖЕНИЯ
-//     if (dizziness) {
-//         // Добавляем метку головокружения
-//         m_dizzinessHistory.append(currentTime);
-//         qDebug() << "Dizziness detected at time:" << currentTime;
-//     }
-
-//     // Очищаем старые данные
-//     cleanupOldData();
-
-//     // Ограничиваем размер истории
-//     while (m_pitchHistory.size() > maxHistoryPoints) {
-//         m_pitchHistory.removeFirst();
-//     }
-//     while (m_rollHistory.size() > maxHistoryPoints) {
-//         m_rollHistory.removeFirst();
-//     }
-//     while (m_yawHistory.size() > maxHistoryPoints) {
-//         m_yawHistory.removeFirst();
-//     }
-//     while (m_dizzinessHistory.size() > maxHistoryPoints * 2) {
-//         m_dizzinessHistory.removeFirst();
-//     }
-
-//     // Обновляем QVariantList для QML
-//     QVariantList newPitchData, newRollData, newYawData, newDizzinessData;
-
-//     qint64 minTime = currentTime - m_graphDuration * 1000;
-
-//     // Заполняем данные для графиков
-//     for (const auto& point : m_pitchHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             newPitchData.append(dataPoint);
-//         }
-//     }
-
-//     for (const auto& point : m_rollHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             newRollData.append(dataPoint);
-//         }
-//     }
-
-//     for (const auto& point : m_yawHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             newYawData.append(dataPoint);
-//         }
-//     }
-
-//     // Данные головокружения - ВАЖНО: передаем все метки в пределах диапазона
-//     for (qint64 timestamp : m_dizzinessHistory) {
-//         if (timestamp >= minTime) {
-//             newDizzinessData.append(timestamp);
-//         }
-//     }
-
-//     // Обновляем только если есть изменения
-//     if (m_pitchGraphData != newPitchData || m_rollGraphData != newRollData ||
-//         m_yawGraphData != newYawData || m_dizzinessData != newDizzinessData) {
-
-//         m_pitchGraphData = newPitchData;
-//         m_rollGraphData = newRollData;
-//         m_yawGraphData = newYawData;
-//         m_dizzinessData = newDizzinessData;
-
-//         qDebug() << "Graph data updated. Dizziness points:" << m_dizzinessData.size();
-//         emit graphDataChanged();
-//     }
-// }
-
-// void TiltController::updateGraphData(float pitch, float roll, float yaw, bool dizziness)
-// {
-//     static qint64 lastUpdateTime = 0;
-//     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
-
-//     // Режим троттлинга - обновляем не каждый раз
-//     static int updateCounter = 0;
-//     updateCounter++;
-//     if (updateCounter % m_updateThrottle != 0) {
-//         return;
-//     }
-
-//     // Обновляем графики не чаще чем раз в 150ms (~6.5 FPS)
-//     if (currentTime - lastUpdateTime < 150) {
-//         return;
-//     }
-//     lastUpdateTime = currentTime;
-
-//     // Ограничиваем количество точек в истории
-//     const int maxHistoryPoints = m_graphDuration * 10; // 10 точек в секунду
-
-//     // Добавляем новые точки данных
-//     m_pitchHistory.append({currentTime, pitch});
-//     m_rollHistory.append({currentTime, roll});
-//     m_yawHistory.append({currentTime, yaw});
-
-//     if (dizziness) {
-//         m_dizzinessHistory.append(currentTime);
-//     }
-
-//     // Очищаем старые данные
-//     cleanupOldData();
-
-//     // Ограничиваем размер истории
-//     while (m_pitchHistory.size() > maxHistoryPoints) {
-//         m_pitchHistory.removeFirst();
-//     }
-//     while (m_rollHistory.size() > maxHistoryPoints) {
-//         m_rollHistory.removeFirst();
-//     }
-//     while (m_yawHistory.size() > maxHistoryPoints) {
-//         m_yawHistory.removeFirst();
-//     }
-//     while (m_dizzinessHistory.size() > maxHistoryPoints) {
-//         m_dizzinessHistory.removeFirst();
-//     }
-
-//     // Обновляем QVariantList для QML только если есть изменения
-//     static QVariantList lastPitchData, lastRollData, lastYawData, lastDizzinessData;
-
-//     // Создаем временные списки для сравнения
-//     QVariantList newPitchData, newRollData, newYawData, newDizzinessData;
-
-//     qint64 minTime = currentTime - m_graphDuration * 1000;
-
-//     // Заполняем данные для pitch
-//     for (const auto& point : m_pitchHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             newPitchData.append(dataPoint);
-//         }
-//     }
-
-//     // Аналогично для roll и yaw
-//     for (const auto& point : m_rollHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             newRollData.append(dataPoint);
-//         }
-//     }
-
-//     for (const auto& point : m_yawHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             newYawData.append(dataPoint);
-//         }
-//     }
-
-//     // Данные головокружения
-//     for (qint64 timestamp : m_dizzinessHistory) {
-//         if (timestamp >= minTime) {
-//             newDizzinessData.append(timestamp);
-//         }
-//     }
-
-//     // Сравниваем с предыдущими данными
-//     bool pitchChanged = newPitchData != lastPitchData;
-//     bool rollChanged = newRollData != lastRollData;
-//     bool yawChanged = newYawData != lastYawData;
-//     bool dizzinessChanged = newDizzinessData != lastDizzinessData;
-
-//     if (!pitchChanged && !rollChanged && !yawChanged && !dizzinessChanged) {
-//         return;
-//     }
-
-//     // Обновляем данные только если есть изменения
-//     m_pitchGraphData = newPitchData;
-//     m_rollGraphData = newRollData;
-//     m_yawGraphData = newYawData;
-//     m_dizzinessData = newDizzinessData;
-
-//     // Сохраняем текущее состояние для сравнения
-//     lastPitchData = newPitchData;
-//     lastRollData = newRollData;
-//     lastYawData = newYawData;
-//     lastDizzinessData = newDizzinessData;
-
-//     emit graphDataChanged();
-// }
-
-// void TiltController::updateGraphData(float pitch, float roll, float yaw, bool dizziness)
-// {
-//     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
-
-//     // Добавляем новые точки данных
-//     m_pitchHistory.append({currentTime, pitch});
-//     m_rollHistory.append({currentTime, roll});
-//     m_yawHistory.append({currentTime, yaw});
-
-//     if (dizziness) {
-//         m_dizzinessHistory.append(currentTime);
-//     }
-
-//     // Очищаем старые данные
-//     cleanupOldData();
-
-//     // Обновляем QVariantList для QML
-//     m_pitchGraphData.clear();
-//     m_rollGraphData.clear();
-//     m_yawGraphData.clear();
-//     m_dizzinessData.clear();
-
-//     qint64 minTime = currentTime - m_graphDuration * 1000;
-
-//     // Заполняем данные для pitch
-//     for (const auto& point : m_pitchHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             m_pitchGraphData.append(dataPoint);
-//         }
-//     }
-
-//     // Аналогично для roll и yaw
-//     for (const auto& point : m_rollHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             m_rollGraphData.append(dataPoint);
-//         }
-//     }
-
-//     for (const auto& point : m_yawHistory) {
-//         if (point.timestamp >= minTime) {
-//             QVariantMap dataPoint;
-//             dataPoint["time"] = point.timestamp;
-//             dataPoint["value"] = point.value;
-//             m_yawGraphData.append(dataPoint);
-//         }
-//     }
-
-//     // Данные головокружения
-//     for (qint64 timestamp : m_dizzinessHistory) {
-//         if (timestamp >= minTime) {
-//             m_dizzinessData.append(timestamp);
-//         }
-//     }
-
-//     emit graphDataChanged();
-// }
 
 void TiltController::cleanupOldData()
 {
@@ -1251,38 +847,8 @@ void TiltController::cleanupOldData()
         }
     }
 
-    if (m_dizzinessHistory.size() > m_graphDuration * 15) {
-        while (!m_dizzinessHistory.isEmpty() && m_dizzinessHistory.first() < minTime) {
-            m_dizzinessHistory.removeFirst();
-        }
-    }
+    // Интервалы головокружения очищаются в updateGraphData
 }
-
-// void TiltController::cleanupOldData()
-// {
-//     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
-//     qint64 minTime = currentTime - m_graphDuration * 1000;
-
-//     // Очищаем старые данные pitch
-//     while (!m_pitchHistory.isEmpty() && m_pitchHistory.first().timestamp < minTime) {
-//         m_pitchHistory.removeFirst();
-//     }
-
-//     // Очищаем старые данные roll
-//     while (!m_rollHistory.isEmpty() && m_rollHistory.first().timestamp < minTime) {
-//         m_rollHistory.removeFirst();
-//     }
-
-//     // Очищаем старые данные yaw
-//     while (!m_yawHistory.isEmpty() && m_yawHistory.first().timestamp < minTime) {
-//         m_yawHistory.removeFirst();
-//     }
-
-//     // Очищаем старые данные головокружения
-//     while (!m_dizzinessHistory.isEmpty() && m_dizzinessHistory.first() < minTime) {
-//         m_dizzinessHistory.removeFirst();
-//     }
-// }
 
 void TiltController::setPerformanceMode(bool highPerformance)
 {
