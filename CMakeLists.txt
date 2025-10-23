@@ -24,6 +24,10 @@ qt_add_qml_module(appMonitorHead
     QML_FILES
         Main.qml
         GraphCanvas.qml
+    RESOURCES
+        images/side_view.png
+        images/front_view.png
+        images/back_view.png
 )
 
 set_target_properties(appMonitorHead PROPERTIES

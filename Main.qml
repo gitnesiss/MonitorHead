@@ -450,7 +450,7 @@ ApplicationWindow {
                         anchors.margins: 10
                         spacing: 10
 
-                        // Профиль лица (PITCH) - квадратная область
+                        // Профиль лица (PITCH), Вид сбоку - квадратная область
                         Rectangle {
                             Layout.preferredWidth: 180
                             Layout.preferredHeight: 180
@@ -459,62 +459,49 @@ ApplicationWindow {
                             radius: 6
                             border.color: "#333"
 
-                            // Схематичный профиль головы (вид сбоку)
-                            Canvas {
+                            // Изображение головы (вид сбоку)
+                            Image {
+                                id: headImagePitch
                                 anchors.fill: parent
-                                anchors.margins: 10
+                                anchors.margins: 15
+                                source: "images/side_view.png"
+                                fillMode: Image.PreserveAspectFit
+                                rotation: controller.headModel.pitch
+                                transformOrigin: Item.Center
+                                smooth: true
+                                opacity: controller.headModel.hasData ? 1.0 : 0.5
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.clearRect(0, 0, width, height)
-
-                                    ctx.strokeStyle = "#BB86FC"
-                                    ctx.lineWidth = 2
-                                    ctx.fillStyle = "transparent"
-
-                                    // Контур головы (овал)
-                                    ctx.beginPath()
-                                    ctx.ellipse(25, 20, 100, 110) // x, y, width, height
-                                    ctx.stroke()
-
-                                    // Нос
-                                    ctx.beginPath()
-                                    ctx.moveTo(75, 40)
-                                    ctx.lineTo(85, 60)
-                                    ctx.lineTo(65, 60)
-                                    ctx.closePath()
-                                    ctx.stroke()
-
-                                    // Шея
-                                    ctx.beginPath()
-                                    ctx.moveTo(65, 130)
-                                    ctx.lineTo(85, 130)
-                                    ctx.stroke()
-
-                                    // Индикатор наклона (линия через центр)
-                                    ctx.strokeStyle = controller.headModel.hasData ? "#FFA000" : "#666"
-                                    ctx.lineWidth = 2
-                                    ctx.beginPath()
-                                    ctx.moveTo(20, 75)
-                                    ctx.lineTo(130, 75)
-                                    ctx.stroke()
-
-                                    // Точка вращения (центр)
-                                    ctx.fillStyle = "#FFA000"
-                                    ctx.beginPath()
-                                    ctx.arc(75, 75, 3, 0, Math.PI * 2)
-                                    ctx.fill()
+                                // Точка вращения (центр) - визуальный маркер
+                                Rectangle {
+                                    width: 6
+                                    height: 6
+                                    radius: 3
+                                    color: "#FFA000"
+                                    anchors.centerIn: parent
+                                    visible: controller.headModel.hasData
                                 }
                             }
 
-                            // Индикатор текущего наклона
+                            // Индикатор горизонта (необязательно, для справки)
                             Rectangle {
-                                width: 120
-                                height: 3
+                                width: parent.width - 30
+                                height: 1
                                 color: controller.headModel.hasData ? "#FFA000" : "#666"
-                                rotation: controller.headModel.pitch
+                                opacity: 0.5
                                 anchors.centerIn: parent
-                                transformOrigin: Item.Center
+                            }
+
+                            // Текст с текущим углом (опционально)
+                            Text {
+                                anchors {
+                                    bottom: parent.bottom
+                                    horizontalCenter: parent.horizontalCenter
+                                    bottomMargin: 5
+                                }
+                                text: controller.headModel.hasData ? controller.headModel.pitch.toFixed(1) + "°" : ""
+                                color: "#FFA000"
+                                font.pixelSize: 12
+                                font.bold: true
                             }
                         }
 
@@ -631,6 +618,7 @@ ApplicationWindow {
 
                 // === ROLL (крен) - ВТОРАЯ СТРОКА ===
                 Rectangle {
+                    id: rollContainer
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
                     color: "#252525"
@@ -638,13 +626,17 @@ ApplicationWindow {
                     border.color: "#444"
                     border.width: 1
 
+                    // Свойство для отслеживания текущего вида
+                    property bool isFrontView: true
+
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 10
                         spacing: 10
 
-                        // Вид сзади (ROLL) - квадратная область
+                        // Вид спереди/сзади (ROLL) - квадратная область с возможностью переключения
                         Rectangle {
+                            id: rollViewContainer
                             Layout.preferredWidth: 180
                             Layout.preferredHeight: 180
                             Layout.alignment: Qt.AlignCenter
@@ -652,63 +644,80 @@ ApplicationWindow {
                             radius: 6
                             border.color: "#333"
 
-                            // Схематичный вид сзади головы
-                            Canvas {
+                            // Область клика для переключения вида
+                            MouseArea {
                                 anchors.fill: parent
-                                anchors.margins: 10
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    rollContainer.isFrontView = !rollContainer.isFrontView
+                                }
+                                ToolTip.visible: containsMouse
+                                ToolTip.text: "Нажмите для переключения между видом спереди и сзади"
+                                ToolTip.delay: 1000
+                                hoverEnabled: true
+                            }
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.clearRect(0, 0, width, height)
+                            // Изображение головы (вид спереди или сзади)
+                            Image {
+                                id: headImageRoll
+                                anchors.fill: parent
+                                anchors.margins: 15
+                                source: rollContainer.isFrontView ? "images/front_view.png" : "images/back_view.png"
+                                fillMode: Image.PreserveAspectFit
+                                rotation: controller.headModel.roll
+                                transformOrigin: Item.Center
+                                smooth: true
+                                opacity: controller.headModel.hasData ? 1.0 : 0.5
 
-                                    ctx.strokeStyle = "#03DAC6"
-                                    ctx.lineWidth = 2
-                                    ctx.fillStyle = "transparent"
+                                // === ДОБАВЛЕНО: Анимации ===
+                                Behavior on source {
+                                    PropertyAnimation { duration: 300 }
+                                }
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 200 }
+                                }
 
-                                    // Контур головы (круг)
-                                    ctx.beginPath()
-                                    ctx.arc(75, 75, 50, 0, Math.PI * 2)
-                                    ctx.stroke()
-
-                                    // Уши
-                                    ctx.beginPath()
-                                    ctx.arc(25, 75, 8, 0, Math.PI * 2)
-                                    ctx.stroke()
-
-                                    ctx.beginPath()
-                                    ctx.arc(125, 75, 8, 0, Math.PI * 2)
-                                    ctx.stroke()
-
-                                    // Шея
-                                    ctx.beginPath()
-                                    ctx.moveTo(60, 125)
-                                    ctx.lineTo(90, 125)
-                                    ctx.stroke()
-
-                                    // Индикатор горизонта
-                                    ctx.strokeStyle = controller.headModel.hasData ? "#FFA000" : "#666"
-                                    ctx.lineWidth = 2
-                                    ctx.beginPath()
-                                    ctx.moveTo(20, 75)
-                                    ctx.lineTo(130, 75)
-                                    ctx.stroke()
-
-                                    // Точка вращения (центр)
-                                    ctx.fillStyle = "#FFA000"
-                                    ctx.beginPath()
-                                    ctx.arc(75, 75, 3, 0, Math.PI * 2)
-                                    ctx.fill()
+                                // Точка вращения (центр) - визуальный маркер
+                                Rectangle {
+                                    width: 6
+                                    height: 6
+                                    radius: 3
+                                    color: "#FFA000"
+                                    anchors.centerIn: parent
+                                    visible: controller.headModel.hasData
                                 }
                             }
 
-                            // Индикатор текущего крена
+                            // Индикатор горизонта
                             Rectangle {
-                                width: 120
-                                height: 3
+                                width: parent.width - 30
+                                height: 1
                                 color: controller.headModel.hasData ? "#FFA000" : "#666"
-                                rotation: controller.headModel.roll
+                                opacity: 0.5
                                 anchors.centerIn: parent
-                                transformOrigin: Item.Center
+                            }
+
+                            // Иконка переключения в углу
+                            Rectangle {
+                                width: 20
+                                height: 20
+                                radius: 10
+                                color: "#333"
+                                border.color: "#666"
+                                border.width: 1
+                                anchors {
+                                    top: parent.top
+                                    right: parent.right
+                                    margins: 5
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "↺"
+                                    color: "white"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
                             }
                         }
 
@@ -782,6 +791,24 @@ ApplicationWindow {
                                         font.bold: (controller.connected || controller.logLoaded) && controller.headModel.hasData
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
+                                }
+                            }
+
+                            // Индикатор текущего вида
+                            Rectangle {
+                                Layout.preferredWidth: 120
+                                Layout.preferredHeight: 25
+                                color: "transparent"
+                                border.color: "#03DAC6"
+                                border.width: 1
+                                radius: 4
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: rollContainer.isFrontView ? "ВИД СПЕРЕДИ" : "ВИД СЗАДИ"
+                                    color: "#03DAC6"
+                                    font.pixelSize: 9
+                                    font.bold: true
                                 }
                             }
                         }
