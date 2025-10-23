@@ -1050,11 +1050,13 @@ ApplicationWindow {
                             color: "#1a1a1a"
                             radius: 6
                             border.color: "#333"
+                            border.width: 1
 
                             // Простая 3D-сетка для демонстрации
                             Canvas {
+                                id: threeDCanvas
                                 anchors.fill: parent
-                                anchors.margins: 20
+                                anchors.margins: 5
 
                                 onPaint: {
                                     var ctx = getContext("2d")
@@ -1112,23 +1114,64 @@ ApplicationWindow {
                                         ctx.lineTo(width/2 - 20, height/2 + 30)
                                         ctx.stroke()
 
-                                        // Индикатор головокружения
+                                        // Индикатор головокружения - круговой градиент с правильными радиусами
                                         if (controller.headModel.dizziness) {
-                                            ctx.fillStyle = "rgba(255, 160, 0, 0.3)";
+                                            // Вычисляем размеры области
+                                            var a = width;   // ширина области 3D
+                                            var b = height;  // высота области 3D
+
+                                            // Находим меньший размер
+                                            var minSize = Math.min(a, b);
+
+                                            // Начальный радиус (90% от половины меньшего размера)
+                                            var startRadius = minSize * 0.9 / 2;
+
+                                            // Конечный радиус (больший размер, умноженный на 2)
+                                            var endRadius = Math.max(a, b) * 0.9;
+
+                                            // Центр области
+                                            var centerX = a / 2;
+                                            var centerY = b / 2;
+
+                                            // Создаем круговой градиент
+                                            var gradient = ctx.createRadialGradient(
+                                                centerX, centerY, startRadius,  // центр и начальный радиус
+                                                centerX, centerY, endRadius     // центр и конечный радиус
+                                            );
+
+                                            // Настраиваем градиент
+                                            gradient.addColorStop(0, 'rgba(255, 160, 0, 0)');      // Прозрачно на начальном радиусе
+                                            gradient.addColorStop(0.5, 'rgba(255, 160, 0, 0.2)');  // Полупрозрачно на середине
+                                            gradient.addColorStop(1, 'rgba(255, 160, 0, 0.4)');    // Интенсивно на конечном радиусе
+
+                                            // Применяем градиент ко всей области
+                                            ctx.fillStyle = gradient;
                                             ctx.fillRect(0, 0, width, height);
 
+                                            // Текст предупреждения
                                             ctx.fillStyle = "#FFA000";
-                                            ctx.font = "bold 24px Arial";
+                                            ctx.font = "bold 20px Arial";
                                             ctx.textAlign = "center";
-                                            ctx.fillText("ГОЛОВОКРУЖЕНИЕ", width/2, height/2);
+                                            ctx.fillText("ГОЛОВОКРУЖЕНИЕ", width/2, 30);
                                         }
                                     } else {
                                         // Текст "нет данных"
-                                        ctx.fillStyle = "#666"
-                                        ctx.font = "16px Arial"
-                                        ctx.textAlign = "center"
-                                        ctx.fillText("нет данных", width/2, height/2)
+                                        ctx.fillStyle = "#666";
+                                        ctx.font = "16px Arial";
+                                        ctx.textAlign = "center";
+                                        ctx.fillText("нет данных", width/2, height/2);
                                     }
+                                }
+                            }
+
+                            // Таймер для периодической перерисовки
+                            Timer {
+                                id: refreshTimer
+                                interval: 100
+                                running: true
+                                repeat: true
+                                onTriggered: {
+                                    threeDCanvas.requestPaint();
                                 }
                             }
                         }
@@ -1162,6 +1205,23 @@ ApplicationWindow {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                 }
                             }
+                        }
+                    }
+
+                    // Перерисовка при изменении состояния головокружения
+                    Connections {
+                        target: controller.headModel
+                        function onDizzinessChanged() {
+                            threeDCanvas.requestPaint();
+                        }
+                        function onPitchChanged() {
+                            threeDCanvas.requestPaint();
+                        }
+                        function onRollChanged() {
+                            threeDCanvas.requestPaint();
+                        }
+                        function onYawChanged() {
+                            threeDCanvas.requestPaint();
                         }
                     }
                 }
