@@ -163,7 +163,7 @@ private:
     bool m_lastDizzinessState = false;
 
     int m_updateCounter = 0;
-    int m_updateThrottle = 2;
+    int m_updateThrottle = 1;
 
     int m_updateFrequency = 10;
     QTimer m_dataUpdateTimer;

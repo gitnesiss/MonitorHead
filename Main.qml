@@ -438,6 +438,7 @@ ApplicationWindow {
 
                 // === PITCH (тангаж) - ПЕРВАЯ СТРОКА ===
                 Rectangle {
+                    id: pitchContainer
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
                     color: "#252525"
@@ -445,13 +446,20 @@ ApplicationWindow {
                     border.color: "#444"
                     border.width: 1
 
+                    // Свойство для отслеживания текущего вида
+                    property bool isLeftView: true
+
+                    // Вычисляемое свойство для правильного вращения
+                    property real displayPitch: isLeftView ? controller.headModel.pitch : -controller.headModel.pitch
+
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 10
                         spacing: 10
 
-                        // Профиль лица (PITCH), Вид сбоку - квадратная область
+                        // Вид слева/справа (PITCH) - квадратная область с возможностью переключения
                         Rectangle {
+                            id: pitchViewContainer
                             Layout.preferredWidth: 180
                             Layout.preferredHeight: 180
                             Layout.alignment: Qt.AlignCenter
@@ -459,14 +467,27 @@ ApplicationWindow {
                             radius: 6
                             border.color: "#333"
 
-                            // Изображение головы (вид сбоку)
+                            // Область клика для переключения вида
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    pitchContainer.isLeftView = !pitchContainer.isLeftView
+                                }
+                                ToolTip.visible: containsMouse
+                                ToolTip.text: "Нажмите для переключения между видом слева и справа"
+                                ToolTip.delay: 1000
+                                hoverEnabled: true
+                            }
+
+                            // Изображение головы (вид слева или справа)
                             Image {
                                 id: headImagePitch
                                 anchors.fill: parent
                                 anchors.margins: 15
-                                source: "images/side_view.png"
+                                source: pitchContainer.isLeftView ? "images/left_view.png" : "images/right_view.png"
                                 fillMode: Image.PreserveAspectFit
-                                rotation: controller.headModel.pitch
+                                rotation: pitchContainer.displayPitch  // Используем вычисляемое свойство
                                 transformOrigin: Item.Center
                                 smooth: true
                                 opacity: controller.headModel.hasData ? 1.0 : 0.5
@@ -482,7 +503,7 @@ ApplicationWindow {
                                 }
                             }
 
-                            // Индикатор горизонта (необязательно, для справки)
+                            // Индикатор горизонта
                             Rectangle {
                                 width: parent.width - 30
                                 height: 1
@@ -491,7 +512,47 @@ ApplicationWindow {
                                 anchors.centerIn: parent
                             }
 
-                            // Текст с текущим углом (опционально)
+                            // Индикатор текущего вида с пояснением направления
+                            Column {
+                                anchors {
+                                    top: parent.top
+                                    left: parent.left
+                                    margins: 5
+                                }
+                                spacing: 2
+
+                                Text {
+                                    text: pitchContainer.isLeftView ? "СЛЕВА" : "СПРАВА"
+                                    color: "#BB86FC"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
+                            }
+
+                            // Иконка переключения в углу
+                            Rectangle {
+                                width: 20
+                                height: 20
+                                radius: 10
+                                color: "#333"
+                                border.color: "#666"
+                                border.width: 1
+                                anchors {
+                                    top: parent.top
+                                    right: parent.right
+                                    margins: 5
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: pitchContainer.isLeftView ? "↺" : "↻"
+                                    color: pitchContainer.isLeftView ? "white" : "#FFA000"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
+                            }
+
+                            // Текст с текущим углом
                             Text {
                                 anchors {
                                     bottom: parent.bottom
@@ -505,15 +566,35 @@ ApplicationWindow {
                             }
                         }
 
-                        // Блоки данных PITCH (остаются без изменений)
+                        // Блоки данных PITCH (остаются без изменений, показывают реальные значения с датчика)
                         ColumnLayout {
                             Layout.fillHeight: true
                             Layout.preferredWidth: 100
                             spacing: 10
 
                             Rectangle {
-                                Layout.preferredWidth: 120
-                                Layout.preferredHeight: 70
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 40
+                                color: "#252525"
+                                radius: 6
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+
+                                    Text {
+                                        text: "ТАНГАЖ / PITCH"
+                                        color: "#BB86FC"
+                                        font.pixelSize: 16
+                                        font.bold: true
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 60
                                 color: "#2d2d2d"
                                 radius: 6
                                 border.color: "#BB86FC"
@@ -524,7 +605,7 @@ ApplicationWindow {
                                     spacing: 5
 
                                     Text {
-                                        text: "PITCH"
+                                        text: "ТЕКУЩИЙ УГОЛ"
                                         color: "#BB86FC"
                                         font.pixelSize: 12
                                         font.bold: true
@@ -542,11 +623,11 @@ ApplicationWindow {
                             }
 
                             Rectangle {
-                                Layout.preferredWidth: 120
-                                Layout.preferredHeight: 70
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 60
                                 color: "#2d2d2d"
                                 radius: 6
-                                border.color: "#03DAC6"
+                                border.color: "#BB86FC"
                                 border.width: 2
 
                                 Column {
@@ -554,9 +635,10 @@ ApplicationWindow {
                                     spacing: 5
 
                                     Text {
-                                        text: "СКОРОСТЬ PITCH"
-                                        color: "#03DAC6"
-                                        font.pixelSize: 10
+                                        text: "УГЛОВАЯ СКОРОСТЬ"
+                                        color: "#BB86FC"
+                                        font.pixelSize: 12
+                                        font.bold: true
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
 
@@ -577,9 +659,28 @@ ApplicationWindow {
                                     }
                                 }
                             }
+
+                            // // Индикатор текущего вида
+                            // Rectangle {
+                            //     Layout.preferredWidth: 120
+                            //     Layout.preferredHeight: 25
+                            //     color: "transparent"
+                            //     border.color: "#03DAC6"
+                            //     border.width: 1
+                            //     radius: 4
+
+                            //     Text {
+                            //         anchors.centerIn: parent
+                            //         text: pitchContainer.isLeftView ? "СЛЕВА" : "СПРАВА"
+                            //         // text: rollContainer.isFrontView ? "ВИД СПЕРЕДИ" : "ВИД СЗАДИ"
+                            //         color: "#03DAC6"
+                            //         font.pixelSize: 9
+                            //         font.bold: true
+                            //     }
+                            // }
                         }
 
-                        // График PITCH (без изменений)
+                        // График PITCH (без изменений - показывает реальные данные)
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -590,7 +691,7 @@ ApplicationWindow {
 
                             ColumnLayout {
                                 anchors.fill: parent
-                                spacing: 0
+                                spacing: 2
 
                                 Text {
                                     text: "График PITCH (" + controller.graphDuration + " сек)"
@@ -629,6 +730,9 @@ ApplicationWindow {
                     // Свойство для отслеживания текущего вида
                     property bool isFrontView: true
 
+                    // Вычисляемое свойство для правильного вращения
+                    property real displayRoll: isFrontView ? -controller.headModel.roll : controller.headModel.roll
+
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 10
@@ -664,18 +768,10 @@ ApplicationWindow {
                                 anchors.margins: 15
                                 source: rollContainer.isFrontView ? "images/front_view.png" : "images/back_view.png"
                                 fillMode: Image.PreserveAspectFit
-                                rotation: controller.headModel.roll
+                                rotation: rollContainer.displayRoll  // Используем вычисляемое свойство
                                 transformOrigin: Item.Center
                                 smooth: true
                                 opacity: controller.headModel.hasData ? 1.0 : 0.5
-
-                                // === ДОБАВЛЕНО: Анимации ===
-                                Behavior on source {
-                                    PropertyAnimation { duration: 300 }
-                                }
-                                Behavior on opacity {
-                                    NumberAnimation { duration: 200 }
-                                }
 
                                 // Точка вращения (центр) - визуальный маркер
                                 Rectangle {
@@ -690,11 +786,28 @@ ApplicationWindow {
 
                             // Индикатор горизонта
                             Rectangle {
-                                width: parent.width - 30
-                                height: 1
+                                width: 1
+                                height: parent.height - 30
                                 color: controller.headModel.hasData ? "#FFA000" : "#666"
                                 opacity: 0.5
                                 anchors.centerIn: parent
+                            }
+
+                            // Индикатор текущего вида с пояснением направления
+                            Column {
+                                anchors {
+                                    top: parent.top
+                                    left: parent.left
+                                    margins: 5
+                                }
+                                spacing: 2
+
+                                Text {
+                                    text: rollContainer.isFrontView ? "СПЕРЕДИ" : "СЗАДИ"
+                                    color: "#03DAC6"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
                             }
 
                             // Иконка переключения в углу
@@ -713,23 +826,56 @@ ApplicationWindow {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "↺"
-                                    color: "white"
+                                    text: rollContainer.isFrontView ? "↺" : "↻"
+                                    color: rollContainer.isFrontView ? "white" : "#FFA000"
                                     font.pixelSize: 10
                                     font.bold: true
                                 }
                             }
+
+                            // Текст с текущим углом (опционально)
+                            Text {
+                                anchors {
+                                    bottom: parent.bottom
+                                    horizontalCenter: parent.horizontalCenter
+                                    bottomMargin: 5
+                                }
+                                text: controller.headModel.hasData ? controller.headModel.roll.toFixed(1) + "°" : ""
+                                color: "#FFA000"
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
                         }
 
-                        // Блоки данных ROLL (остаются без изменений)
+                        // Блоки данных ROLL (остаются без изменений, показывают реальные значения с датчика)
                         ColumnLayout {
                             Layout.fillHeight: true
                             Layout.preferredWidth: 100
                             spacing: 10
 
                             Rectangle {
-                                Layout.preferredWidth: 120
-                                Layout.preferredHeight: 70
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 40
+                                color: "#252525"
+                                radius: 6
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+
+                                    Text {
+                                        text: "КРЕН / ROLL"
+                                        color: "#03DAC6"
+                                        font.pixelSize: 16
+                                        font.bold: true
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 60
                                 color: "#2d2d2d"
                                 radius: 6
                                 border.color: "#03DAC6"
@@ -740,7 +886,7 @@ ApplicationWindow {
                                     spacing: 5
 
                                     Text {
-                                        text: "ROLL"
+                                        text: "ТЕКУЩИЙ УГОЛ"
                                         color: "#03DAC6"
                                         font.pixelSize: 12
                                         font.bold: true
@@ -758,11 +904,11 @@ ApplicationWindow {
                             }
 
                             Rectangle {
-                                Layout.preferredWidth: 120
-                                Layout.preferredHeight: 70
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 60
                                 color: "#2d2d2d"
                                 radius: 6
-                                border.color: "#BB86FC"
+                                border.color: "#03DAC6"
                                 border.width: 2
 
                                 Column {
@@ -770,9 +916,10 @@ ApplicationWindow {
                                     spacing: 5
 
                                     Text {
-                                        text: "СКОРОСТЬ ROLL"
-                                        color: "#BB86FC"
-                                        font.pixelSize: 10
+                                        text: "УГЛОВАЯ СКОРОСТЬ"
+                                        color: "#03DAC6"
+                                        font.pixelSize: 12
+                                        font.bold: true
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
 
@@ -794,26 +941,26 @@ ApplicationWindow {
                                 }
                             }
 
-                            // Индикатор текущего вида
-                            Rectangle {
-                                Layout.preferredWidth: 120
-                                Layout.preferredHeight: 25
-                                color: "transparent"
-                                border.color: "#03DAC6"
-                                border.width: 1
-                                radius: 4
+                            // // Индикатор текущего вида
+                            // Rectangle {
+                            //     Layout.preferredWidth: 120
+                            //     Layout.preferredHeight: 25
+                            //     color: "transparent"
+                            //     border.color: "#03DAC6"
+                            //     border.width: 1
+                            //     radius: 4
 
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: rollContainer.isFrontView ? "ВИД СПЕРЕДИ" : "ВИД СЗАДИ"
-                                    color: "#03DAC6"
-                                    font.pixelSize: 9
-                                    font.bold: true
-                                }
-                            }
+                            //     Text {
+                            //         anchors.centerIn: parent
+                            //         text: rollContainer.isFrontView ? "ВИД СПЕРЕДИ" : "ВИД СЗАДИ"
+                            //         color: "#03DAC6"
+                            //         font.pixelSize: 9
+                            //         font.bold: true
+                            //     }
+                            // }
                         }
 
-                        // График ROLL (без изменений)
+                        // График ROLL (без изменений - показывает реальные данные)
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -852,6 +999,7 @@ ApplicationWindow {
 
                 // === YAW (рыскание) - ТРЕТЬЯ СТРОКА ===
                 Rectangle {
+                    id: yawContainer
                     Layout.fillWidth: true
                     Layout.preferredHeight: 200
                     color: "#252525"
@@ -859,13 +1007,17 @@ ApplicationWindow {
                     border.color: "#444"
                     border.width: 1
 
+                    // Свойство для отслеживания переворота изображения
+                    property bool isFlipped: false
+
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 10
                         spacing: 10
 
-                        // Вид сверху (YAW) - квадратная область
+                        // Вид сверху (YAW) - квадратная область с возможностью переворота
                         Rectangle {
+                            id: yawViewContainer
                             Layout.preferredWidth: 180
                             Layout.preferredHeight: 180
                             Layout.alignment: Qt.AlignCenter
@@ -873,68 +1025,148 @@ ApplicationWindow {
                             radius: 6
                             border.color: "#333"
 
-                            // Схематичный вид сверху головы
-                            Canvas {
+                            // Область клика для переворота
+                            MouseArea {
                                 anchors.fill: parent
-                                anchors.margins: 10
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    yawContainer.isFlipped = !yawContainer.isFlipped
+                                }
+                                ToolTip.visible: containsMouse
+                                ToolTip.text: "Нажмите для переворота изображения"
+                                ToolTip.delay: 1000
+                                hoverEnabled: true
+                            }
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.clearRect(0, 0, width, height)
+                            // Изображение головы (вид сверху)
+                            Image {
+                                id: headImageYaw
+                                anchors.fill: parent
+                                anchors.margins: 15
+                                source: "images/top_view.png"
+                                fillMode: Image.PreserveAspectFit
+                                rotation: yawContainer.isFlipped ? (180 + controller.headModel.yaw) : controller.headModel.yaw
+                                transformOrigin: Item.Center
+                                smooth: true
+                                opacity: controller.headModel.hasData ? 1.0 : 0.5
 
-                                    ctx.strokeStyle = "#CF6679"
-                                    ctx.lineWidth = 2
-                                    ctx.fillStyle = "transparent"
+                                // Анимации
+                                Behavior on rotation {
+                                    PropertyAnimation { duration: 300 }
+                                }
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 200 }
+                                }
 
-                                    // Контур головы (овал)
-                                    ctx.beginPath()
-                                    ctx.ellipse(25, 45, 100, 60) // x, y, width, height
-                                    ctx.stroke()
-
-                                    // Нос (стрелка)
-                                    ctx.beginPath()
-                                    ctx.moveTo(75, 30)
-                                    ctx.lineTo(85, 45)
-                                    ctx.lineTo(65, 45)
-                                    ctx.closePath()
-                                    ctx.stroke()
-
-                                    // Индикатор направления
-                                    ctx.strokeStyle = controller.headModel.hasData ? "#FFA000" : "#666"
-                                    ctx.lineWidth = 2
-                                    ctx.beginPath()
-                                    ctx.moveTo(75, 105)
-                                    ctx.lineTo(75, 45)
-                                    ctx.stroke()
-
-                                    // Точка вращения (центр)
-                                    ctx.fillStyle = "#FFA000"
-                                    ctx.beginPath()
-                                    ctx.arc(75, 75, 3, 0, Math.PI * 2)
-                                    ctx.fill()
+                                // Точка вращения (центр) - визуальный маркер
+                                Rectangle {
+                                    width: 6
+                                    height: 6
+                                    radius: 3
+                                    color: "#FFA000"
+                                    anchors.centerIn: parent
+                                    visible: controller.headModel.hasData
                                 }
                             }
 
-                            // Индикатор текущего поворота
+                            // Индикатор горизонта
                             Rectangle {
-                                width: 3
-                                height: 80
+                                width: 1
+                                height: parent.height - 30
                                 color: controller.headModel.hasData ? "#FFA000" : "#666"
-                                rotation: controller.headModel.yaw
+                                opacity: 0.5
                                 anchors.centerIn: parent
-                                transformOrigin: Item.Center
+                            }
+
+                            // Индикатор вида (всегда "СВЕРХУ")
+                            Column {
+                                anchors {
+                                    top: parent.top
+                                    left: parent.left
+                                    margins: 5
+                                }
+                                spacing: 2
+
+                                Text {
+                                    text: "СВЕРХУ"
+                                    color: "#CF6679"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
+
+                                // Text {
+                                //     text: "⊕ по ч.с.\n⊖ против ч.с."
+                                //     color: "#888"
+                                //     font.pixelSize: 8
+                                // }
+                            }
+
+                            // Индикатор состояния переворота (Иконка переключения в углу)
+                            Rectangle {
+                                width: 20
+                                height: 20
+                                radius: 10
+                                color: "#333"
+                                border.color: "#666"
+                                border.width: 1
+                                anchors {
+                                    top: parent.top
+                                    right: parent.right
+                                    margins: 5
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: yawContainer.isFlipped ? "↻" : "↺"
+                                    color: yawContainer.isFlipped ? "#FFA000" : "white"
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                }
+                            }
+
+                            // Текст с текущим углом
+                            Text {
+                                anchors {
+                                    bottom: parent.bottom
+                                    horizontalCenter: parent.horizontalCenter
+                                    bottomMargin: 5
+                                }
+                                text: controller.headModel.hasData ? controller.headModel.yaw.toFixed(1) + "°" : ""
+                                color: "#FFA000"
+                                font.pixelSize: 12
+                                font.bold: true
                             }
                         }
 
-                        // Блоки данных YAW (остаются без изменений)
+                        // Блоки данных YAW (остаются без изменений, показывают реальные значения с датчика)
                         ColumnLayout {
                             Layout.fillHeight: true
                             Layout.preferredWidth: 100
                             spacing: 10
 
                             Rectangle {
-                                Layout.preferredWidth: 120
-                                Layout.preferredHeight: 70
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 40
+                                color: "#252525"
+                                radius: 6
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 5
+
+                                    Text {
+                                        text: "РЫСКАНЬЕ / YAW"
+                                        color: "#CF6679"
+                                        font.pixelSize: 16
+                                        font.bold: true
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 60
                                 color: "#2d2d2d"
                                 radius: 6
                                 border.color: "#CF6679"
@@ -959,15 +1191,28 @@ ApplicationWindow {
                                         font.bold: controller.headModel.hasData
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
+
+                                    // // Дополнительная подпись с направлением
+                                    // Text {
+                                    //     text: {
+                                    //         if (!controller.headModel.hasData) return ""
+                                    //         return controller.headModel.yaw > 0 ?
+                                    //             "по ч.с." :
+                                    //             (controller.headModel.yaw < 0 ? "против ч.с." : "прямо")
+                                    //     }
+                                    //     color: "#CF6679"
+                                    //     font.pixelSize: 9
+                                    //     anchors.horizontalCenter: parent.horizontalCenter
+                                    // }
                                 }
                             }
 
                             Rectangle {
-                                Layout.preferredWidth: 120
-                                Layout.preferredHeight: 70
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 60
                                 color: "#2d2d2d"
                                 radius: 6
-                                border.color: "#FF9800"
+                                border.color: "#CF6679"
                                 border.width: 2
 
                                 Column {
@@ -975,9 +1220,10 @@ ApplicationWindow {
                                     spacing: 5
 
                                     Text {
-                                        text: "СКОРОСТЬ YAW"
-                                        color: "#FF9800"
-                                        font.pixelSize: 10
+                                        text: "УГЛОВАЯ СКОРОСТЬ"
+                                        color: "#CF6679"
+                                        font.pixelSize: 12
+                                        font.bold: true
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
 
@@ -1000,7 +1246,7 @@ ApplicationWindow {
                             }
                         }
 
-                        // График YAW (без изменений)
+                        // График YAW (без изменений - показывает реальные данные)
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true

@@ -34,7 +34,7 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
 
     m_graphDuration = 30;
 
-    m_updateFrequency = 10;
+    m_updateFrequency = 30;
     m_dataUpdateTimer.setInterval(1000 / m_updateFrequency);
     connect(&m_dataUpdateTimer, &QTimer::timeout, this, &TiltController::updateDataDisplay);
     m_dataUpdateTimer.start();
