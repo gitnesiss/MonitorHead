@@ -3,6 +3,10 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Shapes
+import Qt3D.Core 2.15
+import Qt3D.Render 2.15
+import Qt3D.Input 2.15
+import Qt3D.Extras 2.15
 
 ApplicationWindow {
     id: mainWindow
@@ -13,6 +17,9 @@ ApplicationWindow {
     visible: true
     title: "Монитор положения головы"
     color: "#1e1e1e"
+
+    // Свойства для управления 3D видом
+    property bool innerEarVisible: true
 
     // Функция для показа уведомлений
     function showNotification(message, isError) {
@@ -485,7 +492,7 @@ ApplicationWindow {
                                 id: headImagePitch
                                 anchors.fill: parent
                                 anchors.margins: 15
-                                source: pitchContainer.isLeftView ? "images/left_view.png" : "images/right_view.png"
+                                source: pitchContainer.isLeftView ? "qrc:/images/left_view.png" : "qrc:/images/right_view.png"
                                 fillMode: Image.PreserveAspectFit
                                 rotation: pitchContainer.displayPitch  // Используем вычисляемое свойство
                                 transformOrigin: Item.Center
@@ -766,7 +773,7 @@ ApplicationWindow {
                                 id: headImageRoll
                                 anchors.fill: parent
                                 anchors.margins: 15
-                                source: rollContainer.isFrontView ? "images/front_view.png" : "images/back_view.png"
+                                source: rollContainer.isFrontView ? "qrc:/images/front_view.png" : "qrc:/images/back_view.png"
                                 fillMode: Image.PreserveAspectFit
                                 rotation: rollContainer.displayRoll  // Используем вычисляемое свойство
                                 transformOrigin: Item.Center
@@ -1043,7 +1050,7 @@ ApplicationWindow {
                                 id: headImageYaw
                                 anchors.fill: parent
                                 anchors.margins: 15
-                                source: "images/top_view.png"
+                                source: "qrc:/images/top_view.png"
                                 fillMode: Image.PreserveAspectFit
                                 rotation: yawContainer.isFlipped ? (180 + controller.headModel.yaw) : controller.headModel.yaw
                                 transformOrigin: Item.Center
@@ -1093,12 +1100,6 @@ ApplicationWindow {
                                     font.pixelSize: 10
                                     font.bold: true
                                 }
-
-                                // Text {
-                                //     text: "⊕ по ч.с.\n⊖ против ч.с."
-                                //     color: "#888"
-                                //     font.pixelSize: 8
-                                // }
                             }
 
                             // Индикатор состояния переворота (Иконка переключения в углу)
@@ -1291,7 +1292,6 @@ ApplicationWindow {
                 Layout.preferredWidth: parent.width * 0.4
                 spacing: 10
 
-                // 3D визуализация головы
                 Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -1300,163 +1300,167 @@ ApplicationWindow {
                     border.color: "#444"
                     border.width: 1
 
-                    Column {
+                    ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 15
-                        spacing: 10
+                        anchors.margins: 10
+                        spacing: 5
 
+                        // Заголовок - по центру
                         Text {
                             text: "3D визуализация положения головы"
                             color: "white"
                             font.pixelSize: 16
                             font.bold: true
-                            anchors.horizontalCenter: parent.horizontalCenter
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
                         }
 
-                        // Заглушка для OpenGL 3D визуализации
+                        // 3D сцена
                         Rectangle {
-                            id: visualizationContainer
-                            width: parent.width
-                            height: parent.height - 100
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
                             color: "#1a1a1a"
                             radius: 6
-                            border.color: "#333"
-                            border.width: 1
 
-                            // Простая 3D-сетка для демонстрации
-                            Canvas {
-                                id: threeDCanvas
+                            Advanced3DHead {
+                                id: advanced3DHead
                                 anchors.fill: parent
-                                anchors.margins: 5
+                                headPitch: controller.headModel.pitch
+                                headRoll: controller.headModel.roll
+                                headYaw: controller.headModel.yaw
+                                showInnerEar: innerEarVisible
+                            }
 
-                                onPaint: {
-                                    var ctx = getContext("2d")
-                                    ctx.clearRect(0, 0, width, height)
+                            // Кнопка управления внутренним ухом в левом верхнем углу
+                            Button {
+                                anchors {
+                                    top: parent.top
+                                    left: parent.left
+                                    margins: 10
+                                }
+                                width: 40
+                                height: 40
+                                text: innerEarVisible ? "👂" : "👂"
+                                onClicked: innerEarVisible = !innerEarVisible
+                                ToolTip.text: innerEarVisible ? "Скрыть внутреннее ухо" : "Показать внутреннее ухо"
+                                ToolTip.visible: containsMouse
+                                background: Rectangle {
+                                    color: parent.down ? "#5a3c3c" : (innerEarVisible ? "#7c3a3a" : "#3a5c3a")
+                                    radius: 4
+                                    border.color: "#666"
+                                    border.width: 1
+                                }
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: "white"
+                                    font.pixelSize: 16
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
 
-                                    // 3D сетка
-                                    ctx.strokeStyle = "#333"
-                                    ctx.lineWidth = 1
+                            // Панель управления камерой в правом верхнем углу
+                            Column {
+                                anchors {
+                                    top: parent.top
+                                    right: parent.right
+                                    margins: 10
+                                }
+                                spacing: 5
 
-                                    // Перспективные линии
-                                    for (var i = 0; i <= 4; i++) {
-                                        var pos = i * width/4
-                                        ctx.beginPath()
-                                        ctx.moveTo(pos, 0)
-                                        ctx.lineTo(width/2, height/2)
-                                        ctx.stroke()
-
-                                        ctx.beginPath()
-                                        ctx.moveTo(pos, height)
-                                        ctx.lineTo(width/2, height/2)
-                                        ctx.stroke()
+                                Button {
+                                    width: 40
+                                    height: 40
+                                    text: "🎯"
+                                    onClicked: advanced3DHead.setCameraView("isometric")
+                                    ToolTip.text: "Изометрический вид"
+                                    background: Rectangle {
+                                        color: parent.down ? "#5a5a5a" : "#3c3c3c"
+                                        radius: 4
+                                        border.color: "#666"
                                     }
+                                }
 
-                                    if (controller.headModel.hasData) {
-                                        // Упрощенная голова (куб в изометрии)
-                                        ctx.strokeStyle = "#4CAF50"
-                                        ctx.lineWidth = 2
-                                        ctx.beginPath()
-                                        // Передняя грань
-                                        ctx.moveTo(width/2 - 40, height/2 - 30)
-                                        ctx.lineTo(width/2 + 40, height/2 - 30)
-                                        ctx.lineTo(width/2 + 40, height/2 + 50)
-                                        ctx.lineTo(width/2 - 40, height/2 + 50)
-                                        ctx.closePath()
-                                        ctx.stroke()
+                                Button {
+                                    width: 40
+                                    height: 40
+                                    text: "👁️"
+                                    onClicked: advanced3DHead.setCameraView("front")
+                                    ToolTip.text: "Вид спереди"
+                                    background: Rectangle {
+                                        color: parent.down ? "#5a5a5a" : "#3c3c3c"
+                                        radius: 4
+                                        border.color: "#666"
+                                    }
+                                }
 
-                                        // Задняя грань
-                                        ctx.beginPath()
-                                        ctx.moveTo(width/2 - 20, height/2 - 50)
-                                        ctx.lineTo(width/2 + 60, height/2 - 50)
-                                        ctx.lineTo(width/2 + 60, height/2 + 30)
-                                        ctx.lineTo(width/2 - 20, height/2 + 30)
-                                        ctx.closePath()
-                                        ctx.stroke()
+                                Button {
+                                    width: 40
+                                    height: 40
+                                    text: "👈"
+                                    onClicked: advanced3DHead.setCameraView("left")
+                                    ToolTip.text: "Вид слева"
+                                    background: Rectangle {
+                                        color: parent.down ? "#5a5a5a" : "#3c3c3c"
+                                        radius: 4
+                                        border.color: "#666"
+                                    }
+                                }
 
-                                        // Соединительные линии
-                                        ctx.beginPath()
-                                        ctx.moveTo(width/2 - 40, height/2 - 30)
-                                        ctx.lineTo(width/2 - 20, height/2 - 50)
-                                        ctx.moveTo(width/2 + 40, height/2 - 30)
-                                        ctx.lineTo(width/2 + 60, height/2 - 50)
-                                        ctx.moveTo(width/2 + 40, height/2 + 50)
-                                        ctx.lineTo(width/2 + 60, height/2 + 30)
-                                        ctx.moveTo(width/2 - 40, height/2 + 50)
-                                        ctx.lineTo(width/2 - 20, height/2 + 30)
-                                        ctx.stroke()
-
-                                        // Индикатор головокружения - круговой градиент с правильными радиусами
-                                        if (controller.headModel.dizziness) {
-                                            // Вычисляем размеры области
-                                            var a = width;   // ширина области 3D
-                                            var b = height;  // высота области 3D
-
-                                            // Находим меньший размер
-                                            var minSize = Math.min(a, b);
-
-                                            // Начальный радиус (90% от половины меньшего размера)
-                                            var startRadius = minSize * 0.9 / 2;
-
-                                            // Конечный радиус (больший размер, умноженный на 2)
-                                            var endRadius = Math.max(a, b) * 0.9;
-
-                                            // Центр области
-                                            var centerX = a / 2;
-                                            var centerY = b / 2;
-
-                                            // Создаем круговой градиент
-                                            var gradient = ctx.createRadialGradient(
-                                                centerX, centerY, startRadius,  // центр и начальный радиус
-                                                centerX, centerY, endRadius     // центр и конечный радиус
-                                            );
-
-                                            // Настраиваем градиент
-                                            gradient.addColorStop(0, 'rgba(255, 160, 0, 0)');      // Прозрачно на начальном радиусе
-                                            gradient.addColorStop(0.5, 'rgba(255, 160, 0, 0.2)');  // Полупрозрачно на середине
-                                            gradient.addColorStop(1, 'rgba(255, 160, 0, 0.4)');    // Интенсивно на конечном радиусе
-
-                                            // Применяем градиент ко всей области
-                                            ctx.fillStyle = gradient;
-                                            ctx.fillRect(0, 0, width, height);
-
-                                            // Текст предупреждения
-                                            ctx.fillStyle = "#FFA000";
-                                            ctx.font = "bold 20px Arial";
-                                            ctx.textAlign = "center";
-                                            ctx.fillText("ГОЛОВОКРУЖЕНИЕ", width/2, 30);
-                                        }
-                                    } else {
-                                        // Текст "нет данных"
-                                        ctx.fillStyle = "#666";
-                                        ctx.font = "16px Arial";
-                                        ctx.textAlign = "center";
-                                        ctx.fillText("нет данных", width/2, height/2);
+                                Button {
+                                    width: 40
+                                    height: 40
+                                    text: "⬇️"
+                                    onClicked: advanced3DHead.setCameraView("top")
+                                    ToolTip.text: "Вид сверху"
+                                    background: Rectangle {
+                                        color: parent.down ? "#5a5a5a" : "#3c3c3c"
+                                        radius: 4
+                                        border.color: "#666"
                                     }
                                 }
                             }
 
-                            // Таймер для периодической перерисовки
-                            Timer {
-                                id: refreshTimer
-                                interval: 100
-                                running: true
-                                repeat: true
-                                onTriggered: {
-                                    threeDCanvas.requestPaint();
+                            // Подсказка управления
+                            Rectangle {
+                                anchors {
+                                    bottom: parent.bottom
+                                    left: parent.left
+                                    margins: 10
+                                }
+                                width: childrenRect.width + 10
+                                height: childrenRect.height + 10
+                                color: "#80000000"
+                                radius: 4
+
+                                Column {
+                                    anchors.centerIn: parent
+                                    spacing: 2
+
+                                    Text {
+                                        text: "ЛКМ: вращать камеру"
+                                        color: "#aaa"
+                                        font.pixelSize: 10
+                                    }
+                                    Text {
+                                        text: "Колесо: zoom"
+                                        color: "#aaa"
+                                        font.pixelSize: 10
+                                    }
                                 }
                             }
                         }
 
-                        // Текст с углами внизу
+                        // Информационная панель
                         Rectangle {
-                            width: parent.width
-                            height: 60
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 60
                             color: "#2d2d2d"
                             radius: 6
 
                             Column {
                                 anchors.centerIn: parent
-                                spacing: 5
+                                spacing: 2
 
                                 Text {
                                     text: "Текущие углы:"
@@ -1467,32 +1471,16 @@ ApplicationWindow {
 
                                 Text {
                                     text: controller.headModel.hasData ?
-                                          "Pitch: " + controller.headModel.pitch.toFixed(1) + "° | " +
-                                          "Roll: " + controller.headModel.roll.toFixed(1) + "° | " +
-                                          "Yaw: " + controller.headModel.yaw.toFixed(1) + "°" :
-                                          "нет данных"
+                                        "Pitch: " + controller.headModel.pitch.toFixed(1) + "° | " +
+                                        "Roll: " + controller.headModel.roll.toFixed(1) + "° | " +
+                                        "Yaw: " + controller.headModel.yaw.toFixed(1) + "°" :
+                                        "нет данных"
                                     color: controller.headModel.hasData ? "white" : "#888"
                                     font.pixelSize: 14
+                                    font.bold: controller.headModel.hasData
                                     anchors.horizontalCenter: parent.horizontalCenter
                                 }
                             }
-                        }
-                    }
-
-                    // Перерисовка при изменении состояния головокружения
-                    Connections {
-                        target: controller.headModel
-                        function onDizzinessChanged() {
-                            threeDCanvas.requestPaint();
-                        }
-                        function onPitchChanged() {
-                            threeDCanvas.requestPaint();
-                        }
-                        function onRollChanged() {
-                            threeDCanvas.requestPaint();
-                        }
-                        function onYawChanged() {
-                            threeDCanvas.requestPaint();
                         }
                     }
                 }
@@ -1724,6 +1712,13 @@ ApplicationWindow {
             if (!connected) {
                 cleanupTimer.restart()
             }
+        }
+    }
+
+    Connections {
+        target: controller.headModel
+        function onDizzinessChanged() {
+            advanced3DHead.setDizzinessEffect(controller.headModel.dizziness)
         }
     }
 

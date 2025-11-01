@@ -1,15 +1,15 @@
 #ifndef TILTCONTROLLER_H
 #define TILTCONTROLLER_H
 
-#include <QObject>
-#include <QTimer>
-#include <QElapsedTimer>
-#include <QVector>
-#include <QUrl>
-#include <QDateTime>
-#include <QSerialPort>
-#include <QSerialPortInfo>
-#include <QByteArray>
+#include <QtCore/QObject>
+#include <QtCore/QTimer>
+#include <QtCore/QElapsedTimer>
+#include <QtCore/QVector>
+#include <QtCore/QUrl>
+#include <QtCore/QDateTime>
+#include <QtSerialPort/QSerialPort>
+#include <QtSerialPort/QSerialPortInfo>
+#include <QtCore/QByteArray>
 #include <deque>
 #include "headmodel.h"
 

@@ -1,9 +1,9 @@
 #ifndef HEADMODEL_H
 #define HEADMODEL_H
 
-#include <QObject>
-#include <QVector3D>
-#include <QMatrix4x4>
+#include <QtCore/QObject>
+#include <QtGui/QVector3D>
+#include <QtGui/QMatrix4x4>
 
 class HeadModel : public QObject
 {
