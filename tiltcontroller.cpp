@@ -26,6 +26,13 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
         }
     });
 
+    // Инициализация переменных для исследования
+    m_researchFrameCounter = 1;
+    m_prevPitch = 0.0f;
+    m_prevRoll = 0.0f;
+    m_prevYaw = 0.0f;
+    m_prevTime = 0;
+
     m_headModel.resetData();
 
     refreshPorts();
@@ -89,6 +96,10 @@ void TiltController::initializeResearchNumber()
     emit researchNumberChanged(m_researchNumber);
 }
 
+
+
+
+
 void TiltController::startResearchRecording(const QString &researchNumber)
 {
     if (m_recording || !m_connected) {
@@ -98,6 +109,13 @@ void TiltController::startResearchRecording(const QString &researchNumber)
 
     m_researchNumber = researchNumber;
     m_researchStartTime = QDateTime::currentDateTime();
+    m_researchFrameCounter = 1; // Сбрасываем счетчик кадров
+
+    // Сбрасываем предыдущие значения для вычисления скоростей
+    m_prevPitch = 0.0f;
+    m_prevRoll = 0.0f;
+    m_prevYaw = 0.0f;
+    m_prevTime = QDateTime::currentMSecsSinceEpoch();
 
     QString fileName = generateResearchFileName(researchNumber);
     m_researchFile = new QFile(fileName);
@@ -118,6 +136,38 @@ void TiltController::startResearchRecording(const QString &researchNumber)
 
     addNotification("Начата запись исследования: " + researchNumber);
 }
+// void TiltController::startResearchRecording(const QString &researchNumber)
+// {
+//     if (m_recording || !m_connected) {
+//         addNotification("Невозможно начать запись: нет подключения к COM-порту");
+//         return;
+//     }
+
+//     m_researchNumber = researchNumber;
+//     m_researchStartTime = QDateTime::currentDateTime();
+
+//     QString fileName = generateResearchFileName(researchNumber);
+//     m_researchFile = new QFile(fileName);
+
+//     if (!m_researchFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
+//         addNotification("Ошибка создания файла исследования: " + fileName);
+//         delete m_researchFile;
+//         m_researchFile = nullptr;
+//         return;
+//     }
+
+//     m_researchStream = new QTextStream(m_researchFile);
+
+//     writeResearchHeader();
+
+//     m_recording = true;
+//     emit recordingChanged(m_recording);
+
+//     addNotification("Начата запись исследования: " + researchNumber);
+// }
+
+
+
 
 void TiltController::stopResearchRecording()
 {
@@ -140,6 +190,12 @@ void TiltController::stopResearchRecording()
     m_recording = false;
     emit recordingChanged(m_recording);
 
+    // Сбрасываем предыдущие значения
+    m_prevPitch = 0.0f;
+    m_prevRoll = 0.0f;
+    m_prevYaw = 0.0f;
+    m_prevTime = 0;
+
     // Обновляем номер исследования
     int nextNumber = m_researchNumber.toInt() + 1;
     m_researchNumber = QString::number(nextNumber).rightJustified(6, '0');
@@ -147,6 +203,35 @@ void TiltController::stopResearchRecording()
 
     addNotification("Запись исследования остановлена. Следующий номер: " + m_researchNumber);
 }
+
+// void TiltController::stopResearchRecording()
+// {
+//     if (!m_recording) {
+//         return;
+//     }
+
+//     if (m_researchStream) {
+//         m_researchStream->flush();
+//         delete m_researchStream;
+//         m_researchStream = nullptr;
+//     }
+
+//     if (m_researchFile) {
+//         m_researchFile->close();
+//         delete m_researchFile;
+//         m_researchFile = nullptr;
+//     }
+
+//     m_recording = false;
+//     emit recordingChanged(m_recording);
+
+//     // Обновляем номер исследования
+//     int nextNumber = m_researchNumber.toInt() + 1;
+//     m_researchNumber = QString::number(nextNumber).rightJustified(6, '0');
+//     emit researchNumberChanged(m_researchNumber);
+
+//     addNotification("Запись исследования остановлена. Следующий номер: " + m_researchNumber);
+// }
 
 QString TiltController::generateResearchFileName(const QString &number)
 {
@@ -193,6 +278,9 @@ void TiltController::disconnectDevice()
     safeDisconnect();
 }
 
+
+
+
 void TiltController::safeDisconnect()
 {
     if (m_isCleaningUp) return;
@@ -207,6 +295,12 @@ void TiltController::safeDisconnect()
     cleanupCOMPort();
     m_connected = false;
 
+    // Сбрасываем предыдущие значения
+    m_prevPitch = 0.0f;
+    m_prevRoll = 0.0f;
+    m_prevYaw = 0.0f;
+    m_prevTime = 0;
+
     if (!m_logMode) {
         m_headModel.resetData();
         m_angleHistory.clear();
@@ -216,6 +310,30 @@ void TiltController::safeDisconnect()
     emit connectedChanged(m_connected);
     m_isCleaningUp = false;
 }
+
+// void TiltController::safeDisconnect()
+// {
+//     if (m_isCleaningUp) return;
+
+//     m_isCleaningUp = true;
+
+//     // Останавливаем запись исследования если она активна
+//     if (m_recording) {
+//         stopResearchRecording();
+//     }
+
+//     cleanupCOMPort();
+//     m_connected = false;
+
+//     if (!m_logMode) {
+//         m_headModel.resetData();
+//         m_angleHistory.clear();
+//     }
+
+//     addNotification("Отключено от COM-порта");
+//     emit connectedChanged(m_connected);
+//     m_isCleaningUp = false;
+// }
 
 bool TiltController::setupCOMPort()
 {
@@ -374,6 +492,9 @@ void TiltController::calculateSpeeds(float pitch, float roll, float yaw, bool di
     updateHeadModel(pitch, roll, yaw, avgSpeedPitch, avgSpeedRoll, avgSpeedYaw, dizziness);
 }
 
+
+
+
 void TiltController::processCOMPortData(const QByteArray &data)
 {
     m_incompleteData.append(data);
@@ -394,15 +515,6 @@ void TiltController::processCOMPortData(const QByteArray &data)
         QString dataString = QString::fromUtf8(completeLine);
         qDebug() << "COM Port complete line:" << dataString;
 
-        // Запись сырых данных в файл исследования если запись активна
-        if (m_recording && m_researchStream) {
-            static int dataCounter = 1;
-            QString timestamp = QString::number(dataCounter).rightJustified(10, '0');
-            *m_researchStream << timestamp << ";" << dataString << "\n";
-            m_researchStream->flush();
-            dataCounter++;
-        }
-
         if (dataString.contains(';')) {
             QStringList parts = dataString.split(';');
             if (parts.size() >= 8) {
@@ -415,23 +527,52 @@ void TiltController::processCOMPortData(const QByteArray &data)
                 if (ok1 && ok2 && ok3 && ok8) {
                     qDebug() << "Parsed COM data - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw << "Dizziness:" << dizziness;
 
-                    // Запись форматированных данных в файл исследования
+                    // Вычисляем угловые скорости
+                    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+                    float speedPitch = 0.0f;
+                    float speedRoll = 0.0f;
+                    float speedYaw = 0.0f;
+
+                    if (m_prevTime > 0) {
+                        qint64 timeDiff = currentTime - m_prevTime;
+                        if (timeDiff > 0) {
+                            // Вычисляем скорости как разницу углов за время
+                            speedPitch = (pitch - m_prevPitch);  // * 1000.0f / timeDiff;
+                            speedRoll = (roll - m_prevRoll);  // * 1000.0f / timeDiff;
+                            speedYaw = (yaw - m_prevYaw);  // * 1000.0f / timeDiff;
+
+                            // Ограничиваем максимальную скорость
+                            const float maxSpeed = 180.0f;
+                            speedPitch = qBound(-maxSpeed, speedPitch, maxSpeed);
+                            speedRoll = qBound(-maxSpeed, speedRoll, maxSpeed);
+                            speedYaw = qBound(-maxSpeed, speedYaw, maxSpeed);
+                        }
+                    }
+
+                    // Обновляем предыдущие значения
+                    m_prevPitch = pitch;
+                    m_prevRoll = roll;
+                    m_prevYaw = yaw;
+                    m_prevTime = currentTime;
+
+                    // Запись в файл исследования
                     if (m_recording && m_researchStream) {
-                        static int formattedCounter = 1;
-                        QString timestamp = QString::number(formattedCounter).rightJustified(10, '0');
+                        QString timestamp = QString::number(m_researchFrameCounter).rightJustified(10, '0');
                         QString formattedLine = QString("%1;%2;%3;%4;%5;%6;%7;%8")
                                                     .arg(timestamp)
                                                     .arg(pitch, 0, 'f', 2)
                                                     .arg(roll, 0, 'f', 2)
                                                     .arg(yaw, 0, 'f', 2)
-                                                    .arg(0.0f, 0, 'f', 1)  // speedPitch - временно 0
-                                                    .arg(0.0f, 0, 'f', 1)  // speedRoll - временно 0
-                                                    .arg(0.0f, 0, 'f', 1)  // speedYaw - временно 0
+                                                    .arg(speedPitch, 0, 'f', 1)
+                                                    .arg(speedRoll, 0, 'f', 1)
+                                                    .arg(speedYaw, 0, 'f', 1)
                                                     .arg(dizziness ? 1 : 0);
 
                         *m_researchStream << formattedLine << "\n";
                         m_researchStream->flush();
-                        formattedCounter++;
+                        m_researchFrameCounter++;
+
+                        qDebug() << "Research data written:" << formattedLine;
                     }
 
                     calculateSpeeds(pitch, roll, yaw, dizziness);
@@ -450,6 +591,51 @@ void TiltController::processCOMPortData(const QByteArray &data)
                 float yaw = parts[2].toFloat(&ok3);
 
                 if (ok1 && ok2 && ok3) {
+                    // Вычисляем угловые скорости для формата с запятыми
+                    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+                    float speedPitch = 0.0f;
+                    float speedRoll = 0.0f;
+                    float speedYaw = 0.0f;
+
+                    if (m_prevTime > 0) {
+                        qint64 timeDiff = currentTime - m_prevTime;
+                        if (timeDiff > 0) {
+                            speedPitch = (pitch - m_prevPitch) * 1000.0f / timeDiff;
+                            speedRoll = (roll - m_prevRoll) * 1000.0f / timeDiff;
+                            speedYaw = (yaw - m_prevYaw) * 1000.0f / timeDiff;
+
+                            const float maxSpeed = 180.0f;
+                            speedPitch = qBound(-maxSpeed, speedPitch, maxSpeed);
+                            speedRoll = qBound(-maxSpeed, speedRoll, maxSpeed);
+                            speedYaw = qBound(-maxSpeed, speedYaw, maxSpeed);
+                        }
+                    }
+
+                    m_prevPitch = pitch;
+                    m_prevRoll = roll;
+                    m_prevYaw = yaw;
+                    m_prevTime = currentTime;
+
+                    // Запись в файл исследования
+                    if (m_recording && m_researchStream) {
+                        QString timestamp = QString::number(m_researchFrameCounter).rightJustified(10, '0');
+                        QString formattedLine = QString("%1;%2;%3;%4;%5;%6;%7;%8")
+                                                    .arg(timestamp)
+                                                    .arg(pitch, 0, 'f', 2)
+                                                    .arg(roll, 0, 'f', 2)
+                                                    .arg(yaw, 0, 'f', 2)
+                                                    .arg(speedPitch, 0, 'f', 1)
+                                                    .arg(speedRoll, 0, 'f', 1)
+                                                    .arg(speedYaw, 0, 'f', 1)
+                                                    .arg(0); // Для формата с запятыми dizziness всегда 0
+
+                        *m_researchStream << formattedLine << "\n";
+                        m_researchStream->flush();
+                        m_researchFrameCounter++;
+
+                        qDebug() << "Research data written:" << formattedLine;
+                    }
+
                     calculateSpeeds(pitch, roll, yaw, false);
                 }
             }
@@ -461,6 +647,94 @@ void TiltController::processCOMPortData(const QByteArray &data)
         m_incompleteData.clear();
     }
 }
+
+// void TiltController::processCOMPortData(const QByteArray &data)
+// {
+//     m_incompleteData.append(data);
+
+//     while (true) {
+//         int newlinePos = m_incompleteData.indexOf('\n');
+//         if (newlinePos == -1) {
+//             break;
+//         }
+
+//         QByteArray completeLine = m_incompleteData.left(newlinePos).trimmed();
+//         m_incompleteData = m_incompleteData.mid(newlinePos + 1);
+
+//         if (completeLine.isEmpty()) {
+//             continue;
+//         }
+
+//         QString dataString = QString::fromUtf8(completeLine);
+//         qDebug() << "COM Port complete line:" << dataString;
+
+//         // Запись сырых данных в файл исследования если запись активна
+//         if (m_recording && m_researchStream) {
+//             static int dataCounter = 1;
+//             QString timestamp = QString::number(dataCounter).rightJustified(10, '0');
+//             *m_researchStream << timestamp << ";" << dataString << "\n";
+//             m_researchStream->flush();
+//             dataCounter++;
+//         }
+
+//         if (dataString.contains(';')) {
+//             QStringList parts = dataString.split(';');
+//             if (parts.size() >= 8) {
+//                 bool ok1, ok2, ok3, ok8;
+//                 float pitch = parts[1].replace(',', '.').toFloat(&ok1);
+//                 float roll = parts[2].replace(',', '.').toFloat(&ok2);
+//                 float yaw = parts[3].replace(',', '.').toFloat(&ok3);
+//                 bool dizziness = (parts[7].toInt(&ok8) == 1);
+
+//                 if (ok1 && ok2 && ok3 && ok8) {
+//                     qDebug() << "Parsed COM data - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw << "Dizziness:" << dizziness;
+
+//                     // Запись форматированных данных в файл исследования
+//                     if (m_recording && m_researchStream) {
+//                         static int formattedCounter = 1;
+//                         QString timestamp = QString::number(formattedCounter).rightJustified(10, '0');
+//                         QString formattedLine = QString("%1;%2;%3;%4;%5;%6;%7;%8")
+//                                                     .arg(timestamp)
+//                                                     .arg(pitch, 0, 'f', 2)
+//                                                     .arg(roll, 0, 'f', 2)
+//                                                     .arg(yaw, 0, 'f', 2)
+//                                                     .arg(0.0f, 0, 'f', 1)  // speedPitch - временно 0
+//                                                     .arg(0.0f, 0, 'f', 1)  // speedRoll - временно 0
+//                                                     .arg(0.0f, 0, 'f', 1)  // speedYaw - временно 0
+//                                                     .arg(dizziness ? 1 : 0);
+
+//                         *m_researchStream << formattedLine << "\n";
+//                         m_researchStream->flush();
+//                         formattedCounter++;
+//                     }
+
+//                     calculateSpeeds(pitch, roll, yaw, dizziness);
+//                 } else {
+//                     qDebug() << "Failed to parse COM data. ok1:" << ok1 << "ok2:" << ok2 << "ok3:" << ok3 << "ok8:" << ok8;
+//                 }
+//             } else {
+//                 qDebug() << "Invalid COM data format. Expected 8 fields, got:" << parts.size();
+//             }
+//         } else if (dataString.contains(',')) {
+//             QStringList parts = dataString.split(',');
+//             if (parts.size() >= 3) {
+//                 bool ok1, ok2, ok3;
+//                 float pitch = parts[0].toFloat(&ok1);
+//                 float roll = parts[1].toFloat(&ok2);
+//                 float yaw = parts[2].toFloat(&ok3);
+
+//                 if (ok1 && ok2 && ok3) {
+//                     calculateSpeeds(pitch, roll, yaw, false);
+//                 }
+//             }
+//         }
+//     }
+
+//     if (m_incompleteData.size() > 1024) {
+//         qDebug() << "Incomplete data buffer too large, clearing";
+//         m_incompleteData.clear();
+//     }
+// }
 
 void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 {

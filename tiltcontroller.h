@@ -186,6 +186,13 @@ private:
     QFile *m_researchFile = nullptr;
     QTextStream *m_researchStream = nullptr;
     QDateTime m_researchStartTime;
+    int m_researchFrameCounter = 1;
+
+    // Для вычисления угловых скоростей
+    float m_prevPitch = 0.0f;
+    float m_prevRoll = 0.0f;
+    float m_prevYaw = 0.0f;
+    qint64 m_prevTime = 0;
 
 signals:
     void connectedChanged(bool connected);
