@@ -89,6 +89,7 @@ public slots:
     void switchToCOMPortMode();
     void startResearchRecording(const QString &researchNumber);
     void stopResearchRecording();
+    void toggleResearchRecording(); // Новый слот для переключения записи по пробелу
     void initializeResearchNumber();
 
 private slots:

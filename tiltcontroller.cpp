@@ -96,14 +96,16 @@ void TiltController::initializeResearchNumber()
     emit researchNumberChanged(m_researchNumber);
 }
 
-
-
-
-
 void TiltController::startResearchRecording(const QString &researchNumber)
 {
     if (m_recording || !m_connected) {
         addNotification("Невозможно начать запись: нет подключения к COM-порту");
+        return;
+    }
+
+    // Проверяем номер исследования
+    if (researchNumber.length() != 6) {
+        addNotification("Ошибка: номер исследования должен состоять из 6 цифр");
         return;
     }
 
@@ -136,38 +138,6 @@ void TiltController::startResearchRecording(const QString &researchNumber)
 
     addNotification("Начата запись исследования: " + researchNumber);
 }
-// void TiltController::startResearchRecording(const QString &researchNumber)
-// {
-//     if (m_recording || !m_connected) {
-//         addNotification("Невозможно начать запись: нет подключения к COM-порту");
-//         return;
-//     }
-
-//     m_researchNumber = researchNumber;
-//     m_researchStartTime = QDateTime::currentDateTime();
-
-//     QString fileName = generateResearchFileName(researchNumber);
-//     m_researchFile = new QFile(fileName);
-
-//     if (!m_researchFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
-//         addNotification("Ошибка создания файла исследования: " + fileName);
-//         delete m_researchFile;
-//         m_researchFile = nullptr;
-//         return;
-//     }
-
-//     m_researchStream = new QTextStream(m_researchFile);
-
-//     writeResearchHeader();
-
-//     m_recording = true;
-//     emit recordingChanged(m_recording);
-
-//     addNotification("Начата запись исследования: " + researchNumber);
-// }
-
-
-
 
 void TiltController::stopResearchRecording()
 {
@@ -204,34 +174,20 @@ void TiltController::stopResearchRecording()
     addNotification("Запись исследования остановлена. Следующий номер: " + m_researchNumber);
 }
 
-// void TiltController::stopResearchRecording()
-// {
-//     if (!m_recording) {
-//         return;
-//     }
+void TiltController::toggleResearchRecording()
+{
+    if (!m_connected) {
+        addNotification("Невозможно управлять записью: нет подключения к COM-порту");
+        return;
+    }
 
-//     if (m_researchStream) {
-//         m_researchStream->flush();
-//         delete m_researchStream;
-//         m_researchStream = nullptr;
-//     }
-
-//     if (m_researchFile) {
-//         m_researchFile->close();
-//         delete m_researchFile;
-//         m_researchFile = nullptr;
-//     }
-
-//     m_recording = false;
-//     emit recordingChanged(m_recording);
-
-//     // Обновляем номер исследования
-//     int nextNumber = m_researchNumber.toInt() + 1;
-//     m_researchNumber = QString::number(nextNumber).rightJustified(6, '0');
-//     emit researchNumberChanged(m_researchNumber);
-
-//     addNotification("Запись исследования остановлена. Следующий номер: " + m_researchNumber);
-// }
+    if (m_recording) {
+        stopResearchRecording();
+    } else {
+        // Используем текущий номер исследования
+        startResearchRecording(m_researchNumber);
+    }
+}
 
 QString TiltController::generateResearchFileName(const QString &number)
 {
@@ -278,9 +234,6 @@ void TiltController::disconnectDevice()
     safeDisconnect();
 }
 
-
-
-
 void TiltController::safeDisconnect()
 {
     if (m_isCleaningUp) return;
@@ -310,30 +263,6 @@ void TiltController::safeDisconnect()
     emit connectedChanged(m_connected);
     m_isCleaningUp = false;
 }
-
-// void TiltController::safeDisconnect()
-// {
-//     if (m_isCleaningUp) return;
-
-//     m_isCleaningUp = true;
-
-//     // Останавливаем запись исследования если она активна
-//     if (m_recording) {
-//         stopResearchRecording();
-//     }
-
-//     cleanupCOMPort();
-//     m_connected = false;
-
-//     if (!m_logMode) {
-//         m_headModel.resetData();
-//         m_angleHistory.clear();
-//     }
-
-//     addNotification("Отключено от COM-порта");
-//     emit connectedChanged(m_connected);
-//     m_isCleaningUp = false;
-// }
 
 bool TiltController::setupCOMPort()
 {
@@ -492,9 +421,6 @@ void TiltController::calculateSpeeds(float pitch, float roll, float yaw, bool di
     updateHeadModel(pitch, roll, yaw, avgSpeedPitch, avgSpeedRoll, avgSpeedYaw, dizziness);
 }
 
-
-
-
 void TiltController::processCOMPortData(const QByteArray &data)
 {
     m_incompleteData.append(data);
@@ -527,33 +453,29 @@ void TiltController::processCOMPortData(const QByteArray &data)
                 if (ok1 && ok2 && ok3 && ok8) {
                     qDebug() << "Parsed COM data - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw << "Dizziness:" << dizziness;
 
-                    // Вычисляем угловые скорости
-                    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+                    // Вычисляем угловые скорости (разница за кадр)
                     float speedPitch = 0.0f;
                     float speedRoll = 0.0f;
                     float speedYaw = 0.0f;
 
                     if (m_prevTime > 0) {
-                        qint64 timeDiff = currentTime - m_prevTime;
-                        if (timeDiff > 0) {
-                            // Вычисляем скорости как разницу углов за время
-                            speedPitch = (pitch - m_prevPitch);  // * 1000.0f / timeDiff;
-                            speedRoll = (roll - m_prevRoll);  // * 1000.0f / timeDiff;
-                            speedYaw = (yaw - m_prevYaw);  // * 1000.0f / timeDiff;
+                        // Простая разница между текущими и предыдущими углами
+                        speedPitch = pitch - m_prevPitch;
+                        speedRoll = roll - m_prevRoll;
+                        speedYaw = yaw - m_prevYaw;
 
-                            // Ограничиваем максимальную скорость
-                            const float maxSpeed = 180.0f;
-                            speedPitch = qBound(-maxSpeed, speedPitch, maxSpeed);
-                            speedRoll = qBound(-maxSpeed, speedRoll, maxSpeed);
-                            speedYaw = qBound(-maxSpeed, speedYaw, maxSpeed);
-                        }
+                        // Ограничиваем максимальную скорость (на всякий случай)
+                        const float maxSpeed = 180.0f;
+                        speedPitch = qBound(-maxSpeed, speedPitch, maxSpeed);
+                        speedRoll = qBound(-maxSpeed, speedRoll, maxSpeed);
+                        speedYaw = qBound(-maxSpeed, speedYaw, maxSpeed);
                     }
 
                     // Обновляем предыдущие значения
                     m_prevPitch = pitch;
                     m_prevRoll = roll;
                     m_prevYaw = yaw;
-                    m_prevTime = currentTime;
+                    m_prevTime = QDateTime::currentMSecsSinceEpoch();
 
                     // Запись в файл исследования
                     if (m_recording && m_researchStream) {
@@ -592,29 +514,25 @@ void TiltController::processCOMPortData(const QByteArray &data)
 
                 if (ok1 && ok2 && ok3) {
                     // Вычисляем угловые скорости для формата с запятыми
-                    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
                     float speedPitch = 0.0f;
                     float speedRoll = 0.0f;
                     float speedYaw = 0.0f;
 
                     if (m_prevTime > 0) {
-                        qint64 timeDiff = currentTime - m_prevTime;
-                        if (timeDiff > 0) {
-                            speedPitch = (pitch - m_prevPitch) * 1000.0f / timeDiff;
-                            speedRoll = (roll - m_prevRoll) * 1000.0f / timeDiff;
-                            speedYaw = (yaw - m_prevYaw) * 1000.0f / timeDiff;
+                        speedPitch = pitch - m_prevPitch;
+                        speedRoll = roll - m_prevRoll;
+                        speedYaw = yaw - m_prevYaw;
 
-                            const float maxSpeed = 180.0f;
-                            speedPitch = qBound(-maxSpeed, speedPitch, maxSpeed);
-                            speedRoll = qBound(-maxSpeed, speedRoll, maxSpeed);
-                            speedYaw = qBound(-maxSpeed, speedYaw, maxSpeed);
-                        }
+                        const float maxSpeed = 180.0f;
+                        speedPitch = qBound(-maxSpeed, speedPitch, maxSpeed);
+                        speedRoll = qBound(-maxSpeed, speedRoll, maxSpeed);
+                        speedYaw = qBound(-maxSpeed, speedYaw, maxSpeed);
                     }
 
                     m_prevPitch = pitch;
                     m_prevRoll = roll;
                     m_prevYaw = yaw;
-                    m_prevTime = currentTime;
+                    m_prevTime = QDateTime::currentMSecsSinceEpoch();
 
                     // Запись в файл исследования
                     if (m_recording && m_researchStream) {
@@ -647,94 +565,6 @@ void TiltController::processCOMPortData(const QByteArray &data)
         m_incompleteData.clear();
     }
 }
-
-// void TiltController::processCOMPortData(const QByteArray &data)
-// {
-//     m_incompleteData.append(data);
-
-//     while (true) {
-//         int newlinePos = m_incompleteData.indexOf('\n');
-//         if (newlinePos == -1) {
-//             break;
-//         }
-
-//         QByteArray completeLine = m_incompleteData.left(newlinePos).trimmed();
-//         m_incompleteData = m_incompleteData.mid(newlinePos + 1);
-
-//         if (completeLine.isEmpty()) {
-//             continue;
-//         }
-
-//         QString dataString = QString::fromUtf8(completeLine);
-//         qDebug() << "COM Port complete line:" << dataString;
-
-//         // Запись сырых данных в файл исследования если запись активна
-//         if (m_recording && m_researchStream) {
-//             static int dataCounter = 1;
-//             QString timestamp = QString::number(dataCounter).rightJustified(10, '0');
-//             *m_researchStream << timestamp << ";" << dataString << "\n";
-//             m_researchStream->flush();
-//             dataCounter++;
-//         }
-
-//         if (dataString.contains(';')) {
-//             QStringList parts = dataString.split(';');
-//             if (parts.size() >= 8) {
-//                 bool ok1, ok2, ok3, ok8;
-//                 float pitch = parts[1].replace(',', '.').toFloat(&ok1);
-//                 float roll = parts[2].replace(',', '.').toFloat(&ok2);
-//                 float yaw = parts[3].replace(',', '.').toFloat(&ok3);
-//                 bool dizziness = (parts[7].toInt(&ok8) == 1);
-
-//                 if (ok1 && ok2 && ok3 && ok8) {
-//                     qDebug() << "Parsed COM data - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw << "Dizziness:" << dizziness;
-
-//                     // Запись форматированных данных в файл исследования
-//                     if (m_recording && m_researchStream) {
-//                         static int formattedCounter = 1;
-//                         QString timestamp = QString::number(formattedCounter).rightJustified(10, '0');
-//                         QString formattedLine = QString("%1;%2;%3;%4;%5;%6;%7;%8")
-//                                                     .arg(timestamp)
-//                                                     .arg(pitch, 0, 'f', 2)
-//                                                     .arg(roll, 0, 'f', 2)
-//                                                     .arg(yaw, 0, 'f', 2)
-//                                                     .arg(0.0f, 0, 'f', 1)  // speedPitch - временно 0
-//                                                     .arg(0.0f, 0, 'f', 1)  // speedRoll - временно 0
-//                                                     .arg(0.0f, 0, 'f', 1)  // speedYaw - временно 0
-//                                                     .arg(dizziness ? 1 : 0);
-
-//                         *m_researchStream << formattedLine << "\n";
-//                         m_researchStream->flush();
-//                         formattedCounter++;
-//                     }
-
-//                     calculateSpeeds(pitch, roll, yaw, dizziness);
-//                 } else {
-//                     qDebug() << "Failed to parse COM data. ok1:" << ok1 << "ok2:" << ok2 << "ok3:" << ok3 << "ok8:" << ok8;
-//                 }
-//             } else {
-//                 qDebug() << "Invalid COM data format. Expected 8 fields, got:" << parts.size();
-//             }
-//         } else if (dataString.contains(',')) {
-//             QStringList parts = dataString.split(',');
-//             if (parts.size() >= 3) {
-//                 bool ok1, ok2, ok3;
-//                 float pitch = parts[0].toFloat(&ok1);
-//                 float roll = parts[1].toFloat(&ok2);
-//                 float yaw = parts[2].toFloat(&ok3);
-
-//                 if (ok1 && ok2 && ok3) {
-//                     calculateSpeeds(pitch, roll, yaw, false);
-//                 }
-//             }
-//         }
-//     }
-
-//     if (m_incompleteData.size() > 1024) {
-//         qDebug() << "Incomplete data buffer too large, clearing";
-//         m_incompleteData.clear();
-//     }
-// }
 
 void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 {
@@ -801,13 +631,27 @@ void TiltController::switchToCOMPortMode()
     }
 }
 
+
+
+
+
+
 void TiltController::loadLogFile(const QString &filePath)
 {
     QString fileName = filePath;
 
+    // Обрабатываем разные форматы путей
     if (fileName.startsWith("file:///")) {
+#ifdef Q_OS_WIN
+        // На Windows убираем "file:///" и оставляем путь
         fileName = fileName.mid(8);
+#else
+        // На Linux/Mac убираем "file://"
+        fileName = fileName.mid(7);
+#endif
     }
+
+    qDebug() << "Loading log file:" << fileName;
 
     if (fileName.isEmpty()) {
         addNotification("Файл не выбран");
@@ -870,7 +714,9 @@ void TiltController::loadLogFile(const QString &filePath)
     if (!studyLines.isEmpty()) {
         m_studyInfo = studyLines.join(" | ");
     } else {
-        m_studyInfo = "Информация об исследовании не найдена";
+        // Если нет заголовка, используем имя файла
+        QFileInfo fileInfo(fileName);
+        m_studyInfo = "Исследование: " + fileInfo.fileName();
     }
 
     if (m_logData.isEmpty()) {

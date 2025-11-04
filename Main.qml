@@ -3,6 +3,7 @@ import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Shapes
+import QtQuick.Dialogs
 import Qt3D.Core 2.15
 import Qt3D.Render 2.15
 import Qt3D.Input 2.15
@@ -18,13 +19,39 @@ ApplicationWindow {
     title: "Монитор положения головы"
     color: "#1e1e1e"
 
+    // Убираем проблемные свойства фокуса и добавляем Shortcut
+    Shortcut {
+        sequence: "Space"
+        onActivated: handleSpaceKey()
+    }
+
     // Свойства для управления 3D видом
     property bool innerEarVisible: true
     property bool innerHeadVisible: true
 
     // Новые свойства для исследования
-    property string researchNumber: "000001"
-    property bool recording: false
+    property string researchNumber: controller.researchNumber
+    property bool recording: controller.recording
+
+    // Функция для обработки клавиши пробела
+    function handleSpaceKey() {
+        // Работает только в режиме COM-порта при подключении
+        if (controller.connected && !controller.logMode) {
+            if (!recording) {
+                // Начинаем запись
+                if (researchField.text.length === 6) {
+                    controller.startResearchRecording(researchField.text);
+                    showNotification("Запись исследования начата (ПРОБЕЛ)", false);
+                } else {
+                    showNotification("Номер исследования должен состоять из 6 цифр", true);
+                }
+            } else {
+                // Останавливаем запись
+                controller.stopResearchRecording();
+                showNotification("Запись исследования остановлена (ПРОБЕЛ)", false);
+            }
+        }
+    }
 
     // Функция для показа уведомлений
     function showNotification(message, isError) {
@@ -46,6 +73,22 @@ ApplicationWindow {
         return hasData ? value.toFixed(1) + "°/с" : "нет данных"
     }
 
+    // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ ===
+    FileDialog {
+        id: loadResearchDialog
+        title: "Выберите файл исследования"
+        currentFolder: "file:///" + applicationDirPath + "/research"
+        nameFilters: ["Текстовые файлы (*.txt)", "Все файлы (*)"]
+        onAccepted: {
+            console.log("Selected file:", selectedFile)
+            controller.loadLogFile(selectedFile)
+        }
+        onRejected: {
+            console.log("File selection canceled")
+        }
+    }
+
+    // === ОСНОВНОЙ ИНТЕРФЕЙС ===
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
@@ -274,14 +317,17 @@ ApplicationWindow {
                     spacing: 15
                     Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
 
-                    // Поле исследования
+                    // Поле исследования с центрированной надписью
                     Column {
                         spacing: 5
+                        Layout.alignment: Qt.AlignVCenter
+                        width: 120 // Фиксированная ширина для центрирования
 
                         Text {
                             text: "Исследование:"
                             color: "#aaa"
                             font.pixelSize: 14
+                            anchors.horizontalCenter: parent.horizontalCenter
                         }
 
                         TextField {
@@ -303,6 +349,16 @@ ApplicationWindow {
                             color: "white"
                             font.pixelSize: 14
                             horizontalAlignment: TextInput.AlignHCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+
+                        // Подсказка про пробел
+                        Text {
+                            text: "ПРОБЕЛ - запись"
+                            color: "#666"
+                            font.pixelSize: 10
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: controller.connected && !controller.logMode
                         }
                     }
 
@@ -312,12 +368,14 @@ ApplicationWindow {
                         width: 100
                         height: 50
                         radius: 6
+                        enabled: controller.connected
 
-                        property color normalColor: recording ? "#e44a2a" : "#2a7be4"
-                        property color hoverColor: recording ? "#f55a3a" : "#3a8bff"
-                        property color pressedColor: recording ? "#c43a1a" : "#1a6bc4"
+                        property color normalColor: recording ? "#e44a2a" : (enabled ? "#2a7be4" : "#555")
+                        property color hoverColor: recording ? "#f55a3a" : (enabled ? "#3a8bff" : "#666")
+                        property color pressedColor: recording ? "#c43a1a" : (enabled ? "#1a6bc4" : "#444")
 
                         color: {
+                            if (!enabled) return normalColor;
                             if (researchMouseArea.pressed) {
                                 return pressedColor
                             } else if (researchMouseArea.containsMouse) {
@@ -334,9 +392,9 @@ ApplicationWindow {
                         Text {
                             anchors.centerIn: parent
                             text: recording ? "Остановить\nисследование" : "Записать\nисследование"
-                            color: "white"
+                            color: enabled ? "white" : "#888"
                             font.pixelSize: 12
-                            font.bold: true
+                            font.bold: enabled
                             horizontalAlignment: Text.AlignHCenter
                         }
 
@@ -344,9 +402,9 @@ ApplicationWindow {
                             id: researchMouseArea
                             anchors.fill: parent
                             hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                             onClicked: {
-                                if (controller.connected) {
+                                if (enabled) {
                                     if (!recording) {
                                         controller.startResearchRecording(researchField.text)
                                         recording = true
@@ -406,16 +464,20 @@ ApplicationWindow {
                         }
                     }
 
-                    // Кнопка загрузки исследования
+
+
+
+                    // Кнопка загрузки исследования (блокируется во время записи)
                     Rectangle {
                         id: loadResearchButton
                         width: 100
                         height: 50
                         radius: 6
+                        enabled: !recording // Блокируем во время записи
 
-                        property color normalColor: "#4caf50"
-                        property color hoverColor: "#5cbf62"
-                        property color pressedColor: "#3a5c42"
+                        property color normalColor: enabled ? "#4caf50" : "#555"
+                        property color hoverColor: enabled ? "#5cbf62" : "#666"
+                        property color pressedColor: enabled ? "#3a5c42" : "#444"
 
                         color: {
                             if (loadResearchMouseArea.pressed) {
@@ -434,9 +496,9 @@ ApplicationWindow {
                         Text {
                             anchors.centerIn: parent
                             text: "Загрузить\nисследование"
-                            color: "white"
+                            color: enabled ? "white" : "#888"
                             font.pixelSize: 12
-                            font.bold: true
+                            font.bold: enabled
                             horizontalAlignment: Text.AlignHCenter
                         }
 
@@ -444,9 +506,13 @@ ApplicationWindow {
                             id: loadResearchMouseArea
                             anchors.fill: parent
                             hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                             onClicked: {
-                                // Загрузка исследования
+                                if (enabled) {
+                                    loadResearchDialog.open()
+                                } else {
+                                    showNotification("Невозможно загрузить исследование во время записи", true)
+                                }
                             }
                         }
                     }
