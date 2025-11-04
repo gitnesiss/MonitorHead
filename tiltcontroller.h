@@ -10,6 +10,9 @@
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
 #include <QtCore/QByteArray>
+#include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QTextStream>
 #include <deque>
 #include "headmodel.h"
 
@@ -42,6 +45,8 @@ class TiltController : public QObject
     Q_PROPERTY(QVariantList yawGraphData READ yawGraphData NOTIFY graphDataChanged)
     Q_PROPERTY(QVariantList dizzinessData READ dizzinessData NOTIFY graphDataChanged)
     Q_PROPERTY(int updateFrequency READ updateFrequency NOTIFY updateFrequencyChanged)
+    Q_PROPERTY(QString researchNumber READ researchNumber NOTIFY researchNumberChanged)
+    Q_PROPERTY(bool recording READ recording NOTIFY recordingChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -67,6 +72,8 @@ public:
     QVariantList yawGraphData() const { return m_yawGraphData; }
     QVariantList dizzinessData() const { return m_dizzinessData; }
     int updateFrequency() const { return m_updateFrequency; }
+    QString researchNumber() const { return m_researchNumber; }
+    bool recording() const { return m_recording; }
 
 public slots:
     void connectDevice();
@@ -80,6 +87,9 @@ public slots:
     void refreshPorts();
     void autoConnect();
     void switchToCOMPortMode();
+    void startResearchRecording(const QString &researchNumber);
+    void stopResearchRecording();
+    void initializeResearchNumber();
 
 private slots:
     void updateLogPlayback();
@@ -97,6 +107,8 @@ private:
     void calculateSpeeds(float pitch, float roll, float yaw, bool dizziness);
     void updateSpeedBuffers(float pitch, float roll, float yaw, qint64 timestamp);
     void computeAverageSpeeds(float &avgSpeedPitch, float &avgSpeedRoll, float &avgSpeedYaw);
+    QString generateResearchFileName(const QString &number);
+    void writeResearchHeader();
 
     HeadModel m_headModel;
     QTimer m_logTimer;
@@ -168,6 +180,13 @@ private:
     int m_updateFrequency = 10;
     QTimer m_dataUpdateTimer;
 
+    // Исследование
+    bool m_recording = false;
+    QString m_researchNumber = "000001";
+    QFile *m_researchFile = nullptr;
+    QTextStream *m_researchStream = nullptr;
+    QDateTime m_researchStartTime;
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -183,6 +202,8 @@ signals:
     void graphDurationChanged(int duration);
     void graphDataChanged();
     void updateFrequencyChanged(int frequency);
+    void researchNumberChanged(const QString &researchNumber);
+    void recordingChanged(bool recording);
 };
 
 #endif // TILTCONTROLLER_H

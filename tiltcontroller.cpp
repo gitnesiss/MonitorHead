@@ -5,6 +5,7 @@
 #include <QtMath>
 #include <QDateTime>
 #include <QCoreApplication>
+#include <QRegularExpression>
 #include <algorithm>
 
 TiltController::TiltController(QObject *parent) : QObject(parent)
@@ -41,12 +42,135 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
 
     m_lastDizzinessState = false;
     m_currentDizzinessStart = 0;
+
+    // Инициализация номера исследования
+    initializeResearchNumber();
 }
 
 TiltController::~TiltController()
 {
     m_isCleaningUp = true;
     cleanupCOMPort();
+}
+
+void TiltController::initializeResearchNumber()
+{
+    QDir researchDir("research");
+    int maxNumber = 0;
+
+    // Создаем папку если не существует
+    if (!researchDir.exists()) {
+        researchDir.mkpath(".");
+    }
+
+    // Ищем файлы исследований
+    QStringList filters;
+    filters << "Research_*.txt";
+    researchDir.setNameFilters(filters);
+    researchDir.setSorting(QDir::Name);
+
+    QFileInfoList files = researchDir.entryInfoList();
+
+    for (const QFileInfo &file : files) {
+        QString fileName = file.fileName();
+        // Ищем паттерн Research_000001_2025_11_04_09_51_34.txt
+        QRegularExpression re("Research_(\\d{6})_\\d{4}_\\d{2}_\\d{2}_\\d{2}_\\d{2}_\\d{2}\\.txt");
+        QRegularExpressionMatch match = re.match(fileName);
+
+        if (match.hasMatch()) {
+            int number = match.captured(1).toInt();
+            if (number > maxNumber) {
+                maxNumber = number;
+            }
+        }
+    }
+
+    m_researchNumber = QString::number(maxNumber + 1).rightJustified(6, '0');
+    emit researchNumberChanged(m_researchNumber);
+}
+
+void TiltController::startResearchRecording(const QString &researchNumber)
+{
+    if (m_recording || !m_connected) {
+        addNotification("Невозможно начать запись: нет подключения к COM-порту");
+        return;
+    }
+
+    m_researchNumber = researchNumber;
+    m_researchStartTime = QDateTime::currentDateTime();
+
+    QString fileName = generateResearchFileName(researchNumber);
+    m_researchFile = new QFile(fileName);
+
+    if (!m_researchFile->open(QIODevice::WriteOnly | QIODevice::Text)) {
+        addNotification("Ошибка создания файла исследования: " + fileName);
+        delete m_researchFile;
+        m_researchFile = nullptr;
+        return;
+    }
+
+    m_researchStream = new QTextStream(m_researchFile);
+
+    writeResearchHeader();
+
+    m_recording = true;
+    emit recordingChanged(m_recording);
+
+    addNotification("Начата запись исследования: " + researchNumber);
+}
+
+void TiltController::stopResearchRecording()
+{
+    if (!m_recording) {
+        return;
+    }
+
+    if (m_researchStream) {
+        m_researchStream->flush();
+        delete m_researchStream;
+        m_researchStream = nullptr;
+    }
+
+    if (m_researchFile) {
+        m_researchFile->close();
+        delete m_researchFile;
+        m_researchFile = nullptr;
+    }
+
+    m_recording = false;
+    emit recordingChanged(m_recording);
+
+    // Обновляем номер исследования
+    int nextNumber = m_researchNumber.toInt() + 1;
+    m_researchNumber = QString::number(nextNumber).rightJustified(6, '0');
+    emit researchNumberChanged(m_researchNumber);
+
+    addNotification("Запись исследования остановлена. Следующий номер: " + m_researchNumber);
+}
+
+QString TiltController::generateResearchFileName(const QString &number)
+{
+    QDateTime now = QDateTime::currentDateTime();
+    QString dateStr = now.toString("yyyy_MM_dd");
+    QString timeStr = now.toString("hh_mm_ss");
+
+    return QString("research/Research_%1_%2_%3.txt")
+        .arg(number)
+        .arg(dateStr)
+        .arg(timeStr);
+}
+
+void TiltController::writeResearchHeader()
+{
+    if (!m_researchStream) return;
+
+    QString dateTimeStr = m_researchStartTime.toString("yyyy-MM-dd hh:mm:ss");
+
+    *m_researchStream << "##########\n";
+    *m_researchStream << "# Исследование № " << m_researchNumber << "\n";
+    *m_researchStream << "# " << dateTimeStr << "\n";
+    *m_researchStream << "##########\n";
+    m_researchStream->flush();
 }
 
 void TiltController::connectDevice()
@@ -74,6 +198,12 @@ void TiltController::safeDisconnect()
     if (m_isCleaningUp) return;
 
     m_isCleaningUp = true;
+
+    // Останавливаем запись исследования если она активна
+    if (m_recording) {
+        stopResearchRecording();
+    }
+
     cleanupCOMPort();
     m_connected = false;
 
@@ -264,6 +394,15 @@ void TiltController::processCOMPortData(const QByteArray &data)
         QString dataString = QString::fromUtf8(completeLine);
         qDebug() << "COM Port complete line:" << dataString;
 
+        // Запись сырых данных в файл исследования если запись активна
+        if (m_recording && m_researchStream) {
+            static int dataCounter = 1;
+            QString timestamp = QString::number(dataCounter).rightJustified(10, '0');
+            *m_researchStream << timestamp << ";" << dataString << "\n";
+            m_researchStream->flush();
+            dataCounter++;
+        }
+
         if (dataString.contains(';')) {
             QStringList parts = dataString.split(';');
             if (parts.size() >= 8) {
@@ -275,6 +414,26 @@ void TiltController::processCOMPortData(const QByteArray &data)
 
                 if (ok1 && ok2 && ok3 && ok8) {
                     qDebug() << "Parsed COM data - Pitch:" << pitch << "Roll:" << roll << "Yaw:" << yaw << "Dizziness:" << dizziness;
+
+                    // Запись форматированных данных в файл исследования
+                    if (m_recording && m_researchStream) {
+                        static int formattedCounter = 1;
+                        QString timestamp = QString::number(formattedCounter).rightJustified(10, '0');
+                        QString formattedLine = QString("%1;%2;%3;%4;%5;%6;%7;%8")
+                                                    .arg(timestamp)
+                                                    .arg(pitch, 0, 'f', 2)
+                                                    .arg(roll, 0, 'f', 2)
+                                                    .arg(yaw, 0, 'f', 2)
+                                                    .arg(0.0f, 0, 'f', 1)  // speedPitch - временно 0
+                                                    .arg(0.0f, 0, 'f', 1)  // speedRoll - временно 0
+                                                    .arg(0.0f, 0, 'f', 1)  // speedYaw - временно 0
+                                                    .arg(dizziness ? 1 : 0);
+
+                        *m_researchStream << formattedLine << "\n";
+                        m_researchStream->flush();
+                        formattedCounter++;
+                    }
+
                     calculateSpeeds(pitch, roll, yaw, dizziness);
                 } else {
                     qDebug() << "Failed to parse COM data. ok1:" << ok1 << "ok2:" << ok2 << "ok3:" << ok3 << "ok8:" << ok8;

@@ -12,14 +12,19 @@ ApplicationWindow {
     id: mainWindow
     width: 1400
     height: 900
-    minimumWidth: 1200
-    minimumHeight: 700
+    minimumWidth: 1280
+    minimumHeight: 720
     visible: true
     title: "Монитор положения головы"
     color: "#1e1e1e"
 
     // Свойства для управления 3D видом
     property bool innerEarVisible: true
+    property bool innerHeadVisible: true
+
+    // Новые свойства для исследования
+    property string researchNumber: "000001"
+    property bool recording: false
 
     // Функция для показа уведомлений
     function showNotification(message, isError) {
@@ -170,28 +175,54 @@ ApplicationWindow {
                             }
                         }
 
-                        Button {
-                            text: controller.connected ? "Отключить" : "Подключить"
+                        Rectangle {
+                            id: connectButton
                             Layout.preferredWidth: 100
+                            Layout.preferredHeight: 30
                             Layout.alignment: Qt.AlignBottom
-                            onClicked: {
-                                if (controller.connected) {
-                                    controller.disconnectDevice()
+                            radius: 4
+
+                            // Цвета для разных состояний
+                            property color normalColor: controller.connected ? "#e44a2a" : "#2a7be4"
+                            property color hoverColor: controller.connected ? "#f55a3a" : "#3a8bff"
+                            property color pressedColor: controller.connected ? "#c43a1a" : "#1a6bc4"
+
+                            color: {
+                                if (mouseArea.pressed) {
+                                    return pressedColor
+                                } else if (mouseArea.containsMouse) {
+                                    return hoverColor
                                 } else {
-                                    controller.connectDevice()
+                                    return normalColor
                                 }
                             }
-                            background: Rectangle {
-                                color: parent.down ?
-                                    (controller.connected ? "#c43a1a" : "#1a6bc4") :
-                                    (controller.connected ? "#e44a2a" : "#2a7be4")
-                                radius: 4
+
+                            // Плавная анимация изменения цвета
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
                             }
-                            contentItem: Text {
-                                text: parent.text
+
+                            // Текст кнопки
+                            Text {
+                                anchors.centerIn: parent
+                                text: controller.connected ? "Отключить" : "Подключить"
                                 color: "white"
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+                                font.bold: true
+                            }
+
+                            // Обработка кликов
+                            MouseArea {
+                                id: mouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (controller.connected) {
+                                        controller.disconnectDevice()
+                                    } else {
+                                        controller.connectDevice()
+                                    }
+                                }
                             }
                         }
                     }
@@ -238,8 +269,194 @@ ApplicationWindow {
                 anchors.margins: 10
                 spacing: 15
 
-                // Левая часть - информация о режиме и исследовании
+                // Левая часть - исследование и кнопки
+                RowLayout {
+                    spacing: 15
+                    Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+
+                    // Поле исследования
+                    Column {
+                        spacing: 5
+
+                        Text {
+                            text: "Исследование:"
+                            color: "#aaa"
+                            font.pixelSize: 14
+                        }
+
+                        TextField {
+                            id: researchField
+                            width: 120
+                            placeholderText: "000000"
+                            maximumLength: 6
+                            validator: RegularExpressionValidator { regularExpression: /[0-9]{6}/ }
+                            text: researchNumber
+                            onTextChanged: {
+                                if (text.length === 6) researchNumber = text
+                            }
+                            background: Rectangle {
+                                color: "#3c3c3c"
+                                radius: 4
+                                border.color: researchField.activeFocus ? "#4caf50" : "#555"
+                                border.width: 1
+                            }
+                            color: "white"
+                            font.pixelSize: 14
+                            horizontalAlignment: TextInput.AlignHCenter
+                        }
+                    }
+
+                    // Кнопка записи исследования
+                    Rectangle {
+                        id: researchButton
+                        width: 100
+                        height: 50
+                        radius: 6
+
+                        property color normalColor: recording ? "#e44a2a" : "#2a7be4"
+                        property color hoverColor: recording ? "#f55a3a" : "#3a8bff"
+                        property color pressedColor: recording ? "#c43a1a" : "#1a6bc4"
+
+                        color: {
+                            if (researchMouseArea.pressed) {
+                                return pressedColor
+                            } else if (researchMouseArea.containsMouse) {
+                                return hoverColor
+                            } else {
+                                return normalColor
+                            }
+                        }
+
+                        Behavior on color {
+                            ColorAnimation { duration: 150 }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: recording ? "Остановить\nисследование" : "Записать\nисследование"
+                            color: "white"
+                            font.pixelSize: 12
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        MouseArea {
+                            id: researchMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (controller.connected) {
+                                    if (!recording) {
+                                        controller.startResearchRecording(researchField.text)
+                                        recording = true
+                                    } else {
+                                        controller.stopResearchRecording()
+                                        recording = false
+                                    }
+                                } else {
+                                    showNotification("Для записи необходимо подключение к COM-порту", true)
+                                }
+                            }
+                        }
+                    }
+
+                    // Кнопка калибровки
+                    Rectangle {
+                        id: calibrationButton
+                        width: 100
+                        height: 50
+                        radius: 6
+
+                        property color normalColor: "#9c27b0"
+                        property color hoverColor: "#ac37c0"
+                        property color pressedColor: "#7c3a5c"
+
+                        color: {
+                            if (calibrationMouseArea.pressed) {
+                                return pressedColor
+                            } else if (calibrationMouseArea.containsMouse) {
+                                return hoverColor
+                            } else {
+                                return normalColor
+                            }
+                        }
+
+                        Behavior on color {
+                            ColorAnimation { duration: 150 }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Калибровка"
+                            color: "white"
+                            font.pixelSize: 14
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        MouseArea {
+                            id: calibrationMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                // Действие для калибровки
+                            }
+                        }
+                    }
+
+                    // Кнопка загрузки исследования
+                    Rectangle {
+                        id: loadResearchButton
+                        width: 100
+                        height: 50
+                        radius: 6
+
+                        property color normalColor: "#4caf50"
+                        property color hoverColor: "#5cbf62"
+                        property color pressedColor: "#3a5c42"
+
+                        color: {
+                            if (loadResearchMouseArea.pressed) {
+                                return pressedColor
+                            } else if (loadResearchMouseArea.containsMouse) {
+                                return hoverColor
+                            } else {
+                                return normalColor
+                            }
+                        }
+
+                        Behavior on color {
+                            ColorAnimation { duration: 150 }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Загрузить\nисследование"
+                            color: "white"
+                            font.pixelSize: 12
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        MouseArea {
+                            id: loadResearchMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                // Загрузка исследования
+                            }
+                        }
+                    }
+                }
+
+                Item { Layout.fillWidth: true } // Распорка
+
+                // Правая часть - информация о режиме
                 ColumnLayout {
+                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
                     spacing: 5
 
                     Text {
@@ -257,174 +474,6 @@ ApplicationWindow {
                         font.pixelSize: 12
                         elide: Text.ElideRight
                         Layout.maximumWidth: 400
-                    }
-                }
-
-                Item { Layout.fillWidth: true } // Распорка
-
-                // Правая часть - кнопки загрузки данных и калибровка
-                RowLayout {
-                    spacing: 10
-
-                    Button {
-                        text: "📁 Загрузить лог-файл"
-                        Layout.preferredWidth: 180
-                        Layout.preferredHeight: 40
-                        onClicked: {
-                            showNotification("Используйте поле ввода для загрузки файла", false)
-                        }
-                        background: Rectangle {
-                            color: parent.down ? "#3a5c42" : "#4caf50"
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-
-                    Button {
-                        text: "🔌 Перейти к COM-порту"
-                        Layout.preferredWidth: 180
-                        Layout.preferredHeight: 40
-                        onClicked: controller.switchToCOMPortMode()
-                        visible: controller.logMode
-                        background: Rectangle {
-                            color: parent.down ? "#1a4b6b" : "#2196f3"
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-
-                    Button {
-                        text: "🎯 Калибровка"
-                        Layout.preferredWidth: 120
-                        Layout.preferredHeight: 40
-                        background: Rectangle {
-                            color: parent.down ? "#7c3a5c" : "#9c27b0"
-                            radius: 6
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-                }
-            }
-        }
-
-        // === ОТЛАДОЧНЫЙ БЛОК ===
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 160
-            color: "#2d2d2d"
-            radius: 8
-            border.color: "#555"
-            visible: true
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 5
-
-                Text {
-                    text: "ОТЛАДКА - ИНТЕРВАЛЫ ГОЛОВОКРУЖЕНИЯ"
-                    color: "#FF9800"
-                    font.pixelSize: 12
-                    font.bold: true
-                }
-
-                GridLayout {
-                    Layout.fillWidth: true
-                    columns: 2
-                    columnSpacing: 10
-                    rowSpacing: 5
-
-                    Text { text: "Активное головокружение:"; color: "#aaa"; font.pixelSize: 10 }
-                    Text {
-                        text: controller.headModel.dizziness ? "ДА 🔴" : "НЕТ 🟢"
-                        color: controller.headModel.dizziness ? "#FFA000" : "#4CAF50"
-                        font.pixelSize: 10
-                        font.bold: true
-                    }
-
-                    Text { text: "Интервалов головокружения:"; color: "#aaa"; font.pixelSize: 10 }
-                    Text {
-                        text: controller.dizzinessData.length
-                        color: controller.dizzinessData.length > 0 ? "#40FFA000" : "#aaa"
-                        font.pixelSize: 10
-                        font.bold: controller.dizzinessData.length > 0
-                    }
-
-                    Text { text: "Текущий интервал:"; color: "#aaa"; font.pixelSize: 10 }
-                    Text {
-                        text: {
-                            if (controller.headModel.dizziness) {
-                                return "АКТИВЕН ⏱️"
-                            } else if (controller.dizzinessData.length > 0) {
-                                return "ЗАВЕРШЕН ✅"
-                            } else {
-                                return "ОТСУТСТВУЕТ ❌"
-                            }
-                        }
-                        color: controller.headModel.dizziness ? "#FFA000" :
-                               (controller.dizzinessData.length > 0 ? "#4CAF50" : "#aaa")
-                        font.pixelSize: 10
-                    }
-
-                    Text { text: "Данные Pitch:"; color: "#aaa"; font.pixelSize: 10 }
-                    Text {
-                        text: controller.pitchGraphData.length + " точек"
-                        color: controller.pitchGraphData.length > 0 ? "#BB86FC" : "#f44336"
-                        font.pixelSize: 10
-                    }
-
-                    Text { text: "Частота обновления:"; color: "#aaa"; font.pixelSize: 10 }
-                    Text {
-                        text: controller.updateFrequency + " Гц"
-                        color: "#2196f3"
-                        font.pixelSize: 10
-                    }
-
-                    Text { text: "Режим:"; color: "#aaa"; font.pixelSize: 10 }
-                    Text {
-                        text: controller.connected ? "COM-порт" : (controller.logLoaded ? "Лог-файл" : "Ожидание")
-                        color: controller.connected ? "#4CAF50" : (controller.logLoaded ? "#2196F3" : "#FF9800")
-                        font.pixelSize: 10
-                    }
-                }
-
-                // Информация о последнем интервале
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 20
-                    color: "transparent"
-                    visible: controller.dizzinessData.length > 0
-
-                    Text {
-                        text: {
-                            if (controller.dizzinessData.length > 0) {
-                                var lastInterval = controller.dizzinessData[controller.dizzinessData.length - 1]
-                                var duration = (lastInterval.endTime - lastInterval.startTime) / 1000
-                                return "Последний интервал: " + duration.toFixed(1) + " сек"
-                            }
-                            return ""
-                        }
-                        color: "#40FFA000"
-                        font.pixelSize: 9
-                        font.bold: true
                     }
                 }
             }
@@ -447,7 +496,9 @@ ApplicationWindow {
                 Rectangle {
                     id: pitchContainer
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
                     Layout.preferredHeight: 200
+                    Layout.minimumHeight: 200
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -666,25 +717,6 @@ ApplicationWindow {
                                     }
                                 }
                             }
-
-                            // // Индикатор текущего вида
-                            // Rectangle {
-                            //     Layout.preferredWidth: 120
-                            //     Layout.preferredHeight: 25
-                            //     color: "transparent"
-                            //     border.color: "#03DAC6"
-                            //     border.width: 1
-                            //     radius: 4
-
-                            //     Text {
-                            //         anchors.centerIn: parent
-                            //         text: pitchContainer.isLeftView ? "СЛЕВА" : "СПРАВА"
-                            //         // text: rollContainer.isFrontView ? "ВИД СПЕРЕДИ" : "ВИД СЗАДИ"
-                            //         color: "#03DAC6"
-                            //         font.pixelSize: 9
-                            //         font.bold: true
-                            //     }
-                            // }
                         }
 
                         // График PITCH (без изменений - показывает реальные данные)
@@ -728,7 +760,9 @@ ApplicationWindow {
                 Rectangle {
                     id: rollContainer
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
                     Layout.preferredHeight: 200
+                    Layout.minimumHeight: 200
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -947,24 +981,6 @@ ApplicationWindow {
                                     }
                                 }
                             }
-
-                            // // Индикатор текущего вида
-                            // Rectangle {
-                            //     Layout.preferredWidth: 120
-                            //     Layout.preferredHeight: 25
-                            //     color: "transparent"
-                            //     border.color: "#03DAC6"
-                            //     border.width: 1
-                            //     radius: 4
-
-                            //     Text {
-                            //         anchors.centerIn: parent
-                            //         text: rollContainer.isFrontView ? "ВИД СПЕРЕДИ" : "ВИД СЗАДИ"
-                            //         color: "#03DAC6"
-                            //         font.pixelSize: 9
-                            //         font.bold: true
-                            //     }
-                            // }
                         }
 
                         // График ROLL (без изменений - показывает реальные данные)
@@ -1008,7 +1024,9 @@ ApplicationWindow {
                 Rectangle {
                     id: yawContainer
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
                     Layout.preferredHeight: 200
+                    Layout.minimumHeight: 200
                     color: "#252525"
                     radius: 8
                     border.color: "#444"
@@ -1192,19 +1210,6 @@ ApplicationWindow {
                                         font.bold: controller.headModel.hasData
                                         anchors.horizontalCenter: parent.horizontalCenter
                                     }
-
-                                    // // Дополнительная подпись с направлением
-                                    // Text {
-                                    //     text: {
-                                    //         if (!controller.headModel.hasData) return ""
-                                    //         return controller.headModel.yaw > 0 ?
-                                    //             "по ч.с." :
-                                    //             (controller.headModel.yaw < 0 ? "против ч.с." : "прямо")
-                                    //     }
-                                    //     color: "#CF6679"
-                                    //     font.pixelSize: 9
-                                    //     anchors.horizontalCenter: parent.horizontalCenter
-                                    // }
                                 }
                             }
 
@@ -1328,24 +1333,25 @@ ApplicationWindow {
                                 headPitch: controller.headModel.pitch
                                 headRoll: controller.headModel.roll
                                 headYaw: controller.headModel.yaw
-                                showInnerEar: innerEarVisible
+                                showHead: innerHeadVisible
+                                hasData: controller.headModel.hasData
                             }
 
-                            // Кнопка управления внутренним ухом в левом верхнем углу
+                            // Кнопка управления головой в правом верхнем углу
                             Button {
                                 anchors {
                                     top: parent.top
-                                    left: parent.left
+                                    right: parent.right
                                     margins: 10
                                 }
-                                width: 40
+                                width: 120
                                 height: 40
-                                text: innerEarVisible ? "👂" : "👂"
-                                onClicked: innerEarVisible = !innerEarVisible
-                                ToolTip.text: innerEarVisible ? "Скрыть внутреннее ухо" : "Показать внутреннее ухо"
+                                text: innerHeadVisible ? "Скрыть голову" : "Показать голову"
+                                onClicked: innerHeadVisible = !innerHeadVisible
+                                ToolTip.text: innerHeadVisible ? "Скрыть модель головы" : "Показать модель головы"
                                 ToolTip.visible: containsMouse
                                 background: Rectangle {
-                                    color: parent.down ? "#5a3c3c" : (innerEarVisible ? "#7c3a3a" : "#3a5c3a")
+                                    color: parent.down ? "#5a3c3c" : (innerHeadVisible ? "#7c3a3a" : "#3a5c3a")
                                     radius: 4
                                     border.color: "#666"
                                     border.width: 1
@@ -1353,27 +1359,29 @@ ApplicationWindow {
                                 contentItem: Text {
                                     text: parent.text
                                     color: "white"
-                                    font.pixelSize: 16
+                                    font.pixelSize: 12
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
                                 }
                             }
 
-                            // Панель управления камерой в правом верхнем углу
-                            Column {
+                            // Панель управления камерой в верхнем центре
+                            Row {
                                 anchors {
                                     top: parent.top
-                                    right: parent.right
-                                    margins: 10
+                                    horizontalCenter: parent.horizontalCenter
+                                    topMargin: 10
                                 }
-                                spacing: 5
+                                spacing: 15 // Отступ между группами кнопок
 
+                                // Первая группа - изометрический вид
                                 Button {
                                     width: 40
                                     height: 40
                                     text: "🎯"
                                     onClicked: advanced3DHead.setCameraView("isometric")
                                     ToolTip.text: "Изометрический вид"
+                                    ToolTip.visible: containsMouse
                                     background: Rectangle {
                                         color: parent.down ? "#5a5a5a" : "#3c3c3c"
                                         radius: 4
@@ -1381,43 +1389,81 @@ ApplicationWindow {
                                     }
                                 }
 
-                                Button {
-                                    width: 40
-                                    height: 40
-                                    text: "👁️"
-                                    onClicked: advanced3DHead.setCameraView("front")
-                                    ToolTip.text: "Вид спереди"
-                                    background: Rectangle {
-                                        color: parent.down ? "#5a5a5a" : "#3c3c3c"
-                                        radius: 4
-                                        border.color: "#666"
+                                // Вторая группа - остальные виды
+                                Row {
+                                    spacing: 5 // Отступ между кнопками в группе
+
+                                    Button {
+                                        id: frontBackButton
+                                        width: 40
+                                        height: 40
+                                        text: "👁️"
+                                        onClicked: advanced3DHead.toggleFrontBack()
+                                        ToolTip.text: advanced3DHead.currentView === "front" ?
+                                            "Переключить на вид сзади" : "Переключить на вид спереди"
+                                        ToolTip.visible: containsMouse
+                                        background: Rectangle {
+                                            color: parent.down ? "#5a5a5a" : "#3c3c3c"
+                                            radius: 4
+                                            border.color: "#666"
+                                        }
+                                    }
+
+                                    Button {
+                                        id: leftRightButton
+                                        width: 40
+                                        height: 40
+                                        text: "👈"
+                                        onClicked: advanced3DHead.toggleLeftRight()
+                                        ToolTip.text: advanced3DHead.currentView === "left" ?
+                                            "Переключить на вид справа" : "Переключить на вид слева"
+                                        ToolTip.visible: containsMouse
+                                        background: Rectangle {
+                                            color: parent.down ? "#5a5a5a" : "#3c3c3c"
+                                            radius: 4
+                                            border.color: "#666"
+                                        }
+                                    }
+
+                                    Button {
+                                        id: topBottomButton
+                                        width: 40
+                                        height: 40
+                                        text: "⬇️"
+                                        onClicked: advanced3DHead.toggleTopBottom()
+                                        ToolTip.text: advanced3DHead.currentView === "top" ?
+                                            "Переключить на вид снизу" : "Переключить на вид сверху"
+                                        ToolTip.visible: containsMouse
+                                        background: Rectangle {
+                                            color: parent.down ? "#5a5a5a" : "#3c3c3c"
+                                            radius: 4
+                                            border.color: "#666"
+                                        }
                                     }
                                 }
+                            }
 
-                                Button {
-                                    width: 40
-                                    height: 40
-                                    text: "👈"
-                                    onClicked: advanced3DHead.setCameraView("left")
-                                    ToolTip.text: "Вид слева"
-                                    background: Rectangle {
-                                        color: parent.down ? "#5a5a5a" : "#3c3c3c"
-                                        radius: 4
-                                        border.color: "#666"
-                                    }
+                            // Надпись положения камеры в левом верхнем углу
+                            Rectangle {
+                                anchors {
+                                    top: parent.top
+                                    left: parent.left
+                                    margins: 10
                                 }
+                                width: cameraPositionText.contentWidth + 20
+                                height: cameraPositionText.contentHeight + 10
+                                color: "#80000000"
+                                radius: 5
+                                border.color: "#444"
+                                border.width: 1
 
-                                Button {
-                                    width: 40
-                                    height: 40
-                                    text: "⬇️"
-                                    onClicked: advanced3DHead.setCameraView("top")
-                                    ToolTip.text: "Вид сверху"
-                                    background: Rectangle {
-                                        color: parent.down ? "#5a5a5a" : "#3c3c3c"
-                                        radius: 4
-                                        border.color: "#666"
-                                    }
+                                Text {
+                                    id: cameraPositionText
+                                    anchors.centerIn: parent
+                                    text: advanced3DHead.viewText
+                                    color: "white"
+                                    font.pixelSize: 12
+                                    font.bold: true
                                 }
                             }
 
@@ -1440,45 +1486,13 @@ ApplicationWindow {
                                     Text {
                                         text: "ЛКМ: вращать камеру"
                                         color: "#aaa"
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                     }
                                     Text {
                                         text: "Колесо: zoom"
                                         color: "#aaa"
-                                        font.pixelSize: 10
+                                        font.pixelSize: 12
                                     }
-                                }
-                            }
-                        }
-
-                        // Информационная панель
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 60
-                            color: "#2d2d2d"
-                            radius: 6
-
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 2
-
-                                Text {
-                                    text: "Текущие углы:"
-                                    color: "#aaa"
-                                    font.pixelSize: 12
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                }
-
-                                Text {
-                                    text: controller.headModel.hasData ?
-                                        "Pitch: " + controller.headModel.pitch.toFixed(1) + "° | " +
-                                        "Roll: " + controller.headModel.roll.toFixed(1) + "° | " +
-                                        "Yaw: " + controller.headModel.yaw.toFixed(1) + "°" :
-                                        "нет данных"
-                                    color: controller.headModel.hasData ? "white" : "#888"
-                                    font.pixelSize: 14
-                                    font.bold: controller.headModel.hasData
-                                    anchors.horizontalCenter: parent.horizontalCenter
                                 }
                             }
                         }
@@ -1703,6 +1717,15 @@ ApplicationWindow {
                 showNotification("Переключено в режим лог-файла", false)
             }
         }
+
+        function onRecordingChanged(isRecording) {
+            recording = isRecording
+        }
+
+        function onResearchNumberChanged(number) {
+            researchNumber = number
+            researchField.text = number
+        }
     }
 
     // Защита от сбоев COM-порта
@@ -1743,6 +1766,9 @@ ApplicationWindow {
         timer.start()
         console.log("Application started, headModel.hasData:", controller.headModel.hasData)
         console.log("Initial roll value:", controller.headModel.roll)
+
+        // Инициализация номера исследования
+        controller.initializeResearchNumber()
     }
 
     Timer {

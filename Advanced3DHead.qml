@@ -12,6 +12,29 @@ Item {
     property string currentModelPath: "qrc:/models/suzanne_mesh.mesh"
 
     property bool dizziness: false
+    property bool hasData: false
+    property bool showHead: true
+
+    // Свойства для управления видимостью сетки и стрелок осей
+    property bool showGrid: true
+    property bool showAxisArrows: true
+
+    property string currentView: "free"
+    property string viewText: {
+        switch(currentView) {
+            case "front": return "СПЕРЕДИ";
+            case "back": return "СЗАДИ";
+            case "left": return "СЛЕВА";
+            case "right": return "СПРАВА";
+            case "top": return "СВЕРХУ";
+            case "bottom": return "СНИЗУ";
+            default: return "СВОБОДНЫЙ";
+        }
+    }
+
+    property string frontBackTooltip: getFrontBackTooltip()
+    property string leftRightTooltip: getLeftRightTooltip()
+    property string topBottomTooltip: getTopBottomTooltip()
 
     // Свойства для управления камерой
     property real cameraDistance: 50
@@ -67,6 +90,7 @@ Item {
                     opacity: 0.01
                     alphaMode: PrincipledMaterial.Blend
                 }
+                visible: showGrid // Привязываем к свойству showGrid
             }
 
             // Линии сетки вдоль оси X (вертикальные линии в плоскости XZ)
@@ -84,6 +108,7 @@ Item {
                         opacity: 0.7
                         alphaMode: PrincipledMaterial.Blend
                     }
+                    visible: showGrid // Привязываем к свойству showGrid
                 }
             }
 
@@ -102,6 +127,7 @@ Item {
                         opacity: 0.7
                         alphaMode: PrincipledMaterial.Blend
                     }
+                    visible: showGrid // Привязываем к свойству showGrid
                 }
             }
 
@@ -139,6 +165,7 @@ Item {
                             specularAmount: 1.0
                         }
                     ]
+                    visible: showAxisArrows // Привязываем к свойству showAxisArrows
                 }
 
                 // Ось Y (коралоывый) - Yaw (рыскание)
@@ -169,6 +196,7 @@ Item {
                             specularAmount: 1.0
                         }
                     ]
+                    visible: showAxisArrows // Привязываем к свойству showAxisArrows
                 }
 
                 // Ось Z (бирюзовый) - Roll (крен)
@@ -201,6 +229,7 @@ Item {
                             specularAmount: 1.0
                         }
                     ]
+                    visible: showAxisArrows // Привязываем к свойству showAxisArrows
                 }
             }
 
@@ -229,11 +258,11 @@ Item {
                         roughness: 0.3
                         specularAmount: 0.8
                     }
+                    visible: showHead  // Добавить эту строку
                 }
             }
         }
 
-        // Управление камерой мышью
         MouseArea {
             anchors.fill: parent
             property point lastMousePos: Qt.point(0, 0)
@@ -259,6 +288,12 @@ Item {
 
                     updateCameraPosition()
                     lastMousePos = Qt.point(mouse.x, mouse.y)
+
+                    // При вращении камеры мышью устанавливаем вид в "free"
+                    currentView = "free"
+                    // При свободном вращении показываем сетку и стрелки
+                    showGrid = true
+                    showAxisArrows = true
                 }
             }
         }
@@ -319,17 +354,6 @@ Item {
             }
         }
 
-        // // Текст "ГОЛОВОКРУЖЕНИЕ" в центре
-        // Text {
-        //     id: dizzinessText
-        //     anchors.centerIn: parent
-        //     text: "ГОЛОВОКРУЖЕНИЕ"
-        //     color: "#66FFA000"
-        //     font.pixelSize: 24
-        //     font.bold: true
-        //     opacity: parent.visible ? 1.0 : 0
-        // }
-
         // Текст "ГОЛОВОКРУЖЕНИЕ" в верхней трети экрана
         Text {
             id: dizzinessText
@@ -366,6 +390,34 @@ Item {
             to: 0.6
             duration: 1000
             easing.type: Easing.InOutQuad
+        }
+    }
+
+    // Отображение текущих углов в нижней части 3D сцены
+    Rectangle {
+        anchors {
+            bottom: parent.bottom
+            horizontalCenter: parent.horizontalCenter
+            bottomMargin: 10
+        }
+        width: angleText.contentWidth + 20
+        height: angleText.contentHeight + 10
+        color: "#80000000"
+        radius: 4
+        border.color: "#444"
+        opacity: hasData ? 0.9 : 0.6
+
+        Text {
+            id: angleText
+            anchors.centerIn: parent
+            text: hasData ?
+                "Pitch: " + headPitch.toFixed(1) + "° | " +
+                "Roll: " + headRoll.toFixed(1) + "° | " +
+                "Yaw: " + headYaw.toFixed(1) + "°" :
+                "нет данных"
+            color: hasData ? "white" : "#888"
+            font.pixelSize: 14
+            font.bold: hasData
         }
     }
 
@@ -412,40 +464,85 @@ Item {
         camera.lookAt(Qt.vector3d(0, 0, 0))
     }
 
+    // Обновленная функция setCameraView с управлением видимостью сетки и стрелок
     function setCameraView(viewType) {
         switch(viewType) {
-            case "isometric":
-                cameraYaw = 45
-                cameraPitch = 30
-                cameraDistance = 50
-                break
             case "front":
-                cameraYaw = 0
-                cameraPitch = 0
-                cameraDistance = 50
-                break
+                cameraYaw = 0;
+                cameraPitch = 0;
+                currentView = "front";
+                showGrid = false; // Скрываем сетку
+                showAxisArrows = false; // Скрываем стрелки осей
+                break;
             case "back":
-                cameraYaw = 180
-                cameraPitch = 0
-                cameraDistance = 50
-                break
+                cameraYaw = 180;
+                cameraPitch = 0;
+                currentView = "back";
+                showGrid = false; // Скрываем сетку
+                showAxisArrows = false; // Показываем стрелки осей
+                break;
             case "left":
-                cameraYaw = -90
-                cameraPitch = 0
-                cameraDistance = 50
-                break
+                cameraYaw = -90;
+                cameraPitch = 0;
+                currentView = "left";
+                showGrid = false; // Скрываем сетку
+                showAxisArrows = false; // Скрываем стрелки осей
+                break;
             case "right":
-                cameraYaw = 90
-                cameraPitch = 0
-                cameraDistance = 50
-                break
+                cameraYaw = 90;
+                cameraPitch = 0;
+                currentView = "right";
+                showGrid = false; // Скрываем сетку
+                showAxisArrows = false; // Скрываем стрелки осей
+                break;
             case "top":
-                cameraYaw = 0
-                cameraPitch = 90
-                cameraDistance = 50
-                break
+                cameraYaw = 0;
+                cameraPitch = 90;
+                currentView = "top";
+                showGrid = true; // Показываем сетку
+                showAxisArrows = false; // Скрываем стрелки осей
+                break;
+            case "bottom":
+                cameraYaw = 0;
+                cameraPitch = -90;
+                currentView = "bottom";
+                showGrid = true; // Показываем сетку
+                showAxisArrows = true; // Показываем стрелки осей
+                break;
+            case "isometric":
+                cameraYaw = 45;
+                cameraPitch = 30;
+                currentView = "free";
+                showGrid = true; // Показываем сетку
+                showAxisArrows = true; // Показываем стрелки осей
+                break;
         }
-        updateCameraPosition()
+        updateCameraPosition();
+    }
+
+    // Функции переключения видов
+    function toggleFrontBack() {
+        if (currentView === "front") {
+            setCameraView("back");
+        } else {
+            setCameraView("front");
+        }
+    }
+
+    function toggleLeftRight() {
+        if (currentView === "left") {
+            setCameraView("right");
+        } else {
+            setCameraView("left");
+        }
+    }
+
+    function toggleTopBottom() {
+        if (currentView === "top") {
+            setCameraView("bottom");
+        } else {
+            setCameraView("top");
+        }
     }
 
     Component.onCompleted: {
