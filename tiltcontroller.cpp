@@ -750,6 +750,10 @@ void TiltController::loadLogFile(const QString &filePath)
     emit studyInfoChanged(m_studyInfo);
     emit totalTimeChanged(m_totalTime);
     emit currentTimeChanged(m_currentTime);
+
+    qDebug() << "Loading log file - first entry time:" << m_logData.first().time;
+    qDebug() << "Loading log file - last entry time:" << m_logData.last().time;
+    qDebug() << "Total time:" << m_totalTime;
 }
 
 void TiltController::playLog()

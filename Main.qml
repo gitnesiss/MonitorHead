@@ -73,6 +73,140 @@ ApplicationWindow {
         return hasData ? value.toFixed(1) + "°/с" : "нет данных"
     }
 
+
+
+
+
+
+
+
+    // Функция для форматирования номера кадра в формат времени
+    function formatResearchTime(frameNumber, totalFrames) {
+        // console.log("Formatting frame:", frameNumber, "Total frames:", totalFrames);
+        if (!controller.logLoaded || frameNumber === undefined) {
+            return "00:00:00:00";
+        }
+
+        // Округляем номер кадра до целого
+        var roundedFrame = Math.round(frameNumber);
+
+        // Предполагаем частоту 60 кадров в секунду
+        var framesPerSecond = 60;
+
+        // Вычисляем общее количество секунд из номера кадра
+        var totalSeconds = roundedFrame / framesPerSecond;
+
+        // Вычисляем компоненты времени
+        var hours = Math.floor(totalSeconds / 3600);
+        var minutes = Math.floor((totalSeconds % 3600) / 60);
+        var seconds = Math.floor(totalSeconds % 60);
+        var frames = roundedFrame % framesPerSecond;
+
+        // Форматируем с ведущими нулями
+        var hoursStr = hours.toString().padStart(2, '0');
+        var minutesStr = minutes.toString().padStart(2, '0');
+        var secondsStr = seconds.toString().padStart(2, '0');
+        var framesStr = frames.toString().padStart(2, '0');
+
+        return hoursStr + ":" + minutesStr + ":" + secondsStr + ":" + framesStr;
+    }
+
+
+
+
+    // // Функция для форматирования номера кадра в формат времени
+    // function formatResearchTime(frameNumber, totalFrames) {
+    //     console.log("Formatting frame:", frameNumber, "Total frames:", totalFrames);
+    //     if (!controller.logLoaded || frameNumber === undefined) {
+    //         return "00:00:00:00";
+    //     }
+
+    //     // Предполагаем частоту 60 кадров в секунду
+    //     var framesPerSecond = 60;
+
+    //     // Вычисляем общее количество секунд из номера кадра
+    //     var totalSeconds = frameNumber / framesPerSecond;
+
+    //     // Вычисляем компоненты времени
+    //     var hours = Math.floor(totalSeconds / 3600);
+    //     var minutes = Math.floor((totalSeconds % 3600) / 60);
+    //     var seconds = Math.floor(totalSeconds % 60);
+    //     var frames = frameNumber % framesPerSecond;
+
+    //     // Форматируем с ведущими нулями
+    //     var hoursStr = hours.toString().padStart(2, '0');
+    //     var minutesStr = minutes.toString().padStart(2, '0');
+    //     var secondsStr = seconds.toString().padStart(2, '0');
+    //     var framesStr = frames.toString().padStart(2, '0');
+
+    //     return hoursStr + ":" + minutesStr + ":" + secondsStr + ":" + framesStr;
+    // }
+
+    // Функция для форматирования информации об исследовании
+    function formatStudyInfo(studyInfo) {
+        if (!studyInfo) return "Исследование не загружено";
+
+        // Убираем решетки и лишние пробелы
+        var cleaned = studyInfo.replace(/#+/g, '').trim();
+
+        // Разделяем на части
+        var parts = cleaned.split('|').map(function(part) {
+            return part.trim();
+        }).filter(function(part) {
+            return part.length > 0;
+        });
+
+        // Ищем части с номером исследования и датой
+        var researchNumber = "";
+        var researchDate = "";
+
+        for (var i = 0; i < parts.length; i++) {
+            var part = parts[i];
+            if (part.includes("Исследование №")) {
+                researchNumber = part;
+            } else if (part.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
+                researchDate = part;
+            }
+        }
+
+        // Форматируем результат
+        if (researchNumber && researchDate) {
+            return researchNumber + " [" + researchDate + "]";
+        } else if (researchNumber) {
+            return researchNumber;
+        } else if (researchDate) {
+            return "Исследование [" + researchDate + "]";
+        } else {
+            return cleaned || "Исследование не загружено";
+        }
+    }
+
+    // Функция для диагностики графиков
+    function debugGraphs() {
+        console.log("=== GRAPH DEBUG ===")
+        console.log("COM Port connected:", controller.connected)
+        console.log("Log mode:", controller.logMode)
+        console.log("Log loaded:", controller.logLoaded)
+        console.log("Log playing:", controller.logPlaying)
+        console.log("Has data:", controller.headModel.hasData)
+        console.log("Pitch graph points:", controller.pitchGraphData.length)
+        console.log("Roll graph points:", controller.rollGraphData.length)
+        console.log("Yaw graph points:", controller.yawGraphData.length)
+        console.log("Dizziness intervals:", controller.dizzinessData.length)
+        console.log("Graph duration:", controller.graphDuration)
+        console.log("Current time:", controller.currentTime)
+        console.log("Total time:", controller.totalTime)
+
+        // Добавляем отладочную информацию о данных графиков
+        if (controller.pitchGraphData.length > 0) {
+            var firstPoint = controller.pitchGraphData[0]
+            var lastPoint = controller.pitchGraphData[controller.pitchGraphData.length - 1]
+            console.log("First pitch point time:", new Date(firstPoint.time).toISOString(), "value:", firstPoint.value)
+            console.log("Last pitch point time:", new Date(lastPoint.time).toISOString(), "value:", lastPoint.value)
+        }
+        console.log("====================")
+    }
+
     // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ ===
     FileDialog {
         id: loadResearchDialog
@@ -464,9 +598,6 @@ ApplicationWindow {
                         }
                     }
 
-
-
-
                     // Кнопка загрузки исследования (блокируется во время записи)
                     Rectangle {
                         id: loadResearchButton
@@ -516,6 +647,15 @@ ApplicationWindow {
                             }
                         }
                     }
+
+                    Button {
+                        text: "Debug"
+                        onClicked: debugGraphs()
+                        background: Rectangle {
+                            color: "#444"
+                            radius: 4
+                        }
+                    }
                 }
 
                 Item { Layout.fillWidth: true } // Распорка
@@ -535,7 +675,7 @@ ApplicationWindow {
                     }
 
                     Text {
-                        text: controller.logMode ? controller.studyInfo : "Режим реального времени"
+                        text: controller.logMode ? formatStudyInfo(controller.studyInfo) : "Режим реального времени"
                         color: "#aaa"
                         font.pixelSize: 12
                         elide: Text.ElideRight
@@ -1567,11 +1707,15 @@ ApplicationWindow {
             }
         }
 
-        // === УПРАВЛЕНИЕ ЛОГ-ФАЙЛОМ ===
+
+
+
+
+        // === ВОСПРОИЗВЕДЕНИЕ ИССЛЕДОВАНИЯ ===
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 140
-            color: controller.logControlsEnabled ? "#2d2d2d" : "#3d3d3d"
+            color: controller.logControlsEnabled ? "#2d2d2d" : "#3d3d2d"
             radius: 8
             border.color: controller.logControlsEnabled ? "#555" : "#444"
             border.width: 1
@@ -1580,177 +1724,340 @@ ApplicationWindow {
             ColumnLayout {
                 anchors.fill: parent
                 anchors.margins: 15
-                spacing: 10
+                spacing: 8
 
-                Text {
-                    text: "Управление воспроизведением лог-файла"
-                    color: controller.logControlsEnabled ? "white" : "#888"
-                    font.pixelSize: 16
-                    font.bold: true
-                }
-
-                // Поле для ввода пути к файлу
-                RowLayout {
+                // ВЕРХНЯЯ СТРОКА: информация слева + кнопки по абсолютному центру
+                Item {
                     Layout.fillWidth: true
-                    spacing: 10
+                    Layout.preferredHeight: 50
 
-                    TextField {
-                        id: filePathField
-                        Layout.fillWidth: true
-                        placeholderText: "Введите путь к лог-файлу"
-                        selectByMouse: true
-                        color: controller.logControlsEnabled ? "white" : "#888"
-                        enabled: !controller.connected
-                        background: Rectangle {
-                            color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
-                            radius: 4
+                    // ЛЕВАЯ ЧАСТЬ - информация об исследовании
+                    ColumnLayout {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 5
+                        width: Math.min(parent.width * 0.4, 400) // Ограничиваем ширину
+
+                        Text {
+                            text: "Воспроизведение исследования"
+                            color: controller.logControlsEnabled ? "white" : "#888"
+                            font.pixelSize: 16
+                            font.bold: true
+                            elide: Text.ElideRight
                         }
+
+                        Text {
+                            text: controller.logMode ? formatStudyInfo(controller.studyInfo) : "Исследование не загружено"
+                            color: controller.logControlsEnabled ? "#ccc" : "#888"
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                            maximumLineCount: 2
+                            wrapMode: Text.Wrap
+                        }
+
+                        // Text {
+                        //     text: controller.logMode ? controller.studyInfo : "Исследование не загружено"
+                        //     color: controller.logControlsEnabled ? "#ccc" : "#888"
+                        //     font.pixelSize: 12
+                        //     elide: Text.ElideRight
+                        //     maximumLineCount: 2
+                        //     wrapMode: Text.Wrap
+                        // }
                     }
 
-                    Button {
-                        text: "Загрузить"
-                        onClicked: {
-                            if (filePathField.text !== "") {
-                                controller.loadLogFile(filePathField.text)
+                    // ЦЕНТРАЛЬНАЯ ЧАСТЬ - кнопки управления (абсолютный центр)
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 10
+
+                        Button {
+                            text: "⏮️"
+                            Layout.preferredWidth: 50
+                            onClicked: {
+                                if (controller.logControlsEnabled && controller.logLoaded) {
+                                    controller.seekLog(0)
+                                }
+                            }
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+                            ToolTip.text: "В начало"
+                            background: Rectangle {
+                                color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
+                                radius: 4
                             }
                         }
-                        enabled: !controller.connected
-                        background: Rectangle {
-                            color: parent.down ? "#3a5c42" : (parent.enabled ? "#4caf50" : "#3a5c42")
-                            radius: 4
+
+                        Button {
+                            text: "⏪"
+                            Layout.preferredWidth: 50
+                            onClicked: {
+                                if (controller.logControlsEnabled && controller.logLoaded) {
+                                    controller.seekLog(Math.max(0, controller.currentTime - 5))
+                                }
+                            }
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+                            ToolTip.text: "Назад на 5с"
+                            background: Rectangle {
+                                color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
+                                radius: 4
+                            }
                         }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
+
+                        Button {
+                            id: playPauseBtn
+                            text: controller.logPlaying ? "⏸️" : "▶️"
+                            Layout.preferredWidth: 80
+                            onClicked: {
+                                if (controller.logControlsEnabled && controller.logLoaded) {
+                                    controller.logPlaying ? controller.pauseLog() : controller.playLog()
+                                }
+                            }
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+                            ToolTip.text: controller.logPlaying ? "Пауза" : "Продолжить"
+                            background: Rectangle {
+                                color: parent.down ? "#3a5c42" : (parent.enabled ? "#4caf50" : "#3a5c42")
+                                radius: 4
+                            }
+                            contentItem: Text {
+                                text: parent.text
+                                color: "white"
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+                        }
+
+                        Button {
+                            text: "⏩"
+                            Layout.preferredWidth: 50
+                            onClicked: {
+                                if (controller.logControlsEnabled && controller.logLoaded) {
+                                    controller.seekLog(Math.min(controller.totalTime, controller.currentTime + 5))
+                                }
+                            }
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+                            ToolTip.text: "Вперед на 5с"
+                            background: Rectangle {
+                                color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
+                                radius: 4
+                            }
+                        }
+
+                        Button {
+                            text: "⏭️"
+                            Layout.preferredWidth: 50
+                            onClicked: {
+                                if (controller.logControlsEnabled && controller.logLoaded) {
+                                    controller.seekLog(controller.totalTime)
+                                }
+                            }
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+                            ToolTip.text: "В конец"
+                            background: Rectangle {
+                                color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
+                                radius: 4
+                            }
+                        }
+
+                        Button {
+                            text: "⏹️"
+                            Layout.preferredWidth: 50
+                            onClicked: {
+                                if (controller.logControlsEnabled) {
+                                    controller.stopLog()
+                                }
+                            }
+                            enabled: controller.logControlsEnabled
+                            ToolTip.text: "Стоп"
+                            background: Rectangle {
+                                color: parent.down ? "#7c3a3a" : (parent.enabled ? "#f44336" : "#7c3a3a")
+                                radius: 4
+                            }
                         }
                     }
                 }
 
+                // Временная шкала с метками
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 5
+
+                    // Метки времени над ползунком
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        // Начальное время
+                        Text {
+                            text: formatResearchTime(0, controller.totalTime)
+                            color: controller.logControlsEnabled ? "#aaa" : "#666"
+                            font.pixelSize: 10
+                            font.bold: true
+                        }
+
+                        Item { Layout.fillWidth: true } // Распорка
+
+                        // Среднее время
+                        Text {
+                            text: formatResearchTime(Math.round(controller.totalTime / 2), controller.totalTime)
+                            color: controller.logControlsEnabled ? "#aaa" : "#666"
+                            font.pixelSize: 10
+                            font.bold: true
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        Item { Layout.fillWidth: true } // Распорка
+
+                        // Конечное время
+                        Text {
+                            text: formatResearchTime(controller.totalTime, controller.totalTime)
+                            color: controller.logControlsEnabled ? "#aaa" : "#666"
+                            font.pixelSize: 10
+                            font.bold: true
+                            Layout.alignment: Qt.AlignRight
+                        }
+                    }
+
+                    // Контейнер для ползунка с дополнительной областью для клика
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40  // Увеличиваем высоту для удобства клика
+
+                        // Ползунок времени
+                        Slider {
+                            id: timeSlider
+                            anchors.fill: parent
+                            from: 0
+                            to: controller.totalTime
+                            value: controller.currentTime
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+                            live: true  // Включаем обновление в реальном времени при перемещении
+
+                            // Автоматическое обновление значения из контроллера
+                            Binding {
+                                target: timeSlider
+                                property: "value"
+                                value: controller.currentTime
+                                when: !timeSlider.pressed
+                            }
+
+                            background: Rectangle {
+                                color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
+                                radius: 3
+                                height: 6
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                // Прогресс воспроизведения
+                                Rectangle {
+                                    width: timeSlider.visualPosition * parent.width
+                                    height: parent.height
+                                    color: controller.logControlsEnabled ? "#2196f3" : "#666"
+                                    radius: 3
+                                }
+                            }
+
+                            handle: Rectangle {
+                                x: timeSlider.visualPosition * (timeSlider.availableWidth - width)
+                                y: (timeSlider.availableHeight - height) / 2
+                                width: 20  // Увеличиваем размер бегунка
+                                height: 20
+                                radius: 10
+                                color: timeSlider.pressed ? "#1976d2" : (controller.logControlsEnabled ? "#2196f3" : "#666")
+                                border.color: controller.logControlsEnabled ? "#1976d2" : "#555"
+                                border.width: 2
+
+                                // Эффект при наведении
+                                scale: timeSlider.hovered ? 1.2 : 1.0
+                                Behavior on scale {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
+
+                            // Обработка перемещения ползунка
+                            onMoved: {
+                                if (controller.logControlsEnabled && controller.logLoaded) {
+                                    controller.seekLog(value)
+                                }
+                            }
+
+                            // Обработка нажатия/отпускания
+                            onPressedChanged: {
+                                if (pressed && controller.logControlsEnabled && controller.logLoaded) {
+                                    // Начали перемещение
+                                } else if (!pressed && controller.logControlsEnabled && controller.logLoaded) {
+                                    // Закончили перемещение - значение уже обновлено в onMoved
+                                }
+                            }
+
+                            // Показываем текущее время при наведении (время в формате, кадр целым числом)
+                            ToolTip {
+                                parent: timeSlider.handle
+                                visible: timeSlider.hovered && controller.logLoaded
+                                text: formatResearchTime(Math.round(timeSlider.value), controller.totalTime) + " (" + Math.round(timeSlider.value) + " кадр)"
+                                delay: 500
+                            }
+                        }
+
+                        // Дополнительная MouseArea для клика в любом месте таймлайна
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: function(mouse) {
+                                if (!controller.logControlsEnabled || !controller.logLoaded) {
+                                    return;
+                                }
+
+                                // Вычисляем позицию клика относительно ширины слайдера
+                                var clickPosition = mouse.x / width;
+                                var targetTime = Math.round(clickPosition * controller.totalTime); // Округляем до целого
+
+                                // Переходим к вычисленному времени
+                                controller.seekLog(targetTime);
+
+                                // Обновляем значение слайдера
+                                timeSlider.value = targetTime;
+                            }
+
+                            // Обработка перетаскивания для плавного следования бегунка за мышью
+                            onPositionChanged: function(mouse) {
+                                if (pressed && controller.logControlsEnabled && controller.logLoaded) {
+                                    var clickPosition = mouse.x / width;
+                                    var targetTime = Math.round(clickPosition * controller.totalTime);
+                                    targetTime = Math.max(0, Math.min(controller.totalTime, targetTime));
+
+                                    controller.seekLog(targetTime);
+                                    timeSlider.value = targetTime;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Дополнительная информация
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: 10
-
-                    // Кнопки управления
-                    Button {
-                        text: "⏮️"
-                        Layout.preferredWidth: 50
-                        onClicked: controller.seekLog(0)
-                        enabled: controller.logControlsEnabled
-                        ToolTip.text: "В начало"
-                        background: Rectangle {
-                            color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                            radius: 4
-                        }
-                    }
-
-                    Button {
-                        text: "⏪"
-                        Layout.preferredWidth: 50
-                        onClicked: controller.seekLog(Math.max(0, controller.currentTime - 10))
-                        enabled: controller.logControlsEnabled
-                        ToolTip.text: "Назад на 10с"
-                        background: Rectangle {
-                            color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                            radius: 4
-                        }
-                    }
-
-                    Button {
-                        id: playPauseBtn
-                        text: controller.logPlaying ? "⏸️" : "▶️"
-                        Layout.preferredWidth: 80
-                        onClicked: controller.logPlaying ? controller.pauseLog() : controller.playLog()
-                        enabled: controller.logControlsEnabled
-                        ToolTip.text: controller.logPlaying ? "Пауза" : "Продолжить"
-                        background: Rectangle {
-                            color: parent.down ? "#3a5c42" : (parent.enabled ? "#4caf50" : "#3a5c42")
-                            radius: 4
-                        }
-                        contentItem: Text {
-                            text: parent.text
-                            color: "white"
-                            font.pixelSize: 14
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-
-                    Button {
-                        text: "⏩"
-                        Layout.preferredWidth: 50
-                        onClicked: controller.seekLog(Math.min(controller.totalTime, controller.currentTime + 10))
-                        enabled: controller.logControlsEnabled
-                        ToolTip.text: "Вперед на 10с"
-                        background: Rectangle {
-                            color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                            radius: 4
-                        }
-                    }
-
-                    Button {
-                        text: "⏭️"
-                        Layout.preferredWidth: 50
-                        onClicked: controller.seekLog(controller.totalTime)
-                        enabled: controller.logControlsEnabled
-                        ToolTip.text: "В конец"
-                        background: Rectangle {
-                            color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                            radius: 4
-                        }
-                    }
-
-                    Button {
-                        text: "⏹️"
-                        Layout.preferredWidth: 50
-                        onClicked: controller.stopLog()
-                        enabled: controller.logControlsEnabled
-                        ToolTip.text: "Стоп"
-                        background: Rectangle {
-                            color: parent.down ? "#7c3a3a" : (parent.enabled ? "#f44336" : "#7c3a3a")
-                            radius: 4
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true } // Распорка
+                    visible: controller.logLoaded
 
                     Text {
-                        text: {
-                            var currentMinutes = Math.floor(controller.currentTime / 60)
-                            var currentSeconds = Math.floor(controller.currentTime % 60)
-                            var totalMinutes = Math.floor(controller.totalTime / 60)
-                            var totalSeconds = Math.floor(controller.totalTime % 60)
-                            return (currentMinutes < 10 ? "0" : "") + currentMinutes + ":" +
-                                   (currentSeconds < 10 ? "0" : "") + currentSeconds + " / " +
-                                   (totalMinutes < 10 ? "0" : "") + totalMinutes + ":" +
-                                   (totalSeconds < 10 ? "0" : "") + totalSeconds
-                        }
-                        color: controller.logControlsEnabled ? "#ccc" : "#888"
-                        font.pixelSize: 14
+                        text: "Скорость: " + (controller.logPlaying ? "▶ Воспроизведение" : "⏸ Пауза")
+                        color: controller.logControlsEnabled ? "#4caf50" : "#666"
+                        font.pixelSize: 11
                     }
-                }
 
-                // Ползунок времени
-                Slider {
-                    Layout.fillWidth: true
-                    from: 0
-                    to: controller.totalTime
-                    value: controller.currentTime
-                    onMoved: controller.seekLog(value)
-                    enabled: controller.logControlsEnabled && !controller.logPlaying
-                    background: Rectangle {
-                        color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
-                        radius: 2
-                        height: 4
+                    Item { Layout.fillWidth: true }
+
+                    Text {
+                        text: "Длительность: " + formatResearchTime(controller.totalTime, controller.totalTime)
+                        color: controller.logControlsEnabled ? "#aaa" : "#666"
+                        font.pixelSize: 11
                     }
-                    handle: Rectangle {
-                        width: 16
-                        height: 16
-                        radius: 8
-                        color: controller.logControlsEnabled ? "#2196f3" : "#666"
-                        border.color: controller.logControlsEnabled ? "#1976d2" : "#555"
-                        border.width: 2
+
+                    Item { Layout.fillWidth: true }
+
+                    Text {
+                        text: "Частота: " + controller.updateFrequency + " Гц"
+                        color: controller.logControlsEnabled ? "#aaa" : "#666"
+                        font.pixelSize: 11
                     }
                 }
             }
