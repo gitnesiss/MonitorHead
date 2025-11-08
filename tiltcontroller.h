@@ -3,7 +3,6 @@
 
 #include <QtCore/QObject>
 #include <QtCore/QTimer>
-#include <QtCore/QElapsedTimer>
 #include <QtCore/QVector>
 #include <QtCore/QUrl>
 #include <QtCore/QDateTime>
@@ -13,15 +12,87 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
-#include <deque>
 #include "headmodel.h"
 
-// Структура для хранения данных углов с временной меткой
-struct AngleData {
-    qint64 timestamp;
-    float pitch;
-    float roll;
-    float yaw;
+// Структура для хранения одного кадра данных
+struct DataFrame {
+    qint64 timestamp;        // Время в мс
+    float pitch;             // Угол по pitch
+    float roll;              // Угол по roll
+    float yaw;               // Угол по yaw
+    bool patientDizziness;   // Головокружение пациента (0 или 1)
+    bool doctorDizziness;    // Головокружение врача (0 или 1)
+
+    DataFrame() : timestamp(0), pitch(0), roll(0), yaw(0),
+        patientDizziness(false), doctorDizziness(false) {}
+};
+
+// Кольцевой буфер на 1800 кадров
+class CircularBuffer {
+public:
+    CircularBuffer(int capacity = 2000) :
+        m_capacity(capacity), m_buffer(capacity), m_size(0), m_head(0) {}
+
+    void add(const DataFrame& frame) {
+        if (m_size < m_capacity) {
+            m_buffer[m_head] = frame;
+            m_head = (m_head + 1) % m_capacity;
+            m_size++;
+        } else {
+            m_buffer[m_head] = frame;
+            m_head = (m_head + 1) % m_capacity;
+        }
+    }
+
+    DataFrame at(int index) const {
+        if (index < 0 || index >= m_size) return DataFrame();
+        int actualIndex = (m_head - m_size + index + m_capacity) % m_capacity;
+        return m_buffer[actualIndex];
+    }
+
+    DataFrame last() const {
+        if (m_size == 0) return DataFrame();
+        return at(m_size - 1);
+    }
+
+    DataFrame first() const {
+        if (m_size == 0) return DataFrame();
+        return at(0);
+    }
+
+    int size() const { return m_size; }
+    int capacity() const { return m_capacity; }
+    bool isEmpty() const { return m_size == 0; }
+    bool isFull() const { return m_size == m_capacity; }
+
+    void clear() {
+        m_size = 0;
+        m_head = 0;
+    }
+
+    // Получить диапазон данных за последние N миллисекунд
+    QVector<DataFrame> getRange(qint64 durationMs) const {
+        QVector<DataFrame> result;
+        if (m_size == 0) return result;
+
+        qint64 currentTime = last().timestamp;
+        qint64 minTime = currentTime - durationMs;
+
+        for (int i = 0; i < m_size; ++i) {
+            const DataFrame& frame = at(i);
+            if (frame.timestamp >= minTime) {
+                result.append(frame);
+            }
+        }
+
+        return result;
+    }
+
+private:
+    int m_capacity;
+    QVector<DataFrame> m_buffer;
+    int m_size;
+    int m_head;
 };
 
 class TiltController : public QObject
@@ -47,6 +118,8 @@ class TiltController : public QObject
     Q_PROPERTY(int updateFrequency READ updateFrequency NOTIFY updateFrequencyChanged)
     Q_PROPERTY(QString researchNumber READ researchNumber NOTIFY researchNumberChanged)
     Q_PROPERTY(bool recording READ recording NOTIFY recordingChanged)
+    Q_PROPERTY(QVariantList dizzinessPatientData READ dizzinessPatientData NOTIFY graphDataChanged)
+    Q_PROPERTY(QVariantList dizzinessDoctorData READ dizzinessDoctorData NOTIFY graphDataChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -75,6 +148,9 @@ public:
     QString researchNumber() const { return m_researchNumber; }
     bool recording() const { return m_recording; }
 
+    QVariantList dizzinessPatientData() const { return m_dizzinessPatientData; }
+    QVariantList dizzinessDoctorData() const { return m_dizzinessDoctorData; }
+
 public slots:
     void connectDevice();
     void disconnectDevice();
@@ -89,7 +165,7 @@ public slots:
     void switchToCOMPortMode();
     void startResearchRecording(const QString &researchNumber);
     void stopResearchRecording();
-    void toggleResearchRecording(); // Новый слот для переключения записи по пробелу
+    void toggleResearchRecording();
     void initializeResearchNumber();
 
 private slots:
@@ -106,8 +182,10 @@ private:
     void safeDisconnect();
     void processCOMPortData(const QByteArray &data);
     void calculateSpeeds(float pitch, float roll, float yaw, bool dizziness);
-    void updateSpeedBuffers(float pitch, float roll, float yaw, qint64 timestamp);
-    void computeAverageSpeeds(float &avgSpeedPitch, float &avgSpeedRoll, float &avgSpeedYaw);
+
+    // Новые методы для работы с кольцевым буфером
+    void updateGraphDataFromBuffer();
+    void processDataFrame(const DataFrame& frame);
     QString generateResearchFileName(const QString &number);
     void writeResearchHeader();
 
@@ -128,6 +206,9 @@ private:
     QString m_selectedPort;
     QString m_studyInfo;
 
+    // Кольцевой буфер для хранения данных
+    CircularBuffer m_dataBuffer;
+
     struct LogEntry {
         int time;
         float pitch;
@@ -144,27 +225,13 @@ private:
     QByteArray m_incompleteData;
     bool m_isCleaningUp = false;
 
-    // Буферы для хранения последних значений углов (для вычисления скоростей)
-    std::deque<AngleData> m_angleHistory;
-    const int m_maxHistorySize = 6;
-
     // Данные для графиков
-    void updateGraphData(float pitch, float roll, float yaw, bool dizziness);
-    void cleanupOldData();
-
     int m_graphDuration = 30;
     QVariantList m_pitchGraphData;
     QVariantList m_rollGraphData;
     QVariantList m_yawGraphData;
     QVariantList m_dizzinessData;
 
-    struct GraphPoint {
-        qint64 timestamp;
-        float value;
-    };
-    QList<GraphPoint> m_pitchHistory;
-    QList<GraphPoint> m_rollHistory;
-    QList<GraphPoint> m_yawHistory;
     struct DizzinessInterval {
         qint64 startTime;
         qint64 endTime;
@@ -174,9 +241,6 @@ private:
 
     qint64 m_currentDizzinessStart = 0;
     bool m_lastDizzinessState = false;
-
-    int m_updateCounter = 0;
-    int m_updateThrottle = 1;
 
     int m_updateFrequency = 10;
     QTimer m_dataUpdateTimer;
@@ -190,10 +254,19 @@ private:
     int m_researchFrameCounter = 1;
 
     // Для вычисления угловых скоростей
-    float m_prevPitch = 0.0f;
-    float m_prevRoll = 0.0f;
-    float m_prevYaw = 0.0f;
-    qint64 m_prevTime = 0;
+    DataFrame m_prevFrame;
+
+    // Оптимизация: кэшируем последние отправленные данные
+    QVariantList m_lastPitchData;
+    QVariantList m_lastRollData;
+    QVariantList m_lastYawData;
+
+    // Оптимизация: счетчик для регулирования частоты обновлений
+    int m_updateCounter = 0;
+    const int UPDATE_THROTTLE = 2; // Обновляем каждый 2-й вызов
+
+    QVariantList m_dizzinessPatientData;
+    QVariantList m_dizzinessDoctorData;
 
 signals:
     void connectedChanged(bool connected);

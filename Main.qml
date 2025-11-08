@@ -73,13 +73,6 @@ ApplicationWindow {
         return hasData ? value.toFixed(1) + "°/с" : "нет данных"
     }
 
-
-
-
-
-
-
-
     // Функция для форматирования номера кадра в формат времени
     function formatResearchTime(frameNumber, totalFrames) {
         // console.log("Formatting frame:", frameNumber, "Total frames:", totalFrames);
@@ -110,37 +103,6 @@ ApplicationWindow {
 
         return hoursStr + ":" + minutesStr + ":" + secondsStr + ":" + framesStr;
     }
-
-
-
-
-    // // Функция для форматирования номера кадра в формат времени
-    // function formatResearchTime(frameNumber, totalFrames) {
-    //     console.log("Formatting frame:", frameNumber, "Total frames:", totalFrames);
-    //     if (!controller.logLoaded || frameNumber === undefined) {
-    //         return "00:00:00:00";
-    //     }
-
-    //     // Предполагаем частоту 60 кадров в секунду
-    //     var framesPerSecond = 60;
-
-    //     // Вычисляем общее количество секунд из номера кадра
-    //     var totalSeconds = frameNumber / framesPerSecond;
-
-    //     // Вычисляем компоненты времени
-    //     var hours = Math.floor(totalSeconds / 3600);
-    //     var minutes = Math.floor((totalSeconds % 3600) / 60);
-    //     var seconds = Math.floor(totalSeconds % 60);
-    //     var frames = frameNumber % framesPerSecond;
-
-    //     // Форматируем с ведущими нулями
-    //     var hoursStr = hours.toString().padStart(2, '0');
-    //     var minutesStr = minutes.toString().padStart(2, '0');
-    //     var secondsStr = seconds.toString().padStart(2, '0');
-    //     var framesStr = frames.toString().padStart(2, '0');
-
-    //     return hoursStr + ":" + minutesStr + ":" + secondsStr + ":" + framesStr;
-    // }
 
     // Функция для форматирования информации об исследовании
     function formatStudyInfo(studyInfo) {
@@ -197,14 +159,27 @@ ApplicationWindow {
         console.log("Current time:", controller.currentTime)
         console.log("Total time:", controller.totalTime)
 
-        // Добавляем отладочную информацию о данных графиков
+        // Детальная информация о данных графиков
         if (controller.pitchGraphData.length > 0) {
             var firstPoint = controller.pitchGraphData[0]
             var lastPoint = controller.pitchGraphData[controller.pitchGraphData.length - 1]
-            console.log("First pitch point time:", new Date(firstPoint.time).toISOString(), "value:", firstPoint.value)
-            console.log("Last pitch point time:", new Date(lastPoint.time).toISOString(), "value:", lastPoint.value)
+            console.log("First pitch point - time:", firstPoint.time, "value:", firstPoint.value)
+            console.log("Last pitch point - time:", lastPoint.time, "value:", lastPoint.value)
+
+            // Проверяем преобразование координат
+            var canvasWidth = pitchGraph.width
+            var canvasHeight = pitchGraph.height
+            var availableWidth = canvasWidth - 40 // учитываем отступ
+            var xFirst = availableWidth - firstPoint.time / (controller.graphDuration * 1000) * availableWidth
+            var yFirst = canvasHeight - ((firstPoint.value - (-120)) / 240) * canvasHeight
+            console.log("First point coords - x:", xFirst, "y:", yFirst, "canvas:", canvasWidth + "x" + canvasHeight)
         }
         console.log("====================")
+
+        // Принудительно обновляем графики
+        pitchGraph.requestPaint()
+        rollGraph.requestPaint()
+        yawGraph.requestPaint()
     }
 
     // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ ===
@@ -656,6 +631,26 @@ ApplicationWindow {
                             radius: 4
                         }
                     }
+
+                    Button {
+                        text: "Debug Graphs"
+                        onClicked: {
+                            console.log("=== GRAPH DEBUG ===")
+                            console.log("Pitch data points:", controller.pitchGraphData.length)
+                            console.log("Roll data points:", controller.rollGraphData.length)
+                            console.log("Yaw data points:", controller.yawGraphData.length)
+                            console.log("Patient dizziness intervals:", controller.dizzinessPatientData.length)
+                            console.log("Doctor dizziness intervals:", controller.dizzinessDoctorData.length)
+
+                            if (controller.pitchGraphData.length > 0) {
+                                var first = controller.pitchGraphData[0]
+                                var last = controller.pitchGraphData[controller.pitchGraphData.length - 1]
+                                console.log("First pitch point - time:", first.time, "value:", first.value)
+                                console.log("Last pitch point - time:", last.time, "value:", last.value)
+                            }
+                            console.log("=== GRAPH DEBUG ===")
+                        }
+                    }
                 }
 
                 Item { Layout.fillWidth: true } // Распорка
@@ -951,7 +946,8 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     graphData: controller.pitchGraphData
-                                    dizzinessData: controller.dizzinessData
+                                    dizzinessPatientData: controller.dizzinessPatientData
+                                    dizzinessDoctorData: controller.dizzinessDoctorData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#BB86FC"
                                     minValue: -120
@@ -1215,7 +1211,9 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     graphData: controller.rollGraphData
-                                    dizzinessData: controller.dizzinessData
+                                    // dizzinessData: controller.dizzinessData
+                                    dizzinessPatientData: controller.dizzinessPatientData
+                                    dizzinessDoctorData: controller.dizzinessDoctorData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#03DAC6"
                                     minValue: -120
@@ -1484,7 +1482,9 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     graphData: controller.yawGraphData
-                                    dizzinessData: controller.dizzinessData
+                                    // dizzinessData: controller.dizzinessData
+                                    dizzinessPatientData: controller.dizzinessPatientData
+                                    dizzinessDoctorData: controller.dizzinessDoctorData
                                     graphDuration: controller.graphDuration
                                     lineColor: "#CF6679"
                                     minValue: -120
