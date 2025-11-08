@@ -120,6 +120,9 @@ class TiltController : public QObject
     Q_PROPERTY(bool recording READ recording NOTIFY recordingChanged)
     Q_PROPERTY(QVariantList dizzinessPatientData READ dizzinessPatientData NOTIFY graphDataChanged)
     Q_PROPERTY(QVariantList dizzinessDoctorData READ dizzinessDoctorData NOTIFY graphDataChanged)
+    Q_PROPERTY(int dataFrequency READ dataFrequency NOTIFY dataFrequencyChanged)
+    Q_PROPERTY(int displayFrequency READ displayFrequency NOTIFY displayFrequencyChanged)
+    Q_PROPERTY(int bufferSize READ bufferSize NOTIFY bufferSizeChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -150,6 +153,11 @@ public:
 
     QVariantList dizzinessPatientData() const { return m_dizzinessPatientData; }
     QVariantList dizzinessDoctorData() const { return m_dizzinessDoctorData; }
+
+    // для отображения частоты обновления
+    int dataFrequency() const { return m_dataFrequency; }
+    int displayFrequency() const { return m_displayFrequency; }
+    int bufferSize() const { return m_bufferSize; }
 
 public slots:
     void connectDevice();
@@ -268,6 +276,17 @@ private:
     QVariantList m_dizzinessPatientData;
     QVariantList m_dizzinessDoctorData;
 
+    // для отображения частоты обновления
+    int m_dataFrequency = 0;
+    int m_displayFrequency = 0;
+    int m_bufferSize = 0;
+
+    QVector<qint64> m_dataTimestamps;
+    QVector<qint64> m_displayTimestamps;
+    QTimer m_frequencyTimer;
+
+    void updateFrequencyInfo();
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -285,6 +304,11 @@ signals:
     void updateFrequencyChanged(int frequency);
     void researchNumberChanged(const QString &researchNumber);
     void recordingChanged(bool recording);
+
+    // для отображения частоты обновления
+    void dataFrequencyChanged(int frequency);
+    void displayFrequencyChanged(int frequency);
+    void bufferSizeChanged(int size);
 };
 
 #endif // TILTCONTROLLER_H

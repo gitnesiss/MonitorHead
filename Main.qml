@@ -651,6 +651,39 @@ ApplicationWindow {
                             console.log("=== GRAPH DEBUG ===")
                         }
                     }
+
+                    // Добавляем информацию о частотах
+                    Rectangle {
+                        Layout.preferredWidth: 200
+                        Layout.preferredHeight: 50
+                        color: "transparent"
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 2
+
+                            Text {
+                                text: "Данные: " + controller.dataFrequency + " Гц"
+                                color: controller.connected ? "#4CAF50" : "#888"
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+
+                            Text {
+                                text: "Отрисовка: " + controller.displayFrequency + " Гц"
+                                color: controller.connected ? "#2196F3" : "#888"
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+
+                            Text {
+                                text: "Буфер: " + controller.bufferSize + " кадров"
+                                color: controller.connected ? "#FF9800" : "#888"
+                                font.pixelSize: 12
+                                font.bold: true
+                            }
+                        }
+                    }
                 }
 
                 Item { Layout.fillWidth: true } // Распорка
