@@ -175,6 +175,7 @@ public slots:
     void stopResearchRecording();
     void toggleResearchRecording();
     void initializeResearchNumber();
+    // void resetData(); // Добавляем новый слот
 
 private slots:
     void updateLogPlayback();
@@ -286,6 +287,12 @@ private:
     QTimer m_frequencyTimer;
 
     void updateFrequencyInfo();
+
+    qint64 m_startTime; // Время начала работы для относительных временных меток
+    qint64 m_lastDataTime; // Время последних полученных данных
+    bool m_useRelativeTime; // Флаг использования относительного времени
+
+    // void resetData();
 
 signals:
     void connectedChanged(bool connected);

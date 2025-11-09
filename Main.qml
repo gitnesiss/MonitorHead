@@ -33,6 +33,8 @@ ApplicationWindow {
     property string researchNumber: controller.researchNumber
     property bool recording: controller.recording
 
+    property color graphTextColor: "#CCCCCC"  // Более яркий цвет для текста
+
     // Функция для обработки клавиши пробела
     function handleSpaceKey() {
         // Работает только в режиме COM-порта при подключении
@@ -684,6 +686,20 @@ ApplicationWindow {
                             }
                         }
                     }
+
+                    // Button {
+                    //     text: "Сбросить данные"
+                    //     onClicked: {
+                    //         controller.resetData()
+                    //         showNotification("Данные графика сброшены", false)
+                    //     }
+                    //     background: Rectangle {
+                    //         color: parent.down ? "#5a3c3c" : "#7c3a3a"
+                    //         radius: 4
+                    //     }
+                    //     ToolTip.text: "Очистить график и начать запись заново"
+                    //     ToolTip.visible: containsMouse
+                    // }
                 }
 
                 Item { Layout.fillWidth: true } // Распорка
@@ -968,7 +984,8 @@ ApplicationWindow {
 
                                 Text {
                                     text: "График PITCH (" + controller.graphDuration + " сек)"
-                                    color: "#666"
+                                    // color: "#666"
+                                    color: graphTextColor
                                     font.pixelSize: 12
                                     Layout.topMargin: 5
                                     Layout.alignment: Qt.AlignHCenter
@@ -1233,7 +1250,8 @@ ApplicationWindow {
 
                                 Text {
                                     text: "График ROLL (" + controller.graphDuration + " сек)"
-                                    color: "#666"
+                                    // color: "#666"
+                                    color: graphTextColor
                                     font.pixelSize: 12
                                     Layout.topMargin: 5
                                     Layout.alignment: Qt.AlignHCenter
@@ -1504,7 +1522,8 @@ ApplicationWindow {
 
                                 Text {
                                     text: "График YAW (" + controller.graphDuration + " сек)"
-                                    color: "#666"
+                                    // color: "#666"
+                                    color: graphTextColor
                                     font.pixelSize: 12
                                     Layout.topMargin: 5
                                     Layout.alignment: Qt.AlignHCenter
