@@ -10,8 +10,10 @@ Canvas {
     property real minValue: -120
     property real maxValue: 120
 
-    property color dizzinessPatientColor: "#40FFA000"
-    property color dizzinessDoctorColor: "#406060FF"
+    // property color dizzinessPatientColor: "#40FFA000"
+    // property color dizzinessDoctorColor: "#406060FF"
+    property color dizzinessPatientColor: "#60FFA000"
+    property color dizzinessDoctorColor: "#606060FF"
 
     // Цвета для текста сетки
     property color gridTextColor: "#AAAAAA"  // Более яркий цвет для текста

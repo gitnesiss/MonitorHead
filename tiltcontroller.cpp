@@ -279,60 +279,6 @@ void TiltController::processDataFrame(const DataFrame& frame)
     }
 }
 
-// void TiltController::processDataFrame(const DataFrame& frame)
-// {
-//     // Вычисляем угловые скорости
-//     float speedPitch = 0.0f;
-//     float speedRoll = 0.0f;
-//     float speedYaw = 0.0f;
-
-//     m_dataTimestamps.append(QDateTime::currentMSecsSinceEpoch());
-
-//     if (m_prevFrame.timestamp > 0) {
-//         qint64 timeDiff = frame.timestamp - m_prevFrame.timestamp;
-//         if (timeDiff > 0) {
-//             speedPitch = (frame.pitch - m_prevFrame.pitch) * 1000.0f / timeDiff;
-//             speedRoll = (frame.roll - m_prevFrame.roll) * 1000.0f / timeDiff;
-//             speedYaw = (frame.yaw - m_prevFrame.yaw) * 1000.0f / timeDiff;
-
-//             // Ограничиваем максимальную скорость
-//             const float maxSpeed = 180.0f;
-//             speedPitch = qBound(-maxSpeed, speedPitch, maxSpeed);
-//             speedRoll = qBound(-maxSpeed, speedRoll, maxSpeed);
-//             speedYaw = qBound(-maxSpeed, speedYaw, maxSpeed);
-//         }
-//     }
-
-//     m_prevFrame = frame;
-
-//     // Обновляем модель
-//     bool dizziness = frame.patientDizziness || frame.doctorDizziness;
-//     updateHeadModel(frame.pitch, frame.roll, frame.yaw, speedPitch, speedRoll, speedYaw, dizziness);
-
-//     // Устанавливаем флаг hasData
-//     if (!m_headModel.hasData()) {
-//         m_headModel.setHasData(true);
-//     }
-
-//     // Запись в файл исследования
-//     if (m_recording && m_researchStream) {
-//         QString timestamp = QString::number(frame.timestamp).rightJustified(10, '0');
-//         QString formattedLine = QString("%1;%2;%3;%4;%5;%6")
-//                                     .arg(timestamp)
-//                                     .arg(frame.pitch, 0, 'f', 2)
-//                                     .arg(frame.roll, 0, 'f', 2)
-//                                     .arg(frame.yaw, 0, 'f', 2)
-//                                     .arg(frame.patientDizziness ? 1 : 0)
-//                                     .arg(frame.doctorDizziness ? 1 : 0);
-
-//         *m_researchStream << formattedLine << "\n";
-//         m_researchStream->flush();
-//         m_researchFrameCounter++;
-
-//         qDebug() << "Research data written:" << formattedLine;
-//     }
-// }
-
 void TiltController::connectDevice()
 {
     if (m_connected) {
