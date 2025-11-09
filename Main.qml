@@ -2136,12 +2136,24 @@ ApplicationWindow {
         }
     }
 
+
+
     Connections {
-        target: controller.headModel
-        function onDizzinessChanged() {
-            advanced3DHead.setDizzinessEffect(controller.headModel.dizziness)
+        target: controller
+        function onPatientDizzinessChanged() {
+            advanced3DHead.setDizzinessEffects(controller.patientDizziness, controller.doctorDizziness)
+        }
+        function onDoctorDizzinessChanged() {
+            advanced3DHead.setDizzinessEffects(controller.patientDizziness, controller.doctorDizziness)
         }
     }
+
+    // Connections {
+    //     target: controller.headModel
+    //     function onDizzinessChanged() {
+    //         advanced3DHead.setDizzinessEffect(controller.headModel.dizziness)
+    //     }
+    // }
 
     Timer {
         id: cleanupTimer

@@ -123,6 +123,8 @@ class TiltController : public QObject
     Q_PROPERTY(int dataFrequency READ dataFrequency NOTIFY dataFrequencyChanged)
     Q_PROPERTY(int displayFrequency READ displayFrequency NOTIFY displayFrequencyChanged)
     Q_PROPERTY(int bufferSize READ bufferSize NOTIFY bufferSizeChanged)
+    Q_PROPERTY(bool patientDizziness READ patientDizziness NOTIFY patientDizzinessChanged)
+    Q_PROPERTY(bool doctorDizziness READ doctorDizziness NOTIFY doctorDizzinessChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -158,6 +160,9 @@ public:
     int dataFrequency() const { return m_dataFrequency; }
     int displayFrequency() const { return m_displayFrequency; }
     int bufferSize() const { return m_bufferSize; }
+
+    bool patientDizziness() const { return m_patientDizziness; }
+    bool doctorDizziness() const { return m_doctorDizziness; }
 
 public slots:
     void connectDevice();
@@ -292,7 +297,8 @@ private:
     qint64 m_lastDataTime; // Время последних полученных данных
     bool m_useRelativeTime; // Флаг использования относительного времени
 
-    // void resetData();
+    bool m_patientDizziness = false;
+    bool m_doctorDizziness = false;
 
 signals:
     void connectedChanged(bool connected);
@@ -316,6 +322,9 @@ signals:
     void dataFrequencyChanged(int frequency);
     void displayFrequencyChanged(int frequency);
     void bufferSizeChanged(int size);
+
+    void patientDizzinessChanged(bool patientDizziness);
+    void doctorDizzinessChanged(bool doctorDizziness);
 };
 
 #endif // TILTCONTROLLER_H
