@@ -283,11 +283,6 @@ void TiltController::disconnectDevice()
     safeDisconnect();
 }
 
-
-
-
-
-// ОПТИМИЗАЦИЯ: Улучшаем безопасное отключение
 void TiltController::safeDisconnect()
 {
     if (m_isCleaningUp) return;
@@ -314,37 +309,6 @@ void TiltController::safeDisconnect()
     m_isCleaningUp = false;
 }
 
-// void TiltController::safeDisconnect()
-// {
-//     if (m_isCleaningUp) return;
-
-//     m_isCleaningUp = true;
-
-//     // Останавливаем запись исследования если она активна
-//     if (m_recording) {
-//         stopResearchRecording();
-//     }
-
-//     cleanupCOMPort();
-//     m_connected = false;
-
-//     // Сбрасываем предыдущий кадр
-//     m_prevFrame = DataFrame();
-
-//     if (!m_logMode) {
-//         m_headModel.resetData();
-//         m_dataBuffer.clear();
-//     }
-
-//     addNotification("Отключено от COM-порта");
-//     emit connectedChanged(m_connected);
-//     m_isCleaningUp = false;
-// }
-
-
-
-
-// ОПТИМИЗАЦИЯ: Улучшаем функцию подключения
 bool TiltController::setupCOMPort()
 {
     if (m_serialPort) {
@@ -412,65 +376,6 @@ bool TiltController::setupCOMPort()
     }
 }
 
-// bool TiltController::setupCOMPort()
-// {
-//     if (m_serialPort) {
-//         cleanupCOMPort();
-//     }
-
-//     // ОПТИМИЗАЦИЯ: Очищаем буферы при новом подключении
-//     m_dataBuffer.clear();
-//     m_prevFrame = DataFrame();
-
-//     // ОПТИМИЗАЦИЯ: Сбрасываем кэши
-//     m_lastPitchData.clear();
-//     m_lastRollData.clear();
-//     m_lastYawData.clear();
-//     m_updateCounter = 0;
-
-//     m_serialPort = new QSerialPort(this);
-//     m_serialPort->setPortName(m_selectedPort);
-//     m_serialPort->setBaudRate(QSerialPort::Baud115200);
-//     m_serialPort->setDataBits(QSerialPort::Data8);
-//     m_serialPort->setParity(QSerialPort::NoParity);
-//     m_serialPort->setStopBits(QSerialPort::OneStop);
-//     m_serialPort->setFlowControl(QSerialPort::NoFlowControl);
-
-//     connect(m_serialPort, &QSerialPort::readyRead, this, &TiltController::readCOMPortData, Qt::QueuedConnection);
-//     connect(m_serialPort, &QSerialPort::errorOccurred, this, &TiltController::handleCOMPortError, Qt::QueuedConnection);
-
-//     try {
-//         if (m_serialPort->open(QIODevice::ReadOnly)) {
-//             m_connected = true;
-//             m_autoConnectTimer.stop();
-//             m_safetyTimer.start();
-
-//             if (m_logMode) {
-//                 stopLog();
-//                 m_logMode = false;
-//                 emit logModeChanged(m_logMode);
-//                 emit logControlsEnabledChanged(logControlsEnabled());
-//             }
-
-//             m_incompleteData.clear();
-//             m_dataBuffer.clear();
-//             m_prevFrame = DataFrame();
-
-//             addNotification("Успешное подключение к " + m_selectedPort);
-//             emit connectedChanged(m_connected);
-//             return true;
-//         } else {
-//             addNotification("Ошибка подключения к " + m_selectedPort + ": " + m_serialPort->errorString());
-//             cleanupCOMPort();
-//             return false;
-//         }
-//     } catch (const std::exception& e) {
-//         addNotification("Исключение при подключении к COM-порту: " + QString(e.what()));
-//         cleanupCOMPort();
-//         return false;
-//     }
-// }
-
 void TiltController::cleanupCOMPort()
 {
     m_safetyTimer.stop();
@@ -513,11 +418,6 @@ void TiltController::readCOMPortData()
         safeDisconnect();
     }
 }
-
-
-
-
-
 
 // ОПТИМИЗАЦИЯ: Улучшаем обработку временных меток в processCOMPortData
 void TiltController::processCOMPortData(const QByteArray &data)
@@ -609,63 +509,6 @@ void TiltController::processCOMPortData(const QByteArray &data)
         }
     }
 }
-
-// void TiltController::processCOMPortData(const QByteArray &data)
-// {
-//     m_incompleteData.append(data);
-
-//     while (true) {
-//         int newlinePos = m_incompleteData.indexOf('\n');
-//         if (newlinePos == -1) {
-//             break;
-//         }
-
-//         QByteArray completeLine = m_incompleteData.left(newlinePos).trimmed();
-//         m_incompleteData = m_incompleteData.mid(newlinePos + 1);
-
-//         if (completeLine.isEmpty()) {
-//             continue;
-//         }
-
-//         QString dataString = QString::fromUtf8(completeLine);
-
-//         QString cleanedString = dataString;
-//         cleanedString.remove(QRegularExpression("[^0-9;.-]"));
-
-//         if (!cleanedString.contains(';') || cleanedString.count(';') < 5) {
-//             continue;
-//         }
-
-//         QStringList parts = cleanedString.split(';');
-
-//         if (parts.size() >= 6) {
-//             bool ok1, ok2, ok3, ok4, ok5, ok6;
-//             qint64 timestamp = parts[0].toLongLong(&ok1);
-//             float pitch = parts[1].replace(',', '.').toFloat(&ok2);
-//             float roll = parts[2].replace(',', '.').toFloat(&ok3);
-//             float yaw = parts[3].replace(',', '.').toFloat(&ok4);
-//             bool patientDizziness = (parts[4].toInt(&ok5) == 1);
-//             bool doctorDizziness = (parts[5].toInt(&ok6) == 1);
-
-//             if (ok1 && ok2 && ok3 && ok4 && ok5 && ok6) {
-//                 DataFrame frame;
-//                 frame.timestamp = timestamp;
-//                 frame.pitch = pitch;
-//                 frame.roll = roll;
-//                 frame.yaw = yaw;
-//                 frame.patientDizziness = patientDizziness;
-//                 frame.doctorDizziness = doctorDizziness;
-
-//                 m_dataBuffer.add(frame);
-//                 processDataFrame(frame);
-//             }
-//         }
-//     }
-
-//     if (m_incompleteData.size() > 1024) {
-//         m_incompleteData.clear();
-//     }
-// }
 
 void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 {
@@ -1047,7 +890,6 @@ void TiltController::updateFrequencyInfo()
     emit bufferSizeChanged(m_bufferSize);
 }
 
-// ===== Оптимизация 2 ===== Она делает хуже график начинает прыгать и линия отрывается от оси и ещё бывает обновляется только раз в 3-5 секунд
 void TiltController::updateGraphDataFromBuffer()
 {
     // Добавляем временную метку для расчета частоты отрисовки
@@ -1189,162 +1031,6 @@ void TiltController::updateGraphDataFromBuffer()
     emit graphDataChanged();
 }
 
-// void TiltController::updateGraphDataFromBuffer()
-// {
-//     // Добавляем временную метку для расчета частоты отрисовки
-//     m_displayTimestamps.append(QDateTime::currentMSecsSinceEpoch());
-
-//     if (m_dataBuffer.isEmpty()) {
-//         return;
-//     }
-
-//     const qint64 DISPLAY_DURATION_MS = m_graphDuration * 1000;
-
-//     // Используем время последнего кадра как текущее
-//     DataFrame lastFrame = m_dataBuffer.last();
-//     qint64 currentTime = lastFrame.timestamp;
-//     qint64 displayStartTime = currentTime - DISPLAY_DURATION_MS;
-
-//     QVariantList newPitchData, newRollData, newYawData, newDizzinessPatientData, newDizzinessDoctorData;
-
-//     // ОПТИМИЗАЦИЯ: Интеллектуальное прореживание с учетом времени
-//     const int TARGET_POINTS = 200; // Оптимальное количество точек для плавного графика
-//     QVector<DataFrame> displayData;
-
-//     // Собираем все данные за период отображения
-//     QVector<DataFrame> allDisplayData;
-//     for (int i = 0; i < m_dataBuffer.size(); i++) {
-//         DataFrame frame = m_dataBuffer.at(i);
-//         if (frame.timestamp >= displayStartTime) {
-//             allDisplayData.append(frame);
-//         }
-//     }
-
-//     if (allDisplayData.isEmpty()) {
-//         return;
-//     }
-
-//     // Интеллектуальное прореживание: равномерно распределяем точки по времени
-//     if (allDisplayData.size() > TARGET_POINTS) {
-//         double timeStep = (double)DISPLAY_DURATION_MS / TARGET_POINTS;
-//         int step = qMax(1, allDisplayData.size() / TARGET_POINTS);
-
-//         // Гарантируем включение первой и последней точки
-//         displayData.append(allDisplayData.first());
-
-//         // Выбираем точки с адаптивным шагом
-//         for (int i = step; i < allDisplayData.size() - 1; i += step) {
-//             if (displayData.size() < TARGET_POINTS - 1) {
-//                 displayData.append(allDisplayData[i]);
-//             } else {
-//                 break;
-//             }
-//         }
-
-//         displayData.append(allDisplayData.last());
-//     } else {
-//         displayData = allDisplayData;
-//     }
-
-//     // Формируем данные для графиков
-//     for (const DataFrame& frame : displayData) {
-//         qint64 relativeTime = frame.timestamp - displayStartTime;
-
-//         QVariantMap pitchPoint, rollPoint, yawPoint;
-//         pitchPoint["time"] = relativeTime;
-//         pitchPoint["value"] = frame.pitch;
-//         newPitchData.append(pitchPoint);
-
-//         rollPoint["time"] = relativeTime;
-//         rollPoint["value"] = frame.roll;
-//         newRollData.append(rollPoint);
-
-//         yawPoint["time"] = relativeTime;
-//         yawPoint["value"] = frame.yaw;
-//         newYawData.append(yawPoint);
-//     }
-
-//     // Формируем интервалы головокружения (используем ВСЕ данные для точности интервалов)
-//     bool inPatientDizziness = false;
-//     bool inDoctorDizziness = false;
-//     qint64 patientStart = 0;
-//     qint64 doctorStart = 0;
-
-//     for (const DataFrame& frame : allDisplayData) {
-//         qint64 relativeTime = frame.timestamp - displayStartTime;
-
-//         if (frame.patientDizziness && !inPatientDizziness) {
-//             inPatientDizziness = true;
-//             patientStart = relativeTime;
-//         } else if (!frame.patientDizziness && inPatientDizziness) {
-//             inPatientDizziness = false;
-//             QVariantMap interval;
-//             interval["startTime"] = patientStart;
-//             interval["endTime"] = relativeTime;
-//             newDizzinessPatientData.append(interval);
-//         }
-
-//         if (frame.doctorDizziness && !inDoctorDizziness) {
-//             inDoctorDizziness = true;
-//             doctorStart = relativeTime;
-//         } else if (!frame.doctorDizziness && inDoctorDizziness) {
-//             inDoctorDizziness = false;
-//             QVariantMap interval;
-//             interval["startTime"] = doctorStart;
-//             interval["endTime"] = relativeTime;
-//             newDizzinessDoctorData.append(interval);
-//         }
-//     }
-
-//     // Завершаем активные интервалы
-//     if (inPatientDizziness) {
-//         QVariantMap interval;
-//         interval["startTime"] = patientStart;
-//         interval["endTime"] = DISPLAY_DURATION_MS;
-//         newDizzinessPatientData.append(interval);
-//     }
-
-//     if (inDoctorDizziness) {
-//         QVariantMap interval;
-//         interval["startTime"] = doctorStart;
-//         interval["endTime"] = DISPLAY_DURATION_MS;
-//         newDizzinessDoctorData.append(interval);
-//     }
-
-//     // ОПТИМИЗАЦИЯ: Обновляем данные только если они действительно изменились
-//     bool dataChanged = false;
-
-//     if (m_pitchGraphData != newPitchData) {
-//         m_pitchGraphData = newPitchData;
-//         dataChanged = true;
-//     }
-//     if (m_rollGraphData != newRollData) {
-//         m_rollGraphData = newRollData;
-//         dataChanged = true;
-//     }
-//     if (m_yawGraphData != newYawData) {
-//         m_yawGraphData = newYawData;
-//         dataChanged = true;
-//     }
-//     if (m_dizzinessPatientData != newDizzinessPatientData) {
-//         m_dizzinessPatientData = newDizzinessPatientData;
-//         dataChanged = true;
-//     }
-//     if (m_dizzinessDoctorData != newDizzinessDoctorData) {
-//         m_dizzinessDoctorData = newDizzinessDoctorData;
-//         dataChanged = true;
-//     }
-
-//     if (!m_headModel.hasData()) {
-//         m_headModel.setHasData(true);
-//     }
-
-//     if (dataChanged) {
-//         emit graphDataChanged();
-//     }
-// }
-
-// ===== Оптимизация 1 =====
 void TiltController::updateDataDisplay()
 {
     static int updateCounter = 0;

@@ -686,20 +686,6 @@ ApplicationWindow {
                             }
                         }
                     }
-
-                    // Button {
-                    //     text: "Сбросить данные"
-                    //     onClicked: {
-                    //         controller.resetData()
-                    //         showNotification("Данные графика сброшены", false)
-                    //     }
-                    //     background: Rectangle {
-                    //         color: parent.down ? "#5a3c3c" : "#7c3a3a"
-                    //         radius: 4
-                    //     }
-                    //     ToolTip.text: "Очистить график и начать запись заново"
-                    //     ToolTip.visible: containsMouse
-                    // }
                 }
 
                 Item { Layout.fillWidth: true } // Распорка
@@ -1759,10 +1745,6 @@ ApplicationWindow {
             }
         }
 
-
-
-
-
         // === ВОСПРОИЗВЕДЕНИЕ ИССЛЕДОВАНИЯ ===
         Rectangle {
             Layout.fillWidth: true
@@ -1806,15 +1788,6 @@ ApplicationWindow {
                             maximumLineCount: 2
                             wrapMode: Text.Wrap
                         }
-
-                        // Text {
-                        //     text: controller.logMode ? controller.studyInfo : "Исследование не загружено"
-                        //     color: controller.logControlsEnabled ? "#ccc" : "#888"
-                        //     font.pixelSize: 12
-                        //     elide: Text.ElideRight
-                        //     maximumLineCount: 2
-                        //     wrapMode: Text.Wrap
-                        // }
                     }
 
                     // ЦЕНТРАЛЬНАЯ ЧАСТЬ - кнопки управления (абсолютный центр)
