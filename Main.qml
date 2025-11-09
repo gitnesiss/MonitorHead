@@ -652,9 +652,8 @@ ApplicationWindow {
                         }
                     }
 
-                    // Добавляем информацию о частотах
                     Rectangle {
-                        Layout.preferredWidth: 200
+                        Layout.preferredWidth: 220
                         Layout.preferredHeight: 50
                         color: "transparent"
 
@@ -663,23 +662,24 @@ ApplicationWindow {
                             spacing: 2
 
                             Text {
-                                text: "Данные: " + controller.dataFrequency + " Гц"
+                                text: "Данные: " + controller.dataFrequency + " Гц | Отрисовка: " + controller.displayFrequency + " Гц"
                                 color: controller.connected ? "#4CAF50" : "#888"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 font.bold: true
                             }
 
                             Text {
-                                text: "Отрисовка: " + controller.displayFrequency + " Гц"
+                                text: "Буфер: " + controller.bufferSize + " кадров | График: " + controller.graphDuration + "с"
                                 color: controller.connected ? "#2196F3" : "#888"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 font.bold: true
                             }
 
                             Text {
-                                text: "Буфер: " + controller.bufferSize + " кадров"
+                                text: "Режим: " + (controller.logMode ? "Лог" : "Реальное время") +
+                                      " | Точки: " + controller.pitchGraphData.length
                                 color: controller.connected ? "#FF9800" : "#888"
-                                font.pixelSize: 12
+                                font.pixelSize: 11
                                 font.bold: true
                             }
                         }

@@ -36,10 +36,11 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_autoConnectTimer.start();
     addNotification("Программа запущена. Попытка автоматического подключения к COM-порту...");
 
-    m_graphDuration = 15;
+    // Количество показываемых секунд на графике
+    m_graphDuration = 30;
 
     // ОПТИМИЗАЦИЯ 5: Уменьшаем частоту обновления данных
-    m_updateFrequency = 15;
+    m_updateFrequency = 30;
     m_dataUpdateTimer.setInterval(1000 / m_updateFrequency);
     connect(&m_dataUpdateTimer, &QTimer::timeout, this, &TiltController::updateDataDisplay);
     m_dataUpdateTimer.start();
@@ -800,8 +801,6 @@ void TiltController::updateHeadModel(float pitch, float roll, float yaw,
     }
 }
 
-
-
 void TiltController::addNotification(const QString &message)
 {
     m_notification = QDateTime::currentDateTime().toString("[hh:mm:ss] ") + message;
@@ -845,18 +844,164 @@ void TiltController::updateFrequencyInfo()
     emit bufferSizeChanged(m_bufferSize);
 }
 
-
-
-
-
-
-
 // ===== Оптимизация 2 ===== Она делает хуже график начинает прыгать и линия отрывается от оси и ещё бывает обновляется только раз в 3-5 секунд
+void TiltController::updateGraphDataFromBuffer()
+{
+    // Добавляем временную метку для расчета частоты отрисовки
+    m_displayTimestamps.append(QDateTime::currentMSecsSinceEpoch());
+
+    if (m_dataBuffer.isEmpty()) {
+        return;
+    }
+
+    const qint64 DISPLAY_DURATION_MS = m_graphDuration * 1000;
+
+    // Используем время последнего кадра как текущее
+    DataFrame lastFrame = m_dataBuffer.last();
+    qint64 currentTime = lastFrame.timestamp;
+    qint64 displayStartTime = currentTime - DISPLAY_DURATION_MS;
+
+    QVariantList newPitchData, newRollData, newYawData, newDizzinessPatientData, newDizzinessDoctorData;
+
+    // ОПТИМИЗАЦИЯ: Интеллектуальное прореживание с учетом времени
+    const int TARGET_POINTS = 200; // Оптимальное количество точек для плавного графика
+    QVector<DataFrame> displayData;
+
+    // Собираем все данные за период отображения
+    QVector<DataFrame> allDisplayData;
+    for (int i = 0; i < m_dataBuffer.size(); i++) {
+        DataFrame frame = m_dataBuffer.at(i);
+        if (frame.timestamp >= displayStartTime) {
+            allDisplayData.append(frame);
+        }
+    }
+
+    if (allDisplayData.isEmpty()) {
+        return;
+    }
+
+    // Интеллектуальное прореживание: равномерно распределяем точки по времени
+    if (allDisplayData.size() > TARGET_POINTS) {
+        double timeStep = (double)DISPLAY_DURATION_MS / TARGET_POINTS;
+        int step = qMax(1, allDisplayData.size() / TARGET_POINTS);
+
+        // Гарантируем включение первой и последней точки
+        displayData.append(allDisplayData.first());
+
+        // Выбираем точки с адаптивным шагом
+        for (int i = step; i < allDisplayData.size() - 1; i += step) {
+            if (displayData.size() < TARGET_POINTS - 1) {
+                displayData.append(allDisplayData[i]);
+            } else {
+                break;
+            }
+        }
+
+        displayData.append(allDisplayData.last());
+    } else {
+        displayData = allDisplayData;
+    }
+
+    // Формируем данные для графиков
+    for (const DataFrame& frame : displayData) {
+        qint64 relativeTime = frame.timestamp - displayStartTime;
+
+        QVariantMap pitchPoint, rollPoint, yawPoint;
+        pitchPoint["time"] = relativeTime;
+        pitchPoint["value"] = frame.pitch;
+        newPitchData.append(pitchPoint);
+
+        rollPoint["time"] = relativeTime;
+        rollPoint["value"] = frame.roll;
+        newRollData.append(rollPoint);
+
+        yawPoint["time"] = relativeTime;
+        yawPoint["value"] = frame.yaw;
+        newYawData.append(yawPoint);
+    }
+
+    // Формируем интервалы головокружения (используем ВСЕ данные для точности интервалов)
+    bool inPatientDizziness = false;
+    bool inDoctorDizziness = false;
+    qint64 patientStart = 0;
+    qint64 doctorStart = 0;
+
+    for (const DataFrame& frame : allDisplayData) {
+        qint64 relativeTime = frame.timestamp - displayStartTime;
+
+        if (frame.patientDizziness && !inPatientDizziness) {
+            inPatientDizziness = true;
+            patientStart = relativeTime;
+        } else if (!frame.patientDizziness && inPatientDizziness) {
+            inPatientDizziness = false;
+            QVariantMap interval;
+            interval["startTime"] = patientStart;
+            interval["endTime"] = relativeTime;
+            newDizzinessPatientData.append(interval);
+        }
+
+        if (frame.doctorDizziness && !inDoctorDizziness) {
+            inDoctorDizziness = true;
+            doctorStart = relativeTime;
+        } else if (!frame.doctorDizziness && inDoctorDizziness) {
+            inDoctorDizziness = false;
+            QVariantMap interval;
+            interval["startTime"] = doctorStart;
+            interval["endTime"] = relativeTime;
+            newDizzinessDoctorData.append(interval);
+        }
+    }
+
+    // Завершаем активные интервалы
+    if (inPatientDizziness) {
+        QVariantMap interval;
+        interval["startTime"] = patientStart;
+        interval["endTime"] = DISPLAY_DURATION_MS;
+        newDizzinessPatientData.append(interval);
+    }
+
+    if (inDoctorDizziness) {
+        QVariantMap interval;
+        interval["startTime"] = doctorStart;
+        interval["endTime"] = DISPLAY_DURATION_MS;
+        newDizzinessDoctorData.append(interval);
+    }
+
+    // ОПТИМИЗАЦИЯ: Обновляем данные только если они действительно изменились
+    bool dataChanged = false;
+
+    if (m_pitchGraphData != newPitchData) {
+        m_pitchGraphData = newPitchData;
+        dataChanged = true;
+    }
+    if (m_rollGraphData != newRollData) {
+        m_rollGraphData = newRollData;
+        dataChanged = true;
+    }
+    if (m_yawGraphData != newYawData) {
+        m_yawGraphData = newYawData;
+        dataChanged = true;
+    }
+    if (m_dizzinessPatientData != newDizzinessPatientData) {
+        m_dizzinessPatientData = newDizzinessPatientData;
+        dataChanged = true;
+    }
+    if (m_dizzinessDoctorData != newDizzinessDoctorData) {
+        m_dizzinessDoctorData = newDizzinessDoctorData;
+        dataChanged = true;
+    }
+
+    if (!m_headModel.hasData()) {
+        m_headModel.setHasData(true);
+    }
+
+    if (dataChanged) {
+        emit graphDataChanged();
+    }
+}
+
 // void TiltController::updateGraphDataFromBuffer()
 // {
-//     // Добавляем временную метку для расчета частоты отрисовки
-//     m_displayTimestamps.append(QDateTime::currentMSecsSinceEpoch());
-
 //     if (m_dataBuffer.isEmpty()) {
 //         return;
 //     }
@@ -870,20 +1015,17 @@ void TiltController::updateFrequencyInfo()
 
 //     QVariantList newPitchData, newRollData, newYawData, newDizzinessPatientData, newDizzinessDoctorData;
 
-//     // ОПТИМИЗАЦИЯ 2: Ограничиваем количество обрабатываемых точек
-//     const int MAX_POINTS = 150;
+//     m_displayTimestamps.append(QDateTime::currentMSecsSinceEpoch());
+
+
+//     // Собираем данные за период отображения
 //     QVector<DataFrame> displayData;
 
-//     // Собираем данные с прореживанием
-//     int bufferSize = m_dataBuffer.size();
-//     int step = qMax(1, bufferSize / MAX_POINTS);
-
-//     for (int i = 0; i < bufferSize; i += step) {
+//     for (int i = 0; i < m_dataBuffer.size(); i++) {
 //         DataFrame frame = m_dataBuffer.at(i);
 //         if (frame.timestamp >= displayStartTime) {
 //             displayData.append(frame);
 //         }
-//         if (displayData.size() >= MAX_POINTS) break;
 //     }
 
 //     if (displayData.isEmpty()) {
@@ -969,117 +1111,6 @@ void TiltController::updateFrequencyInfo()
 //     emit graphDataChanged();
 // }
 
-void TiltController::updateGraphDataFromBuffer()
-{
-    if (m_dataBuffer.isEmpty()) {
-        return;
-    }
-
-    const qint64 DISPLAY_DURATION_MS = m_graphDuration * 1000;
-
-    // Используем время последнего кадра как текущее
-    DataFrame lastFrame = m_dataBuffer.last();
-    qint64 currentTime = lastFrame.timestamp;
-    qint64 displayStartTime = currentTime - DISPLAY_DURATION_MS;
-
-    QVariantList newPitchData, newRollData, newYawData, newDizzinessPatientData, newDizzinessDoctorData;
-
-    m_displayTimestamps.append(QDateTime::currentMSecsSinceEpoch());
-
-
-    // Собираем данные за период отображения
-    QVector<DataFrame> displayData;
-
-    for (int i = 0; i < m_dataBuffer.size(); i++) {
-        DataFrame frame = m_dataBuffer.at(i);
-        if (frame.timestamp >= displayStartTime) {
-            displayData.append(frame);
-        }
-    }
-
-    if (displayData.isEmpty()) {
-        return;
-    }
-
-    // Формируем данные для графиков
-    for (const DataFrame& frame : displayData) {
-        qint64 relativeTime = frame.timestamp - displayStartTime;
-
-        QVariantMap pitchPoint, rollPoint, yawPoint;
-        pitchPoint["time"] = relativeTime;
-        pitchPoint["value"] = frame.pitch;
-        newPitchData.append(pitchPoint);
-
-        rollPoint["time"] = relativeTime;
-        rollPoint["value"] = frame.roll;
-        newRollData.append(rollPoint);
-
-        yawPoint["time"] = relativeTime;
-        yawPoint["value"] = frame.yaw;
-        newYawData.append(yawPoint);
-    }
-
-    // Формируем интервалы головокружения
-    bool inPatientDizziness = false;
-    bool inDoctorDizziness = false;
-    qint64 patientStart = 0;
-    qint64 doctorStart = 0;
-
-    for (const DataFrame& frame : displayData) {
-        qint64 relativeTime = frame.timestamp - displayStartTime;
-
-        if (frame.patientDizziness && !inPatientDizziness) {
-            inPatientDizziness = true;
-            patientStart = relativeTime;
-        } else if (!frame.patientDizziness && inPatientDizziness) {
-            inPatientDizziness = false;
-            QVariantMap interval;
-            interval["startTime"] = patientStart;
-            interval["endTime"] = relativeTime;
-            newDizzinessPatientData.append(interval);
-        }
-
-        if (frame.doctorDizziness && !inDoctorDizziness) {
-            inDoctorDizziness = true;
-            doctorStart = relativeTime;
-        } else if (!frame.doctorDizziness && inDoctorDizziness) {
-            inDoctorDizziness = false;
-            QVariantMap interval;
-            interval["startTime"] = doctorStart;
-            interval["endTime"] = relativeTime;
-            newDizzinessDoctorData.append(interval);
-        }
-    }
-
-    // Завершаем активные интервалы
-    if (inPatientDizziness) {
-        QVariantMap interval;
-        interval["startTime"] = patientStart;
-        interval["endTime"] = DISPLAY_DURATION_MS;
-        newDizzinessPatientData.append(interval);
-    }
-
-    if (inDoctorDizziness) {
-        QVariantMap interval;
-        interval["startTime"] = doctorStart;
-        interval["endTime"] = DISPLAY_DURATION_MS;
-        newDizzinessDoctorData.append(interval);
-    }
-
-    // Обновляем данные
-    m_pitchGraphData = newPitchData;
-    m_rollGraphData = newRollData;
-    m_yawGraphData = newYawData;
-    m_dizzinessPatientData = newDizzinessPatientData;
-    m_dizzinessDoctorData = newDizzinessDoctorData;
-
-    if (!m_headModel.hasData()) {
-        m_headModel.setHasData(true);
-    }
-
-    emit graphDataChanged();
-}
-
 
 
 
@@ -1090,17 +1121,25 @@ void TiltController::updateDataDisplay()
     static int updateCounter = 0;
     updateCounter++;
 
-    // ОПТИМИЗАЦИЯ 1: Обновляем графики только каждый 2-й вызов
-    if ((updateCounter % 2 == 0) && (m_connected || m_logPlaying)) {
+    // ОПТИМИЗАЦИЯ: Более интеллектуальное управление частотой обновления
+    // В режиме COM-порта обновляем чаще, в режиме лога - реже
+    bool shouldUpdate = false;
+
+    if (m_connected) {
+        // В режиме реального времени обновляем каждый вызов для плавности
+        shouldUpdate = true;
+    } else if (m_logPlaying) {
+        // В режиме воспроизведения обновляем каждый вызов для синхронизации
+        shouldUpdate = true;
+    } else if (m_logLoaded && !m_logPlaying) {
+        // В режиме паузы обновляем реже - каждый 4-й вызов
+        shouldUpdate = (updateCounter % 4 == 0);
+    }
+
+    if (shouldUpdate) {
         updateGraphDataFromBuffer();
     }
 
+    // Сбрасываем счетчик чтобы избежать переполнения
     if (updateCounter >= 1000) updateCounter = 0;
 }
-
-// void TiltController::updateDataDisplay()
-// {
-//     if (m_connected || m_logPlaying) {
-//         updateGraphDataFromBuffer();
-//     }
-// }

@@ -13,19 +13,36 @@ Canvas {
     property color dizzinessPatientColor: "#40FFA000"
     property color dizzinessDoctorColor: "#406060FF"
 
-    // Кэшируемые вычисления
+    // Кэшируемые вычисления для оптимизации
     property real _valueRange: maxValue - minValue
     property real _zeroY: height - ((0 - minValue) / _valueRange) * height
     property real _availableWidth: width - 40
+    property real _timeScale: _availableWidth / (graphDuration * 1000)
+
+    // Кэш для отрисованных данных
+    property var _cachedGraphData: []
+    property var _cachedDizzinessPatient: []
+    property var _cachedDizzinessDoctor: []
+    property bool _cacheValid: false
 
     onWidthChanged: updateCachedValues()
     onHeightChanged: updateCachedValues()
     onGraphDurationChanged: updateCachedValues()
+    onGraphDataChanged: invalidateCache()
+    onDizzinessPatientDataChanged: invalidateCache()
+    onDizzinessDoctorDataChanged: invalidateCache()
 
     function updateCachedValues() {
         _valueRange = maxValue - minValue
         _zeroY = height - ((0 - minValue) / _valueRange) * height
         _availableWidth = width - 40
+        _timeScale = _availableWidth / (graphDuration * 1000)
+        invalidateCache()
+    }
+
+    function invalidateCache() {
+        _cacheValid = false
+        canvas.requestPaint()
     }
 
     onPaint: {
@@ -37,9 +54,32 @@ Canvas {
             return
         }
 
+        // Используем кэшированные вычисления если они валидны
+        if (!_cacheValid) {
+            recalculateCache()
+        }
+
         drawGrid(ctx)
         drawDizzinessIntervals(ctx)
         drawGraphLine(ctx)
+    }
+
+    function recalculateCache() {
+        // Предварительные вычисления для оптимизации отрисовки
+        _cachedGraphData = []
+        for (var i = 0; i < graphData.length; i++) {
+            var point = graphData[i]
+            if (!point || point.time === undefined || point.value === undefined) continue
+
+            var x = point.time * _timeScale
+            var y = height - ((point.value - minValue) / _valueRange) * height
+
+            x = Math.max(0, Math.min(_availableWidth, x))
+            y = Math.max(0, Math.min(height, y))
+
+            _cachedGraphData.push({x: x, y: y, value: point.value})
+        }
+        _cacheValid = true
     }
 
     function drawNoData(ctx) {
@@ -116,8 +156,8 @@ Canvas {
             var startTime = interval.startTime
             var endTime = interval.endTime
 
-            var xStart = (startTime / (graphDuration * 1000)) * _availableWidth
-            var xEnd = (endTime / (graphDuration * 1000)) * _availableWidth
+            var xStart = startTime * _timeScale
+            var xEnd = endTime * _timeScale
 
             xStart = Math.max(0, Math.min(_availableWidth, xStart))
             xEnd = Math.max(0, Math.min(_availableWidth, xEnd))
@@ -129,7 +169,7 @@ Canvas {
     }
 
     function drawGraphLine(ctx) {
-        if (graphData.length < 2) return
+        if (_cachedGraphData.length < 2) return
 
         ctx.strokeStyle = lineColor
         ctx.lineWidth = 2
@@ -137,51 +177,31 @@ Canvas {
 
         var firstPoint = true
 
-        for (var i = 0; i < graphData.length; i++) {
-            var point = graphData[i]
-            if (!point || point.time === undefined || point.value === undefined) continue
-
-            var x = (point.time / (graphDuration * 1000)) * _availableWidth
-            var y = height - ((point.value - minValue) / _valueRange) * height
-
-            x = Math.max(0, Math.min(_availableWidth, x))
-            y = Math.max(0, Math.min(height, y))
+        for (var i = 0; i < _cachedGraphData.length; i++) {
+            var point = _cachedGraphData[i]
 
             if (firstPoint) {
-                ctx.moveTo(x, y)
+                ctx.moveTo(point.x, point.y)
                 firstPoint = false
             } else {
-                ctx.lineTo(x, y)
+                ctx.lineTo(point.x, point.y)
             }
         }
 
         ctx.stroke()
 
         // Рисуем последнюю точку
-        if (graphData.length > 0) {
-            var lastPoint = graphData[graphData.length - 1]
-            if (lastPoint && lastPoint.time !== undefined && lastPoint.value !== undefined) {
-                var lastX = (lastPoint.time / (graphDuration * 1000)) * _availableWidth
-                var lastY = height - ((lastPoint.value - minValue) / _valueRange) * height
+        if (_cachedGraphData.length > 0) {
+            var lastPoint = _cachedGraphData[_cachedGraphData.length - 1]
 
-                lastX = Math.max(3, Math.min(_availableWidth - 3, lastX))
-                lastY = Math.max(3, Math.min(height - 3, lastY))
-
-                ctx.fillStyle = lineColor
-                ctx.beginPath()
-                ctx.arc(lastX, lastY, 3, 0, Math.PI * 2)
-                ctx.fill()
-            }
+            ctx.fillStyle = lineColor
+            ctx.beginPath()
+            ctx.arc(lastPoint.x, lastPoint.y, 3, 0, Math.PI * 2)
+            ctx.fill()
         }
     }
 
-    Timer {
-        interval: 100
-        running: canvas.visible && (controller.connected || controller.logPlaying)
-        repeat: true
-        onTriggered: canvas.requestPaint()
-    }
-
+    // ОПТИМИЗАЦИЯ: Перерисовываем только при реальном изменении данных
     Connections {
         target: controller
         function onGraphDataChanged() {
