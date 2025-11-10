@@ -764,7 +764,18 @@ void TiltController::seekLog(int time)
             const LogEntry &entry = m_logData[i];
             updateHeadModel(entry.pitch, entry.roll, entry.yaw,
                             entry.speedPitch, entry.speedRoll, entry.speedYaw,
-                            entry.dizziness);
+                            entry.dizziness || entry.doctorDizziness); // Комбинированное головокружение
+
+            // ОБНОВЛЯЕМ СВОЙСТВА ГОЛОВОКРУЖЕНИЯ ДЛЯ 3D ВИДА
+            if (m_patientDizziness != entry.dizziness) {
+                m_patientDizziness = entry.dizziness;
+                emit patientDizzinessChanged(m_patientDizziness);
+            }
+
+            if (m_doctorDizziness != entry.doctorDizziness) {
+                m_doctorDizziness = entry.doctorDizziness;
+                emit doctorDizzinessChanged(m_doctorDizziness);
+            }
             break;
         }
     }
@@ -774,7 +785,7 @@ void TiltController::seekLog(int time)
 
     emit currentTimeChanged(m_currentTime);
 
-    // Если воспроизведение активно, продолжаем с новой позиции
+    // Если воспроизведение активнo, продолжаем с новой позиции
     if (m_logPlaying) {
         m_playbackTimeInitialized = false; // Переинициализируем синхронизацию
     }
@@ -793,11 +804,22 @@ void TiltController::stopLog()
     // Сбрасываем график на начальную позицию (первые 30 секунд)
     m_graphDisplayTime = 30000;
 
+    // СБРАСЫВАЕМ ГОЛОВОКРУЖЕНИЕ
+    if (m_patientDizziness) {
+        m_patientDizziness = false;
+        emit patientDizzinessChanged(m_patientDizziness);
+    }
+
+    if (m_doctorDizziness) {
+        m_doctorDizziness = false;
+        emit doctorDizzinessChanged(m_doctorDizziness);
+    }
+
     if (!m_logData.isEmpty()) {
         const LogEntry &firstEntry = m_logData.first();
         updateHeadModel(firstEntry.pitch, firstEntry.roll, firstEntry.yaw,
                         firstEntry.speedPitch, firstEntry.speedRoll, firstEntry.speedYaw,
-                        firstEntry.dizziness);
+                        false); // Головокружение сброшено
     }
 
     // Обновляем графики для отображения начальной позиции
@@ -991,10 +1013,21 @@ void TiltController::updateLogPlayback()
         const LogEntry &entry = m_logData[targetIndex - 1];
         updateHeadModel(entry.pitch, entry.roll, entry.yaw,
                         entry.speedPitch, entry.speedRoll, entry.speedYaw,
-                        entry.dizziness);
+                        entry.dizziness || entry.doctorDizziness); // Комбинированное головокружение
 
         m_currentTime = entry.time;
         m_currentLogIndex = targetIndex;
+
+        // ОБНОВЛЯЕМ СВОЙСТВА ГОЛОВОКРУЖЕНИЯ ДЛЯ 3D ВИДА
+        if (m_patientDizziness != entry.dizziness) {
+            m_patientDizziness = entry.dizziness;
+            emit patientDizzinessChanged(m_patientDizziness);
+        }
+
+        if (m_doctorDizziness != entry.doctorDizziness) {
+            m_doctorDizziness = entry.doctorDizziness;
+            emit doctorDizzinessChanged(m_doctorDizziness);
+        }
 
         // ОБНОВЛЯЕМ ПОЗИЦИЮ ГРАФИКА для отображения текущего момента
         m_graphDisplayTime = m_currentTime + 30000;
@@ -1173,8 +1206,6 @@ void TiltController::updateGraphDataFromLogFile()
     qint64 displayEndTime = m_graphDisplayTime;
     qint64 displayStartTime = displayEndTime - DISPLAY_DURATION_MS;
 
-    qDebug() << "LOG GRAPH - DisplayTime:" << m_graphDisplayTime << "Window:" << displayStartTime << "-" << displayEndTime;
-
     // Находим диапазон данных для отображения (в оригинальном времени файла)
     int startIndex = findLogIndexByTime(qMax(0LL, displayStartTime - TIME_OFFSET));
     int endIndex = findLogIndexByTime(displayEndTime - TIME_OFFSET);
@@ -1309,24 +1340,30 @@ void TiltController::updateGraphDataFromLogFile()
             newYawData.append(yawPoint);
         }
 
-        // Формируем интервалы головокружения
+        // Формируем интервалы головокружения на основе ВСЕХ данных в диапазоне, а не прореженных
         bool inPatientDizziness = false;
         bool inDoctorDizziness = false;
         qint64 patientStartTime = 0;
         qint64 doctorStartTime = 0;
 
-        for (const DataFrame& frame : displayData) {
-            qint64 relativeTime = frame.timestamp - displayStartTime;
+        // Используем все данные из диапазона для точного определения интервалов
+        for (int i = startIndex; i <= endIndex; i++) {
+            const LogEntry &entry = m_logData[i];
+
+            // Рассчитываем время относительно начала отображаемого окна
+            qint64 frameTime = entry.time + TIME_OFFSET;
+            qint64 relativeTime = frameTime - displayStartTime;
             relativeTime = qBound(0LL, relativeTime, DISPLAY_DURATION_MS);
 
             // Обработка головокружения пациента
-            if (frame.patientDizziness && !inPatientDizziness) {
+            if (entry.dizziness && !inPatientDizziness) {
                 inPatientDizziness = true;
                 patientStartTime = relativeTime;
-            } else if (!frame.patientDizziness && inPatientDizziness) {
+            } else if (!entry.dizziness && inPatientDizziness) {
                 inPatientDizziness = false;
                 qint64 patientEndTime = relativeTime;
 
+                // Добавляем интервал только если он имеет положительную длительность
                 if (patientStartTime < patientEndTime) {
                     QVariantMap interval;
                     interval["startTime"] = patientStartTime;
@@ -1336,13 +1373,14 @@ void TiltController::updateGraphDataFromLogFile()
             }
 
             // Обработка головокружения врача
-            if (frame.doctorDizziness && !inDoctorDizziness) {
+            if (entry.doctorDizziness && !inDoctorDizziness) {
                 inDoctorDizziness = true;
                 doctorStartTime = relativeTime;
-            } else if (!frame.doctorDizziness && inDoctorDizziness) {
+            } else if (!entry.doctorDizziness && inDoctorDizziness) {
                 inDoctorDizziness = false;
                 qint64 doctorEndTime = relativeTime;
 
+                // Добавляем интервал только если он имеет положительную длительность
                 if (doctorStartTime < doctorEndTime) {
                     QVariantMap interval;
                     interval["startTime"] = doctorStartTime;
@@ -1352,15 +1390,15 @@ void TiltController::updateGraphDataFromLogFile()
             }
         }
 
-        // Завершаем активные интервалы
-        if (inPatientDizziness) {
+        // Завершаем активные интервалы на границе окна отображения
+        if (inPatientDizziness && patientStartTime < DISPLAY_DURATION_MS) {
             QVariantMap interval;
             interval["startTime"] = patientStartTime;
             interval["endTime"] = DISPLAY_DURATION_MS;
             newDizzinessPatientData.append(interval);
         }
 
-        if (inDoctorDizziness) {
+        if (inDoctorDizziness && doctorStartTime < DISPLAY_DURATION_MS) {
             QVariantMap interval;
             interval["startTime"] = doctorStartTime;
             interval["endTime"] = DISPLAY_DURATION_MS;
@@ -1374,10 +1412,6 @@ void TiltController::updateGraphDataFromLogFile()
     m_yawGraphData = newYawData;
     m_dizzinessPatientData = newDizzinessPatientData;
     m_dizzinessDoctorData = newDizzinessDoctorData;
-
-    qDebug() << "Log graph updated - DisplayTime:" << m_graphDisplayTime
-             << "Points:" << newPitchData.size()
-             << "Window:" << displayStartTime << "-" << displayEndTime;
 }
 
 // Вспомогательная функция для бинарного поиска индекса по времени
