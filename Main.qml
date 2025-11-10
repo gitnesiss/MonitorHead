@@ -143,6 +143,32 @@ ApplicationWindow {
         }
     }
 
+    // Новая функция для форматирования времени без миллисекунд
+    function formatTimeWithoutMs(milliseconds, totalMilliseconds) {
+        if (milliseconds === undefined || totalMilliseconds === undefined) {
+            return "00:00:00";
+        }
+
+        // Округляем миллисекунды до целого
+        var roundedMs = Math.round(milliseconds);
+
+        // Вычисляем компоненты времени
+        var hours = Math.floor(roundedMs / 3600000);
+        var minutes = Math.floor((roundedMs % 3600000) / 60000);
+        var seconds = Math.floor((roundedMs % 60000) / 1000);
+
+        // Форматируем с ведущими нулями
+        var hoursStr = hours.toString().padStart(2, '0');
+        var minutesStr = minutes.toString().padStart(2, '0');
+        var secondsStr = seconds.toString().padStart(2, '0');
+
+        return hoursStr + ":" + minutesStr + ":" + secondsStr;
+    }
+
+    function formatCurrentAndTotalTime(currentMs, totalMs) {
+        return formatTimeWithoutMs(currentMs, totalMs) + " / " + formatTimeWithoutMs(totalMs, totalMs);
+    }
+
     // Функция для диагностики графиков
     function debugGraphs() {
         console.log("=== GRAPH DEBUG ===")
@@ -1913,7 +1939,7 @@ ApplicationWindow {
 
                         // Начальное время
                         Text {
-                            text: formatResearchTime(0, controller.totalTime)
+                            text: formatTimeWithoutMs(0, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 10
                             font.bold: true
@@ -1921,9 +1947,9 @@ ApplicationWindow {
 
                         Item { Layout.fillWidth: true } // Распорка
 
-                        // Среднее время
+                        // 25%
                         Text {
-                            text: formatResearchTime(Math.round(controller.totalTime / 2), controller.totalTime)
+                            text: formatTimeWithoutMs(controller.totalTime * 0.25, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 10
                             font.bold: true
@@ -1932,15 +1958,71 @@ ApplicationWindow {
 
                         Item { Layout.fillWidth: true } // Распорка
 
-                        // Конечное время
+                        // Среднее время (50%)
                         Text {
-                            text: formatResearchTime(controller.totalTime, controller.totalTime)
+                            text: formatTimeWithoutMs(Math.round(controller.totalTime / 2), controller.totalTime)
+                            color: controller.logControlsEnabled ? "#aaa" : "#666"
+                            font.pixelSize: 10
+                            font.bold: true
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        Item { Layout.fillWidth: true } // Распорка
+
+                        // 75%
+                        Text {
+                            text: formatTimeWithoutMs(controller.totalTime * 0.75, controller.totalTime)
+                            color: controller.logControlsEnabled ? "#aaa" : "#666"
+                            font.pixelSize: 10
+                            font.bold: true
+                            Layout.alignment: Qt.AlignHCenter
+                        }
+
+                        Item { Layout.fillWidth: true } // Распорка
+
+                        // Конечное время - теперь в формате "текущее / общее"
+                        Text {
+                            id: currentTimeLabel
+                            text: formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 10
                             font.bold: true
                             Layout.alignment: Qt.AlignRight
                         }
                     }
+                    // RowLayout {
+                    //     Layout.fillWidth: true
+
+                    //     // Начальное время
+                    //     Text {
+                    //         text: formatResearchTime(0, controller.totalTime)
+                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //         font.pixelSize: 10
+                    //         font.bold: true
+                    //     }
+
+                    //     Item { Layout.fillWidth: true } // Распорка
+
+                    //     // Среднее время
+                    //     Text {
+                    //         text: formatResearchTime(Math.round(controller.totalTime / 2), controller.totalTime)
+                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //         font.pixelSize: 10
+                    //         font.bold: true
+                    //         Layout.alignment: Qt.AlignHCenter
+                    //     }
+
+                    //     Item { Layout.fillWidth: true } // Распорка
+
+                    //     // Конечное время
+                    //     Text {
+                    //         text: formatResearchTime(controller.totalTime, controller.totalTime)
+                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //         font.pixelSize: 10
+                    //         font.bold: true
+                    //         Layout.alignment: Qt.AlignRight
+                    //     }
+                    // }
 
                     // Контейнер для ползунка с дополнительной областью для клика
                     Item {
@@ -2081,10 +2163,16 @@ ApplicationWindow {
                     Item { Layout.fillWidth: true }
 
                     Text {
-                        text: "Длительность: " + formatResearchTime(controller.totalTime, controller.totalTime)
+                        text: "Длительность: " + formatTimeWithoutMs(controller.totalTime, controller.totalTime)
                         color: controller.logControlsEnabled ? "#aaa" : "#666"
                         font.pixelSize: 11
                     }
+
+                    // Text {
+                    //     text: "Длительность: " + formatResearchTime(controller.totalTime, controller.totalTime)
+                    //     color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //     font.pixelSize: 11
+                    // }
 
                     Item { Layout.fillWidth: true }
 
@@ -2162,6 +2250,18 @@ ApplicationWindow {
             if (controller && controller.headModel) {
                 // Ничего не делаем - просто даем время системе стабилизироваться
             }
+        }
+    }
+
+    // Таймер для обновления текущего времени на метке
+    Timer {
+        id: currentTimeUpdateTimer
+        interval: 100 // Обновляем 10 раз в секунду для плавности
+        running: controller.logPlaying // Работает только при воспроизведении лога
+        repeat: true
+        onTriggered: {
+            // Принудительно обновляем текст метки текущего времени
+            currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
         }
     }
 
