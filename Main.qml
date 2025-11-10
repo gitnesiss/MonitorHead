@@ -1942,41 +1942,6 @@ ApplicationWindow {
                         }
                     }
 
-                    // // Метки времени над ползунком
-                    // RowLayout {
-                    //     Layout.fillWidth: true
-
-                    //     // Начальное время
-                    //     Text {
-                    //         text: formatResearchTime(0, controller.totalTime)
-                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //         font.pixelSize: 10
-                    //         font.bold: true
-                    //     }
-
-                    //     Item { Layout.fillWidth: true } // Распорка
-
-                    //     // Среднее время
-                    //     Text {
-                    //         text: formatResearchTime(Math.round(controller.totalTime / 2), controller.totalTime)
-                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //         font.pixelSize: 10
-                    //         font.bold: true
-                    //         Layout.alignment: Qt.AlignHCenter
-                    //     }
-
-                    //     Item { Layout.fillWidth: true } // Распорка
-
-                    //     // Конечное время
-                    //     Text {
-                    //         text: formatResearchTime(controller.totalTime, controller.totalTime)
-                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //         font.pixelSize: 10
-                    //         font.bold: true
-                    //         Layout.alignment: Qt.AlignRight
-                    //     }
-                    // }
-
                     // Контейнер для ползунка с дополнительной областью для клика
                     Item {
                         Layout.fillWidth: true
@@ -2180,8 +2145,6 @@ ApplicationWindow {
         }
     }
 
-
-
     Connections {
         target: controller
         function onPatientDizzinessChanged() {
@@ -2191,13 +2154,6 @@ ApplicationWindow {
             advanced3DHead.setDizzinessEffects(controller.patientDizziness, controller.doctorDizziness)
         }
     }
-
-    // Connections {
-    //     target: controller.headModel
-    //     function onDizzinessChanged() {
-    //         advanced3DHead.setDizzinessEffect(controller.headModel.dizziness)
-    //     }
-    // }
 
     Timer {
         id: cleanupTimer

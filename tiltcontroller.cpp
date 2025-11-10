@@ -621,7 +621,7 @@ void TiltController::loadLogFile(const QString &filePath)
     m_logData.clear();
     m_currentLogIndex = 0;
     m_studyInfo.clear();
-    m_dataBuffer.clear();
+    m_dataBuffer.clear(); // Очищаем буфер
 
     QTextStream in(&file);
     int lineNumber = 0;
@@ -643,19 +643,22 @@ void TiltController::loadLogFile(const QString &filePath)
         QStringList parts = line.split(';');
         if (parts.size() >= 6) {
             LogEntry entry;
-            bool ok1, ok2, ok3, ok4, ok5;
+            bool ok1, ok2, ok3, ok4, ok5, ok6;
 
-            // ВРЕМЯ ТЕПЕРЬ В МИЛЛИСЕКУНДАХ ИЗ ФАЙЛА
-            entry.time = parts[0].toLongLong(&ok1);  // Используем toLongLong вместо toInt
+            entry.time = parts[0].toLongLong(&ok1);
             entry.pitch = parts[1].replace(',', '.').toFloat(&ok2);
             entry.roll = parts[2].replace(',', '.').toFloat(&ok3);
             entry.yaw = parts[3].replace(',', '.').toFloat(&ok4);
 
-            // Для обратной совместимости: если есть 6-е поле - это doctorDizziness
+            // Парсим головокружение пациента и врача
             if (parts.size() >= 6) {
-                entry.dizziness = (parts[4].toInt(&ok5) == 1) || (parts.size() > 5 ? parts[5].toInt() == 1 : false);
-            } else {
                 entry.dizziness = (parts[4].toInt(&ok5) == 1);
+                // Если есть 6-е поле - это doctorDizziness, иначе false
+                if (parts.size() > 5) {
+                    entry.doctorDizziness = (parts[5].toInt(&ok6) == 1);
+                } else {
+                    entry.doctorDizziness = false;
+                }
             }
 
             if (ok1 && ok2 && ok3 && ok4 && ok5) {
@@ -691,46 +694,23 @@ void TiltController::loadLogFile(const QString &filePath)
 
     m_logLoaded = true;
     m_logMode = true;
-
-    // ОБНОВЛЯЕМ: totalTime теперь в миллисекундах
-    m_totalTime = m_logData.last().time;  // Уже в мс из файла
+    m_totalTime = m_logData.last().time;
     m_currentTime = 0;
     m_currentLogIndex = 0;
-
-    qDebug() << "Log file loaded - Total time:" << m_totalTime << "ms, Records:" << m_logData.size();
 
     if (m_connected) {
         disconnectDevice();
     }
     m_autoConnectTimer.stop();
 
-    // ОПТИМИЗАЦИЯ: Очищаем буфер при загрузке нового файла
-    m_dataBuffer.clear();
-
-    // ОПТИМИЗАЦИЯ: Добавляем в буфер только последние N точек для начального отображения
-    int initialPointsToAdd = qMin(m_logData.size(), 100); // Только первые 100 точек
-
-    for (int i = 0; i < initialPointsToAdd; i++) {
-        const LogEntry& entry = m_logData[i];
-        DataFrame frame;
-        frame.timestamp = entry.time;
-        frame.pitch = entry.pitch;
-        frame.roll = entry.roll;
-        frame.yaw = entry.yaw;
-        frame.patientDizziness = entry.dizziness;
-        frame.doctorDizziness = false;
-
-        m_dataBuffer.add(frame);
-    }
+    // ОПТИМИЗАЦИЯ: НЕ заполняем буфер данными из лог-файла
+    // Будем работать напрямую с m_logData
 
     if (!m_logData.isEmpty()) {
         const LogEntry &firstEntry = m_logData.first();
         updateHeadModel(firstEntry.pitch, firstEntry.roll, firstEntry.yaw,
                         firstEntry.speedPitch, firstEntry.speedRoll, firstEntry.speedYaw,
                         firstEntry.dizziness);
-
-        // ОБНОВЛЯЕМ ГРАФИКИ ПОСЛЕ ЗАГРУЗКИ
-        updateGraphDataFromBuffer();
     }
 
     addNotification("Лог-файл загружен: " + QString::number(m_logData.size()) + " записей");
@@ -740,19 +720,19 @@ void TiltController::loadLogFile(const QString &filePath)
     emit studyInfoChanged(m_studyInfo);
     emit totalTimeChanged(m_totalTime);
     emit currentTimeChanged(m_currentTime);
+
+    // ОБНОВЛЯЕМ ГРАФИКИ ПОСЛЕ ЗАГРУЗКИ
+    updateGraphDataFromBuffer();
 }
 
 void TiltController::seekLog(int time)
 {
     if (!m_logLoaded || m_logData.isEmpty()) return;
 
-    // ВРЕМЯ ТЕПЕРЬ В МИЛЛИСЕКУНДАХ
+    // Используем оригинальное время из файла
     m_currentTime = qBound(0, time, m_totalTime);
 
-    qDebug() << "Seek to:" << m_currentTime << "ms";
-
     // Находим соответствующий индекс в лог-данных
-    m_currentLogIndex = 0;
     for (int i = 0; i < m_logData.size(); ++i) {
         if (m_logData[i].time >= m_currentTime) {
             m_currentLogIndex = i;
@@ -764,7 +744,7 @@ void TiltController::seekLog(int time)
         }
     }
 
-    // ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ГРАФИКИ ПРИ ПЕРЕМЕЩЕНИИ
+    // ОБНОВЛЯЕМ ГРАФИКИ ПРИ ПЕРЕМЕЩЕНИИ
     updateGraphDataFromBuffer();
 
     emit currentTimeChanged(m_currentTime);
@@ -775,33 +755,19 @@ void TiltController::stopLog()
     m_logPlaying = false;
     m_logTimer.stop();
 
-    // Сбрасываем позицию на начало
+    // Сбрасываем позицию на начало (оригинальное время)
     m_currentTime = 0;
     m_currentLogIndex = 0;
 
-    // ОЧИЩАЕМ БУФЕР И ПЕРЕЗАПОЛНЯЕМ ЕГО ТОЛЬКО НАЧАЛЬНЫМИ ДАННЫМИ
-    m_dataBuffer.clear();
-
-    // Заполняем буфер только начальными данными (первые N секунд)
     if (!m_logData.isEmpty()) {
         const LogEntry &firstEntry = m_logData.first();
         updateHeadModel(firstEntry.pitch, firstEntry.roll, firstEntry.yaw,
                         firstEntry.speedPitch, firstEntry.speedRoll, firstEntry.speedYaw,
                         firstEntry.dizziness);
-
-        // Добавляем только точку начала в буфер
-        DataFrame frame;
-        frame.timestamp = firstEntry.time;
-        frame.pitch = firstEntry.pitch;
-        frame.roll = firstEntry.roll;
-        frame.yaw = firstEntry.yaw;
-        frame.patientDizziness = firstEntry.dizziness;
-        frame.doctorDizziness = false;
-        m_dataBuffer.add(frame);
-
-        // ОБНОВЛЯЕМ ГРАФИКИ ПРИ ОСТАНОВКЕ
-        updateGraphDataFromBuffer();
     }
+
+    // ОБНОВЛЯЕМ ГРАФИКИ ПРИ ОСТАНОВКЕ
+    updateGraphDataFromBuffer();
 
     emit logPlayingChanged(m_logPlaying);
     emit currentTimeChanged(m_currentTime);
@@ -968,32 +934,18 @@ void TiltController::updateLogPlayback()
     if (m_currentLogIndex < m_logData.size()) {
         const LogEntry &entry = m_logData[m_currentLogIndex];
 
-        // Создаем DataFrame для буфера
-        DataFrame frame;
-        frame.timestamp = entry.time;  // В миллисекундах
-        frame.pitch = entry.pitch;
-        frame.roll = entry.roll;
-        frame.yaw = entry.yaw;
-        frame.patientDizziness = entry.dizziness;
-        frame.doctorDizziness = false;
+        // Обновляем модель (оригинальное время)
+        updateHeadModel(entry.pitch, entry.roll, entry.yaw,
+                        entry.speedPitch, entry.speedRoll, entry.speedYaw,
+                        entry.dizziness);
 
-        // Добавляем в буфер
-        m_dataBuffer.add(frame);
-
-        // Обрабатываем кадр
-        processDataFrame(frame);
-
-        // ОБНОВЛЯЕМ: currentTime теперь в миллисекундах
+        // Используем оригинальное время из файла
         m_currentTime = entry.time;
         emit currentTimeChanged(m_currentTime);
         m_currentLogIndex++;
 
-        // ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ ГРАФИКИ КАЖДЫЙ КАДР
+        // ОБНОВЛЯЕМ ГРАФИКИ КАЖДЫЙ КАДР
         updateGraphDataFromBuffer();
-
-        if (entry.dizziness) {
-            qDebug() << "Log playback: Dizziness at time" << entry.time << "ms";
-        }
     }
 }
 
@@ -1148,30 +1100,55 @@ void TiltController::updateGraphDataFromLogFile()
     }
 
     const qint64 DISPLAY_DURATION_MS = m_graphDuration * 1000;
+    const qint64 TIME_OFFSET = 30000; // Добавляем 30000 мс к временным меткам из файла
     QVariantList newPitchData, newRollData, newYawData, newDizzinessPatientData, newDizzinessDoctorData;
 
-    // ЛОГИКА ЛОГ-ФАЙЛА: используем m_currentTime как правый край
-    qint64 displayEndTime = m_currentTime;
-    qint64 displayStartTime = qMax(0LL, displayEndTime - DISPLAY_DURATION_MS);
+    // ИСПРАВЛЕНИЕ: Добавляем смещение 30000 мс к временным меткам из файла
+    qint64 displayEndTime = m_currentTime + TIME_OFFSET;
+    qint64 displayStartTime = displayEndTime - DISPLAY_DURATION_MS;
 
-    // Собираем данные для отображения из лог-файла
+    qDebug() << "LOG MODE - Current:" << m_currentTime << "Offset time:" << (m_currentTime + TIME_OFFSET)
+             << "Window:" << displayStartTime << "-" << displayEndTime;
+
+    // ОПТИМИЗАЦИЯ: Используем бинарный поиск для быстрого нахождения диапазона данных
+    int startIndex = findLogIndexByTime(qMax(0LL, displayStartTime - TIME_OFFSET));
+    int endIndex = findLogIndexByTime(displayEndTime - TIME_OFFSET);
+
+    // Если не нашли подходящие индексы, используем границы
+    if (startIndex == -1) startIndex = 0;
+    if (endIndex == -1) endIndex = m_logData.size() - 1;
+
+    // Ограничиваем индексы
+    startIndex = qMax(0, startIndex);
+    endIndex = qMin(m_logData.size() - 1, endIndex);
+
+    // ОПТИМИЗАЦИЯ: Собираем только нужные данные
     QVector<DataFrame> displayData;
-    for (int i = 0; i < m_logData.size(); ++i) {
+
+    for (int i = startIndex; i <= endIndex; i++) {
         const LogEntry &entry = m_logData[i];
-        if (entry.time >= displayStartTime && entry.time <= displayEndTime) {
+        // ИСПРАВЛЕНИЕ: Используем смещенные временные метки
+        qint64 adjustedTime = entry.time + TIME_OFFSET;
+        if (adjustedTime >= displayStartTime && adjustedTime <= displayEndTime) {
             DataFrame frame;
-            frame.timestamp = entry.time;
+            frame.timestamp = adjustedTime; // Используем смещенное время
             frame.pitch = entry.pitch;
             frame.roll = entry.roll;
             frame.yaw = entry.yaw;
             frame.patientDizziness = entry.dizziness;
-            frame.doctorDizziness = false;
+            frame.doctorDizziness = entry.doctorDizziness;
             displayData.append(frame);
         }
     }
 
     if (!displayData.isEmpty()) {
-        // Прореживание данных для оптимизации
+        // СОРТИРУЕМ данные по времени (от старых к новым)
+        std::sort(displayData.begin(), displayData.end(),
+                  [](const DataFrame& a, const DataFrame& b) {
+                      return a.timestamp < b.timestamp;
+                  });
+
+        // ОПТИМИЗАЦИЯ: Ограничиваем количество точек для отображения
         QVector<DataFrame> filteredData = displayData;
         if (displayData.size() > 250) {
             filteredData.clear();
@@ -1181,6 +1158,7 @@ void TiltController::updateGraphDataFromLogFile()
                 if (filteredData.size() >= 250) break;
             }
 
+            // Гарантируем, что последняя точка включена
             if (!displayData.isEmpty() &&
                 (filteredData.isEmpty() || filteredData.last().timestamp != displayData.last().timestamp)) {
                 filteredData.append(displayData.last());
@@ -1189,6 +1167,7 @@ void TiltController::updateGraphDataFromLogFile()
 
         // Формируем данные для графиков
         for (const DataFrame& frame : filteredData) {
+            // ИСПРАВЛЕНИЕ: Вычитаем displayStartTime, чтобы время начиналось с 0
             qint64 relativeTime = frame.timestamp - displayStartTime;
             relativeTime = qBound(0LL, relativeTime, DISPLAY_DURATION_MS);
 
@@ -1209,23 +1188,25 @@ void TiltController::updateGraphDataFromLogFile()
         // Формируем интервалы головокружения
         bool inPatientDizziness = false;
         bool inDoctorDizziness = false;
-        qint64 patientStart = 0;
-        qint64 doctorStart = 0;
+        qint64 patientStartTime = 0;
+        qint64 doctorStartTime = 0;
 
         for (const DataFrame& frame : displayData) {
             qint64 relativeTime = frame.timestamp - displayStartTime;
-            if (relativeTime < 0) continue;
+            relativeTime = qBound(0LL, relativeTime, DISPLAY_DURATION_MS);
 
             // Обработка головокружения пациента
             if (frame.patientDizziness && !inPatientDizziness) {
                 inPatientDizziness = true;
-                patientStart = relativeTime;
+                patientStartTime = relativeTime;
             } else if (!frame.patientDizziness && inPatientDizziness) {
                 inPatientDizziness = false;
-                if (patientStart < relativeTime) {
+                qint64 patientEndTime = relativeTime;
+
+                if (patientStartTime < patientEndTime) {
                     QVariantMap interval;
-                    interval["startTime"] = patientStart;
-                    interval["endTime"] = relativeTime;
+                    interval["startTime"] = patientStartTime;
+                    interval["endTime"] = patientEndTime;
                     newDizzinessPatientData.append(interval);
                 }
             }
@@ -1233,35 +1214,37 @@ void TiltController::updateGraphDataFromLogFile()
             // Обработка головокружения врача
             if (frame.doctorDizziness && !inDoctorDizziness) {
                 inDoctorDizziness = true;
-                doctorStart = relativeTime;
+                doctorStartTime = relativeTime;
             } else if (!frame.doctorDizziness && inDoctorDizziness) {
                 inDoctorDizziness = false;
-                if (doctorStart < relativeTime) {
+                qint64 doctorEndTime = relativeTime;
+
+                if (doctorStartTime < doctorEndTime) {
                     QVariantMap interval;
-                    interval["startTime"] = doctorStart;
-                    interval["endTime"] = relativeTime;
+                    interval["startTime"] = doctorStartTime;
+                    interval["endTime"] = doctorEndTime;
                     newDizzinessDoctorData.append(interval);
                 }
             }
         }
 
         // Завершаем активные интервалы
-        if (inPatientDizziness && patientStart < DISPLAY_DURATION_MS) {
+        if (inPatientDizziness) {
             QVariantMap interval;
-            interval["startTime"] = patientStart;
+            interval["startTime"] = patientStartTime;
             interval["endTime"] = DISPLAY_DURATION_MS;
             newDizzinessPatientData.append(interval);
         }
 
-        if (inDoctorDizziness && doctorStart < DISPLAY_DURATION_MS) {
+        if (inDoctorDizziness) {
             QVariantMap interval;
-            interval["startTime"] = doctorStart;
+            interval["startTime"] = doctorStartTime;
             interval["endTime"] = DISPLAY_DURATION_MS;
             newDizzinessDoctorData.append(interval);
         }
     }
 
-    // ОБНОВЛЯЕМ ДАННЫЕ В КЛАССЕ - ЭТО ОБЯЗАТЕЛЬНО!
+    // Обновляем данные
     m_pitchGraphData = newPitchData;
     m_rollGraphData = newRollData;
     m_yawGraphData = newYawData;
@@ -1273,3 +1256,29 @@ void TiltController::updateGraphDataFromLogFile()
     }
 }
 
+// Вспомогательная функция для бинарного поиска индекса по времени
+int TiltController::findLogIndexByTime(qint64 targetTime)
+{
+    if (m_logData.isEmpty()) return -1;
+
+    // ИСПРАВЛЕНИЕ: Ищем в оригинальных данных (без смещения)
+    int left = 0;
+    int right = m_logData.size() - 1;
+    int result = -1;
+
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+        qint64 midTime = m_logData[mid].time;
+
+        if (midTime == targetTime) {
+            return mid;
+        } else if (midTime < targetTime) {
+            result = mid; // Запоминаем последний подходящий индекс
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+
+    return result;
+}

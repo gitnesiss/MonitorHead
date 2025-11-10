@@ -223,6 +223,9 @@ private:
     // Кольцевой буфер для хранения данных
     CircularBuffer m_dataBuffer;
 
+
+
+
     struct LogEntry {
         int time;
         float pitch;
@@ -232,7 +235,13 @@ private:
         float speedRoll;
         float speedYaw;
         bool dizziness;
+        bool doctorDizziness;  // Добавляем поле для головокружения врача
+
+        LogEntry() : time(0), pitch(0), roll(0), yaw(0),
+            speedPitch(0), speedRoll(0), speedYaw(0),
+            dizziness(false), doctorDizziness(false) {}
     };
+
     QVector<LogEntry> m_logData;
     int m_currentLogIndex = 0;
 
@@ -304,6 +313,11 @@ private:
 
     void updateGraphDataFromLogFile();
     void updateGraphDataFromCOMPort();
+
+    // Оптимизация для лог-файла: работаем напрямую с данными, без кольцевого буфера
+    bool m_useDirectLogAccess = true;
+
+    int findLogIndexByTime(qint64 targetTime);
 
 signals:
     void connectedChanged(bool connected);
