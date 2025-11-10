@@ -75,35 +75,33 @@ ApplicationWindow {
         return hasData ? value.toFixed(1) + "°/с" : "нет данных"
     }
 
-    // Функция для форматирования номера кадра в формат времени
-    function formatResearchTime(frameNumber, totalFrames) {
-        // console.log("Formatting frame:", frameNumber, "Total frames:", totalFrames);
-        if (!controller.logLoaded || frameNumber === undefined) {
-            return "00:00:00:00";
+    function formatResearchTime(milliseconds, totalMilliseconds) {
+        if (milliseconds === undefined || totalMilliseconds === undefined) {
+            return "00:00:00:000";
         }
 
-        // Округляем номер кадра до целого
-        var roundedFrame = Math.round(frameNumber);
-
-        // Предполагаем частоту 60 кадров в секунду
-        var framesPerSecond = 60;
-
-        // Вычисляем общее количество секунд из номера кадра
-        var totalSeconds = roundedFrame / framesPerSecond;
+        // Округляем миллисекунды до целого
+        var roundedMs = Math.round(milliseconds);
 
         // Вычисляем компоненты времени
-        var hours = Math.floor(totalSeconds / 3600);
-        var minutes = Math.floor((totalSeconds % 3600) / 60);
-        var seconds = Math.floor(totalSeconds % 60);
-        var frames = roundedFrame % framesPerSecond;
+        var hours = Math.floor(roundedMs / 3600000);
+        var minutes = Math.floor((roundedMs % 3600000) / 60000);
+        var seconds = Math.floor((roundedMs % 60000) / 1000);
+        var ms = roundedMs % 1000;
 
         // Форматируем с ведущими нулями
         var hoursStr = hours.toString().padStart(2, '0');
         var minutesStr = minutes.toString().padStart(2, '0');
         var secondsStr = seconds.toString().padStart(2, '0');
-        var framesStr = frames.toString().padStart(2, '0');
+        var msStr = ms.toString().padStart(3, '0');
 
-        return hoursStr + ":" + minutesStr + ":" + secondsStr + ":" + framesStr;
+        return hoursStr + ":" + minutesStr + ":" + secondsStr + ":" + msStr;
+    }
+
+    // Новая функция для форматирования времени в секундах для меток на графике
+    function formatGraphTime(milliseconds) {
+        var seconds = milliseconds / 1000;
+        return seconds.toFixed(0) + "с";
     }
 
     // Функция для форматирования информации об исследовании
@@ -1906,6 +1904,9 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: 5
 
+
+
+
                     // Метки времени над ползунком
                     RowLayout {
                         Layout.fillWidth: true
@@ -1940,6 +1941,41 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignRight
                         }
                     }
+
+                    // // Метки времени над ползунком
+                    // RowLayout {
+                    //     Layout.fillWidth: true
+
+                    //     // Начальное время
+                    //     Text {
+                    //         text: formatResearchTime(0, controller.totalTime)
+                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //         font.pixelSize: 10
+                    //         font.bold: true
+                    //     }
+
+                    //     Item { Layout.fillWidth: true } // Распорка
+
+                    //     // Среднее время
+                    //     Text {
+                    //         text: formatResearchTime(Math.round(controller.totalTime / 2), controller.totalTime)
+                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //         font.pixelSize: 10
+                    //         font.bold: true
+                    //         Layout.alignment: Qt.AlignHCenter
+                    //     }
+
+                    //     Item { Layout.fillWidth: true } // Распорка
+
+                    //     // Конечное время
+                    //     Text {
+                    //         text: formatResearchTime(controller.totalTime, controller.totalTime)
+                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //         font.pixelSize: 10
+                    //         font.bold: true
+                    //         Layout.alignment: Qt.AlignRight
+                    //     }
+                    // }
 
                     // Контейнер для ползунка с дополнительной областью для клика
                     Item {
@@ -2012,13 +2048,21 @@ ApplicationWindow {
                                 }
                             }
 
-                            // Показываем текущее время при наведении (время в формате, кадр целым числом)
+                            // Показываем текущее время при наведении (только время, без номера кадра)
                             ToolTip {
                                 parent: timeSlider.handle
                                 visible: timeSlider.hovered && controller.logLoaded
-                                text: formatResearchTime(Math.round(timeSlider.value), controller.totalTime) + " (" + Math.round(timeSlider.value) + " кадр)"
+                                text: formatResearchTime(Math.round(timeSlider.value), controller.totalTime) // Убрали номер кадра
                                 delay: 500
                             }
+
+                            // // Показываем текущее время при наведении (время в формате, кадр целым числом)
+                            // ToolTip {
+                            //     parent: timeSlider.handle
+                            //     visible: timeSlider.hovered && controller.logLoaded
+                            //     text: formatResearchTime(Math.round(timeSlider.value), controller.totalTime) + " (" + Math.round(timeSlider.value) + " кадр)"
+                            //     delay: 500
+                            // }
                         }
 
                         // Дополнительная MouseArea для клика в любом месте таймлайна

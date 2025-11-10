@@ -300,6 +300,11 @@ private:
     bool m_patientDizziness = false;
     bool m_doctorDizziness = false;
 
+    qint64 m_researchRecordingStartTime;  // Время начала записи исследования (в мс от начала подключения)
+
+    void updateGraphDataFromLogFile();
+    void updateGraphDataFromCOMPort();
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
