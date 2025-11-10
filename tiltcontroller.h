@@ -319,6 +319,15 @@ private:
 
     int findLogIndexByTime(qint64 targetTime);
 
+    int m_logUpdateFrequency;  // Частота обновления для лог-режима
+
+    // Для синхронизации времени воспроизведения
+    qint64 m_playbackStartRealTime;  // Реальное время начала воспроизведения
+    qint64 m_playbackStartLogTime;   // Время в логе на момент начала воспроизведения
+    bool m_playbackTimeInitialized;  // Флаг инициализации времени
+
+    qint64 m_graphDisplayTime;  // Время для отображения графика (независимо от воспроизведения)
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);

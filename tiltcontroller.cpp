@@ -40,7 +40,8 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_graphDuration = 30;
 
     // ОПТИМИЗАЦИЯ 5: Уменьшаем частоту обновления данных
-    m_updateFrequency = 30;
+    m_updateFrequency = 30;        // Для COM-порта
+    m_logUpdateFrequency = 25;     // Для лог-файла (более плавно)
     m_dataUpdateTimer.setInterval(1000 / m_updateFrequency);
     connect(&m_dataUpdateTimer, &QTimer::timeout, this, &TiltController::updateDataDisplay);
     m_dataUpdateTimer.start();
@@ -57,6 +58,13 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_frequencyTimer.setInterval(1000);
     connect(&m_frequencyTimer, &QTimer::timeout, this, &TiltController::updateFrequencyInfo);
     m_frequencyTimer.start();
+
+    // Инициализация переменных синхронизации
+    m_playbackStartRealTime = 0;
+    m_playbackStartLogTime = 0;
+    m_playbackTimeInitialized = false;
+
+    m_graphDisplayTime = m_graphDuration * 1000; // Начальное значение: показываем первые 30 секунд
 
     // Инициализация переменных для исследования
     m_researchFrameCounter = 1;
@@ -460,13 +468,13 @@ void TiltController::switchToCOMPortMode()
     }
 }
 
-
-
 void TiltController::playLog()
 {
     if (!m_logLoaded || m_logData.isEmpty()) return;
 
     m_logPlaying = true;
+    m_playbackTimeInitialized = false; // Сбрасываем флаг инициализации
+
     m_logTimer.start();
     emit logPlayingChanged(m_logPlaying);
     addNotification("Воспроизведение лога начато");
@@ -476,6 +484,11 @@ void TiltController::pauseLog()
 {
     m_logPlaying = false;
     m_logTimer.stop();
+    // НЕ сбрасываем m_playbackTimeInitialized, чтобы можно было продолжить с того же места
+
+    // Обновляем графики для отображения текущей позиции
+    updateGraphDataFromBuffer();
+
     emit logPlayingChanged(m_logPlaying);
     addNotification("Воспроизведение лога приостановлено");
 }
@@ -575,14 +588,14 @@ void TiltController::updateDataDisplay()
     bool shouldUpdate = false;
 
     if (m_connected && !m_logMode) {
-        // В режиме COM-порта обновляем чаще
+        // COM-порт: обновляем чаще
         shouldUpdate = (updateCounter % 1 == 0);
     } else if (m_logPlaying) {
-        // В режиме воспроизведения лог-файла обновляем реже
-        shouldUpdate = (updateCounter % 2 == 0);
+        // Лог-режим: обновляем реже (уже делается в updateLogPlayback)
+        shouldUpdate = false;
     } else if (m_logLoaded && !m_logPlaying) {
-        // В режиме паузы лог-файла обновляем еще реже
-        shouldUpdate = (updateCounter % 4 == 0);
+        // Пауза в логе: обновляем редко
+        shouldUpdate = (updateCounter % 30 == 0); // ~2 раза в секунду
     }
 
     if (shouldUpdate) {
@@ -703,14 +716,20 @@ void TiltController::loadLogFile(const QString &filePath)
     }
     m_autoConnectTimer.stop();
 
-    // ОПТИМИЗАЦИЯ: НЕ заполняем буфер данными из лог-файла
-    // Будем работать напрямую с m_logData
-
+    // После загрузки данных проверим временные метки
     if (!m_logData.isEmpty()) {
-        const LogEntry &firstEntry = m_logData.first();
-        updateHeadModel(firstEntry.pitch, firstEntry.roll, firstEntry.yaw,
-                        firstEntry.speedPitch, firstEntry.speedRoll, firstEntry.speedYaw,
-                        firstEntry.dizziness);
+        qint64 minTime = m_logData.first().time;
+        qint64 maxTime = m_logData.last().time;
+        qint64 duration = maxTime - minTime;
+
+        qDebug() << "Log file loaded - Duration:" << duration << "ms,"
+                 << "Frames:" << m_logData.size() << ","
+                 << "Avg frequency:" << (m_logData.size() * 1000.0 / duration) << "Hz";
+
+        // Если длительность слишком мала или велика, скорректируем
+        if (duration < 1000) {
+            qDebug() << "Warning: Log file duration is very short";
+        }
     }
 
     addNotification("Лог-файл загружен: " + QString::number(m_logData.size()) + " записей");
@@ -729,10 +748,16 @@ void TiltController::seekLog(int time)
 {
     if (!m_logLoaded || m_logData.isEmpty()) return;
 
-    // Используем оригинальное время из файла
+    // Устанавливаем позицию ВО ВРЕМЕНИ ЛОГ-ФАЙЛА
     m_currentTime = qBound(0, time, m_totalTime);
 
-    // Находим соответствующий индекс в лог-данных
+    // Сбрасываем синхронизацию времени
+    m_playbackTimeInitialized = false;
+
+    // ОБНОВЛЯЕМ ПОЗИЦИЮ ГРАФИКА
+    m_graphDisplayTime = m_currentTime + 30000;
+
+    // Находим соответствующий индекс
     for (int i = 0; i < m_logData.size(); ++i) {
         if (m_logData[i].time >= m_currentTime) {
             m_currentLogIndex = i;
@@ -744,20 +769,29 @@ void TiltController::seekLog(int time)
         }
     }
 
-    // ОБНОВЛЯЕМ ГРАФИКИ ПРИ ПЕРЕМЕЩЕНИИ
+    // ОБНОВЛЯЕМ ГРАФИКИ НЕМЕДЛЕННО
     updateGraphDataFromBuffer();
 
     emit currentTimeChanged(m_currentTime);
+
+    // Если воспроизведение активно, продолжаем с новой позиции
+    if (m_logPlaying) {
+        m_playbackTimeInitialized = false; // Переинициализируем синхронизацию
+    }
 }
 
 void TiltController::stopLog()
 {
     m_logPlaying = false;
     m_logTimer.stop();
+    m_playbackTimeInitialized = false;
 
-    // Сбрасываем позицию на начало (оригинальное время)
+    // Сбрасываем позицию воспроизведения на начало
     m_currentTime = 0;
     m_currentLogIndex = 0;
+
+    // Сбрасываем график на начальную позицию (первые 30 секунд)
+    m_graphDisplayTime = 30000;
 
     if (!m_logData.isEmpty()) {
         const LogEntry &firstEntry = m_logData.first();
@@ -766,12 +800,12 @@ void TiltController::stopLog()
                         firstEntry.dizziness);
     }
 
-    // ОБНОВЛЯЕМ ГРАФИКИ ПРИ ОСТАНОВКЕ
+    // Обновляем графики для отображения начальной позиции
     updateGraphDataFromBuffer();
 
     emit logPlayingChanged(m_logPlaying);
     emit currentTimeChanged(m_currentTime);
-    addNotification("Воспроизведение лога остановлено");
+    addNotification("Воспроизведение лога остановлено и сброшено в начало");
 }
 
 void TiltController::startResearchRecording(const QString &researchNumber)
@@ -931,21 +965,53 @@ void TiltController::updateLogPlayback()
         return;
     }
 
-    if (m_currentLogIndex < m_logData.size()) {
-        const LogEntry &entry = m_logData[m_currentLogIndex];
+    // Инициализация времени при первом вызове
+    if (!m_playbackTimeInitialized) {
+        m_playbackStartRealTime = QDateTime::currentMSecsSinceEpoch();
+        m_playbackStartLogTime = m_currentTime;
+        m_playbackTimeInitialized = true;
+    }
 
-        // Обновляем модель (оригинальное время)
+    // Вычисляем, сколько реального времени прошло с начала воспроизведения
+    qint64 currentRealTime = QDateTime::currentMSecsSinceEpoch();
+    qint64 realTimeElapsed = currentRealTime - m_playbackStartRealTime;
+
+    // Целевое время в логе = начальное время + прошедшее реальное время
+    qint64 targetLogTime = m_playbackStartLogTime + realTimeElapsed;
+
+    // Находим индекс, соответствующий целевому времени
+    int targetIndex = m_currentLogIndex;
+    while (targetIndex < m_logData.size() && m_logData[targetIndex].time <= targetLogTime) {
+        targetIndex++;
+    }
+
+    // Если нашли кадры для воспроизведения
+    if (targetIndex > m_currentLogIndex) {
+        // Воспроизводим последний найденный кадр
+        const LogEntry &entry = m_logData[targetIndex - 1];
         updateHeadModel(entry.pitch, entry.roll, entry.yaw,
                         entry.speedPitch, entry.speedRoll, entry.speedYaw,
                         entry.dizziness);
 
-        // Используем оригинальное время из файла
         m_currentTime = entry.time;
-        emit currentTimeChanged(m_currentTime);
-        m_currentLogIndex++;
+        m_currentLogIndex = targetIndex;
 
-        // ОБНОВЛЯЕМ ГРАФИКИ КАЖДЫЙ КАДР
+        // ОБНОВЛЯЕМ ПОЗИЦИЮ ГРАФИКА для отображения текущего момента
+        m_graphDisplayTime = m_currentTime + 30000;
+
+        emit currentTimeChanged(m_currentTime);
+    }
+
+    // Обновляем графики с фиксированной частотой
+    static qint64 lastGraphUpdate = 0;
+    if (currentRealTime - lastGraphUpdate >= 33) { // ~30 FPS для графиков
         updateGraphDataFromBuffer();
+        lastGraphUpdate = currentRealTime;
+    }
+
+    // Если достигли конца лога, останавливаем воспроизведение
+    if (m_currentLogIndex >= m_logData.size()) {
+        stopLog();
     }
 }
 
@@ -1100,47 +1166,122 @@ void TiltController::updateGraphDataFromLogFile()
     }
 
     const qint64 DISPLAY_DURATION_MS = m_graphDuration * 1000;
-    const qint64 TIME_OFFSET = 30000; // Добавляем 30000 мс к временным меткам из файла
+    const qint64 TIME_OFFSET = 30000;
     QVariantList newPitchData, newRollData, newYawData, newDizzinessPatientData, newDizzinessDoctorData;
 
-    // ИСПРАВЛЕНИЕ: Добавляем смещение 30000 мс к временным меткам из файла
-    qint64 displayEndTime = m_currentTime + TIME_OFFSET;
+    // Всегда используем m_graphDisplayTime для определения позиции графика
+    qint64 displayEndTime = m_graphDisplayTime;
     qint64 displayStartTime = displayEndTime - DISPLAY_DURATION_MS;
 
-    qDebug() << "LOG MODE - Current:" << m_currentTime << "Offset time:" << (m_currentTime + TIME_OFFSET)
-             << "Window:" << displayStartTime << "-" << displayEndTime;
+    qDebug() << "LOG GRAPH - DisplayTime:" << m_graphDisplayTime << "Window:" << displayStartTime << "-" << displayEndTime;
 
-    // ОПТИМИЗАЦИЯ: Используем бинарный поиск для быстрого нахождения диапазона данных
+    // Находим диапазон данных для отображения (в оригинальном времени файла)
     int startIndex = findLogIndexByTime(qMax(0LL, displayStartTime - TIME_OFFSET));
     int endIndex = findLogIndexByTime(displayEndTime - TIME_OFFSET);
 
-    // Если не нашли подходящие индексы, используем границы
     if (startIndex == -1) startIndex = 0;
     if (endIndex == -1) endIndex = m_logData.size() - 1;
 
-    // Ограничиваем индексы
     startIndex = qMax(0, startIndex);
     endIndex = qMin(m_logData.size() - 1, endIndex);
 
-    // ОПТИМИЗАЦИЯ: Собираем только нужные данные
+    // СОБИРАЕМ ДАННЫЕ С РАВНОМЕРНЫМ ПРОРЕЖИВАНИЕМ ПО ВРЕМЕНИ
     QVector<DataFrame> displayData;
 
-    for (int i = startIndex; i <= endIndex; i++) {
-        const LogEntry &entry = m_logData[i];
-        // ИСПРАВЛЕНИЕ: Используем смещенные временные метки
-        qint64 adjustedTime = entry.time + TIME_OFFSET;
-        if (adjustedTime >= displayStartTime && adjustedTime <= displayEndTime) {
-            DataFrame frame;
-            frame.timestamp = adjustedTime; // Используем смещенное время
-            frame.pitch = entry.pitch;
-            frame.roll = entry.roll;
-            frame.yaw = entry.yaw;
-            frame.patientDizziness = entry.dizziness;
-            frame.doctorDizziness = entry.doctorDizziness;
-            displayData.append(frame);
+    if (endIndex >= startIndex) {
+        int totalPoints = endIndex - startIndex + 1;
+
+        if (totalPoints <= 250) {
+            // Если точек мало, берем все
+            for (int i = startIndex; i <= endIndex; i++) {
+                const LogEntry &entry = m_logData[i];
+                DataFrame frame;
+                frame.timestamp = entry.time + TIME_OFFSET;
+                frame.pitch = entry.pitch;
+                frame.roll = entry.roll;
+                frame.yaw = entry.yaw;
+                frame.patientDizziness = entry.dizziness;
+                frame.doctorDizziness = entry.doctorDizziness;
+                displayData.append(frame);
+            }
+        } else {
+            // Равномерное прореживание по времени
+            qint64 startTime = m_logData[startIndex].time + TIME_OFFSET;
+            qint64 endTime = m_logData[endIndex].time + TIME_OFFSET;
+            qint64 timeRange = endTime - startTime;
+
+            // Целевое количество точек после прореживания
+            const int targetPointCount = 200;
+            qint64 timeStep = timeRange / (targetPointCount - 1);
+
+            // Добавляем первую точку
+            const LogEntry &firstEntry = m_logData[startIndex];
+            DataFrame firstFrame;
+            firstFrame.timestamp = firstEntry.time + TIME_OFFSET;
+            firstFrame.pitch = firstEntry.pitch;
+            firstFrame.roll = firstEntry.roll;
+            firstFrame.yaw = firstEntry.yaw;
+            firstFrame.patientDizziness = firstEntry.dizziness;
+            firstFrame.doctorDizziness = firstEntry.doctorDizziness;
+            displayData.append(firstFrame);
+
+            // Для каждого целевого времени находим ближайшую точку
+            for (int i = 1; i < targetPointCount - 1; i++) {
+                qint64 targetTime = startTime + i * timeStep;
+
+                // Ищем ближайшую точку к целевому времени
+                int bestIndex = startIndex;
+                qint64 minTimeDiff = std::abs((m_logData[startIndex].time + TIME_OFFSET) - targetTime);
+
+                for (int j = startIndex + 1; j <= endIndex; j++) {
+                    qint64 currentTime = m_logData[j].time + TIME_OFFSET;
+                    qint64 timeDiff = std::abs(currentTime - targetTime);
+
+                    if (timeDiff < minTimeDiff) {
+                        minTimeDiff = timeDiff;
+                        bestIndex = j;
+                    }
+
+                    // Если начали удаляться от целевого времени, выходим
+                    if (currentTime > targetTime + timeStep / 2) {
+                        break;
+                    }
+                }
+
+                // Добавляем точку, если она отличается от предыдущей
+                const LogEntry &entry = m_logData[bestIndex];
+                DataFrame frame;
+                frame.timestamp = entry.time + TIME_OFFSET;
+                frame.pitch = entry.pitch;
+                frame.roll = entry.roll;
+                frame.yaw = entry.yaw;
+                frame.patientDizziness = entry.dizziness;
+                frame.doctorDizziness = entry.doctorDizziness;
+
+                if (displayData.isEmpty() ||
+                    displayData.last().timestamp != frame.timestamp) {
+                    displayData.append(frame);
+                }
+            }
+
+            // Добавляем последнюю точку
+            const LogEntry &lastEntry = m_logData[endIndex];
+            DataFrame lastFrame;
+            lastFrame.timestamp = lastEntry.time + TIME_OFFSET;
+            lastFrame.pitch = lastEntry.pitch;
+            lastFrame.roll = lastEntry.roll;
+            lastFrame.yaw = lastEntry.yaw;
+            lastFrame.patientDizziness = lastEntry.dizziness;
+            lastFrame.doctorDizziness = lastEntry.doctorDizziness;
+
+            if (displayData.isEmpty() ||
+                displayData.last().timestamp != lastFrame.timestamp) {
+                displayData.append(lastFrame);
+            }
         }
     }
 
+    // Формируем данные для графиков
     if (!displayData.isEmpty()) {
         // СОРТИРУЕМ данные по времени (от старых к новым)
         std::sort(displayData.begin(), displayData.end(),
@@ -1148,26 +1289,9 @@ void TiltController::updateGraphDataFromLogFile()
                       return a.timestamp < b.timestamp;
                   });
 
-        // ОПТИМИЗАЦИЯ: Ограничиваем количество точек для отображения
-        QVector<DataFrame> filteredData = displayData;
-        if (displayData.size() > 250) {
-            filteredData.clear();
-            int step = displayData.size() / 200;
-            for (int i = 0; i < displayData.size(); i += step) {
-                filteredData.append(displayData[i]);
-                if (filteredData.size() >= 250) break;
-            }
-
-            // Гарантируем, что последняя точка включена
-            if (!displayData.isEmpty() &&
-                (filteredData.isEmpty() || filteredData.last().timestamp != displayData.last().timestamp)) {
-                filteredData.append(displayData.last());
-            }
-        }
-
         // Формируем данные для графиков
-        for (const DataFrame& frame : filteredData) {
-            // ИСПРАВЛЕНИЕ: Вычитаем displayStartTime, чтобы время начиналось с 0
+        for (const DataFrame& frame : displayData) {
+            // Вычитаем displayStartTime, чтобы время начиналось с 0
             qint64 relativeTime = frame.timestamp - displayStartTime;
             relativeTime = qBound(0LL, relativeTime, DISPLAY_DURATION_MS);
 
@@ -1251,9 +1375,9 @@ void TiltController::updateGraphDataFromLogFile()
     m_dizzinessPatientData = newDizzinessPatientData;
     m_dizzinessDoctorData = newDizzinessDoctorData;
 
-    if (!m_headModel.hasData() && (!newPitchData.isEmpty() || !newRollData.isEmpty() || !newYawData.isEmpty())) {
-        m_headModel.setHasData(true);
-    }
+    qDebug() << "Log graph updated - DisplayTime:" << m_graphDisplayTime
+             << "Points:" << newPitchData.size()
+             << "Window:" << displayStartTime << "-" << displayEndTime;
 }
 
 // Вспомогательная функция для бинарного поиска индекса по времени
@@ -1261,7 +1385,7 @@ int TiltController::findLogIndexByTime(qint64 targetTime)
 {
     if (m_logData.isEmpty()) return -1;
 
-    // ИСПРАВЛЕНИЕ: Ищем в оригинальных данных (без смещения)
+    // Используем бинарный поиск для эффективности
     int left = 0;
     int right = m_logData.size() - 1;
     int result = -1;
@@ -1280,5 +1404,6 @@ int TiltController::findLogIndexByTime(qint64 targetTime)
         }
     }
 
+    // Возвращаем ближайший индекс, не превышающий targetTime
     return result;
 }
