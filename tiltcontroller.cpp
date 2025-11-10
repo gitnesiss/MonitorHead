@@ -66,6 +66,16 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
 
     m_graphDisplayTime = m_graphDuration * 1000; // Начальное значение: показываем первые 30 секунд
 
+    // Инициализация переменных синхронизации
+    m_playbackStartRealTime = 0;
+    m_playbackStartLogTime = 0;
+    m_playbackTimeInitialized = false;
+
+    // Инициализация буферов истории
+    m_pitchHistory.reserve(m_speedCalculationPoints + 1);
+    m_rollHistory.reserve(m_speedCalculationPoints + 1);
+    m_yawHistory.reserve(m_speedCalculationPoints + 1);
+
     // Инициализация переменных для исследования
     m_researchFrameCounter = 1;
     m_researchRecordingStartTime = 0;  // Добавляем инициализацию
@@ -744,6 +754,11 @@ void TiltController::loadLogFile(const QString &filePath)
     updateGraphDataFromBuffer();
 }
 
+
+
+
+
+
 void TiltController::seekLog(int time)
 {
     if (!m_logLoaded || m_logData.isEmpty()) return;
@@ -754,6 +769,11 @@ void TiltController::seekLog(int time)
     // Сбрасываем синхронизацию времени
     m_playbackTimeInitialized = false;
 
+    // СБРАСЫВАЕМ ИСТОРИЮ ДЛЯ ПЕРЕСЧЕТА СКОРОСТЕЙ
+    m_pitchHistory.clear();
+    m_rollHistory.clear();
+    m_yawHistory.clear();
+
     // ОБНОВЛЯЕМ ПОЗИЦИЮ ГРАФИКА
     m_graphDisplayTime = m_currentTime + 30000;
 
@@ -762,9 +782,11 @@ void TiltController::seekLog(int time)
         if (m_logData[i].time >= m_currentTime) {
             m_currentLogIndex = i;
             const LogEntry &entry = m_logData[i];
+
+            // ОБНОВЛЯЕМ МОДЕЛЬ С НУЛЕВЫМИ СКОРОСТЯМИ (история очищена)
             updateHeadModel(entry.pitch, entry.roll, entry.yaw,
-                            entry.speedPitch, entry.speedRoll, entry.speedYaw,
-                            entry.dizziness || entry.doctorDizziness); // Комбинированное головокружение
+                            0.0f, 0.0f, 0.0f,
+                            entry.dizziness || entry.doctorDizziness);
 
             // ОБНОВЛЯЕМ СВОЙСТВА ГОЛОВОКРУЖЕНИЯ ДЛЯ 3D ВИДА
             if (m_patientDizziness != entry.dizziness) {
@@ -785,11 +807,63 @@ void TiltController::seekLog(int time)
 
     emit currentTimeChanged(m_currentTime);
 
-    // Если воспроизведение активнo, продолжаем с новой позиции
+    // Если воспроизведение активно, продолжаем с новой позиции
     if (m_logPlaying) {
         m_playbackTimeInitialized = false; // Переинициализируем синхронизацию
     }
 }
+
+// void TiltController::seekLog(int time)
+// {
+//     if (!m_logLoaded || m_logData.isEmpty()) return;
+
+//     // Устанавливаем позицию ВО ВРЕМЕНИ ЛОГ-ФАЙЛА
+//     m_currentTime = qBound(0, time, m_totalTime);
+
+//     // Сбрасываем синхронизацию времени
+//     m_playbackTimeInitialized = false;
+
+//     // ОБНОВЛЯЕМ ПОЗИЦИЮ ГРАФИКА
+//     m_graphDisplayTime = m_currentTime + 30000;
+
+//     // Находим соответствующий индекс
+//     for (int i = 0; i < m_logData.size(); ++i) {
+//         if (m_logData[i].time >= m_currentTime) {
+//             m_currentLogIndex = i;
+//             const LogEntry &entry = m_logData[i];
+//             updateHeadModel(entry.pitch, entry.roll, entry.yaw,
+//                             entry.speedPitch, entry.speedRoll, entry.speedYaw,
+//                             entry.dizziness || entry.doctorDizziness); // Комбинированное головокружение
+
+//             // ОБНОВЛЯЕМ СВОЙСТВА ГОЛОВОКРУЖЕНИЯ ДЛЯ 3D ВИДА
+//             if (m_patientDizziness != entry.dizziness) {
+//                 m_patientDizziness = entry.dizziness;
+//                 emit patientDizzinessChanged(m_patientDizziness);
+//             }
+
+//             if (m_doctorDizziness != entry.doctorDizziness) {
+//                 m_doctorDizziness = entry.doctorDizziness;
+//                 emit doctorDizzinessChanged(m_doctorDizziness);
+//             }
+//             break;
+//         }
+//     }
+
+//     // ОБНОВЛЯЕМ ГРАФИКИ НЕМЕДЛЕННО
+//     updateGraphDataFromBuffer();
+
+//     emit currentTimeChanged(m_currentTime);
+
+//     // Если воспроизведение активнo, продолжаем с новой позиции
+//     if (m_logPlaying) {
+//         m_playbackTimeInitialized = false; // Переинициализируем синхронизацию
+//     }
+// }
+
+
+
+
+
 
 void TiltController::stopLog()
 {
@@ -800,6 +874,11 @@ void TiltController::stopLog()
     // Сбрасываем позицию воспроизведения на начало
     m_currentTime = 0;
     m_currentLogIndex = 0;
+
+    // СБРАСЫВАЕМ ИСТОРИЮ ДЛЯ ПЕРЕСЧЕТА СКОРОСТЕЙ
+    m_pitchHistory.clear();
+    m_rollHistory.clear();
+    m_yawHistory.clear();
 
     // Сбрасываем график на начальную позицию (первые 30 секунд)
     m_graphDisplayTime = 30000;
@@ -818,7 +897,7 @@ void TiltController::stopLog()
     if (!m_logData.isEmpty()) {
         const LogEntry &firstEntry = m_logData.first();
         updateHeadModel(firstEntry.pitch, firstEntry.roll, firstEntry.yaw,
-                        firstEntry.speedPitch, firstEntry.speedRoll, firstEntry.speedYaw,
+                        0.0f, 0.0f, 0.0f, // Нулевые скорости при остановке
                         false); // Головокружение сброшено
     }
 
@@ -829,6 +908,45 @@ void TiltController::stopLog()
     emit currentTimeChanged(m_currentTime);
     addNotification("Воспроизведение лога остановлено и сброшено в начало");
 }
+
+// void TiltController::stopLog()
+// {
+//     m_logPlaying = false;
+//     m_logTimer.stop();
+//     m_playbackTimeInitialized = false;
+
+//     // Сбрасываем позицию воспроизведения на начало
+//     m_currentTime = 0;
+//     m_currentLogIndex = 0;
+
+//     // Сбрасываем график на начальную позицию (первые 30 секунд)
+//     m_graphDisplayTime = 30000;
+
+//     // СБРАСЫВАЕМ ГОЛОВОКРУЖЕНИЕ
+//     if (m_patientDizziness) {
+//         m_patientDizziness = false;
+//         emit patientDizzinessChanged(m_patientDizziness);
+//     }
+
+//     if (m_doctorDizziness) {
+//         m_doctorDizziness = false;
+//         emit doctorDizzinessChanged(m_doctorDizziness);
+//     }
+
+//     if (!m_logData.isEmpty()) {
+//         const LogEntry &firstEntry = m_logData.first();
+//         updateHeadModel(firstEntry.pitch, firstEntry.roll, firstEntry.yaw,
+//                         firstEntry.speedPitch, firstEntry.speedRoll, firstEntry.speedYaw,
+//                         false); // Головокружение сброшено
+//     }
+
+//     // Обновляем графики для отображения начальной позиции
+//     updateGraphDataFromBuffer();
+
+//     emit logPlayingChanged(m_logPlaying);
+//     emit currentTimeChanged(m_currentTime);
+//     addNotification("Воспроизведение лога остановлено и сброшено в начало");
+// }
 
 void TiltController::startResearchRecording(const QString &researchNumber)
 {
@@ -980,6 +1098,138 @@ void TiltController::stopResearchRecording()
     addNotification("Запись исследования остановлена. Следующий номер: " + m_researchNumber);
 }
 
+
+
+
+
+
+
+float TiltController::calculateAngularSpeed(QVector<AngleHistory>& history, float currentAngle, qint64 currentTime)
+{
+    // Добавляем текущее значение в историю
+    history.append(AngleHistory(currentTime, currentAngle));
+
+    // Ограничиваем размер истории
+    while (history.size() > m_speedCalculationPoints) {
+        history.removeFirst();
+    }
+
+    // Если недостаточно точек для расчета, возвращаем 0
+    if (history.size() < 2) {
+        return 0.0f;
+    }
+
+    // Берем первую и последнюю точку в истории
+    const AngleHistory& firstPoint = history.first();
+    const AngleHistory& lastPoint = history.last();
+
+    // Вычисляем общее изменение угла с учетом переходов через 180/-180
+    float totalAngleChange = lastPoint.angle - firstPoint.angle;
+
+    // Корректируем переходы через 180/-180
+    if (totalAngleChange > 180.0f) {
+        totalAngleChange -= 360.0f;
+    } else if (totalAngleChange < -180.0f) {
+        totalAngleChange += 360.0f;
+    }
+
+    // Вычисляем временное окно в миллисекундах
+    qint64 timeWindow = lastPoint.timestamp - firstPoint.timestamp;
+
+    // Если временное окно слишком мало, возвращаем 0 (избегаем деления на 0)
+    if (timeWindow < 10) { // Минимум 10 мс для расчета
+        return 0.0f;
+    }
+
+    // Вычисляем угловую скорость в градусах/секунду
+    // Формула: (изменение угла в градусах) * (1000 мс / время в мс)
+    float angularSpeed = (totalAngleChange * 1000.0f) / timeWindow;
+
+    // Ограничиваем максимальную скорость (для устранения выбросов)
+    const float maxSpeed = 720.0f; // градусов/секунду
+    if (angularSpeed > maxSpeed) angularSpeed = maxSpeed;
+    if (angularSpeed < -maxSpeed) angularSpeed = -maxSpeed;
+
+    // Отладочный вывод для проверки расчетов
+    static int debugCounter = 0;
+    if (debugCounter++ % 30 == 0) { // Выводим каждые 30 кадров
+        qDebug() << "Angle speed calculation:"
+                 << "Change:" << totalAngleChange << "deg"
+                 << "Time:" << timeWindow << "ms"
+                 << "Speed:" << angularSpeed << "deg/s"
+                 << "Points:" << history.size();
+    }
+
+    return angularSpeed;
+}
+
+// float TiltController::calculateAngularSpeed(QVector<AngleHistory>& history, float currentAngle, qint64 currentTime)
+// {
+//     // Добавляем текущее значение в историю
+//     history.append(AngleHistory(currentTime, currentAngle));
+
+//     // Ограничиваем размер истории
+//     while (history.size() > m_speedCalculationPoints) {
+//         history.removeFirst();
+//     }
+
+//     // Если недостаточно точек для расчета, возвращаем 0
+//     if (history.size() < 2) {
+//         return 0.0f;
+//     }
+
+//     // Вычисляем временное окно
+//     qint64 timeWindow = history.last().timestamp - history.first().timestamp;
+
+//     // Если временное окно слишком мало, используем минимальное значение
+//     if (timeWindow < m_minTimeWindow) {
+//         timeWindow = m_minTimeWindow;
+//     }
+//     // Если временное окно слишком велико, ограничиваем его
+//     else if (timeWindow > m_maxTimeWindow) {
+//         timeWindow = m_maxTimeWindow;
+//     }
+
+//     // Вычисляем общее изменение угла с учетом переходов через 180/-180
+//     float totalAngleChange = 0.0f;
+//     int validTransitions = 0;
+
+//     for (int i = 1; i < history.size(); ++i) {
+//         float prevAngle = history[i-1].angle;
+//         float currAngle = history[i].angle;
+
+//         // Вычисляем изменение угла с учетом переходов через границы
+//         float angleChange = currAngle - prevAngle;
+
+//         // Корректируем переходы через 180/-180
+//         if (angleChange > 180.0f) {
+//             angleChange -= 360.0f;
+//         } else if (angleChange < -180.0f) {
+//             angleChange += 360.0f;
+//         }
+
+//         totalAngleChange += angleChange;
+//         validTransitions++;
+//     }
+
+//     if (validTransitions == 0) {
+//         return 0.0f;
+//     }
+
+//     // Вычисляем среднее изменение угла
+//     float averageAngleChange = totalAngleChange / validTransitions;
+
+//     // Вычисляем угловую скорость в градусах/секунду
+//     float angularSpeed = (averageAngleChange * 1000.0f) / timeWindow;
+
+//     // Ограничиваем максимальную скорость (для устранения выбросов)
+//     const float maxSpeed = 360.0f; // градусов/секунду
+//     if (angularSpeed > maxSpeed) angularSpeed = maxSpeed;
+//     if (angularSpeed < -maxSpeed) angularSpeed = -maxSpeed;
+
+//     return angularSpeed;
+// }
+
 void TiltController::updateLogPlayback()
 {
     if (m_currentLogIndex >= m_logData.size()) {
@@ -1011,9 +1261,15 @@ void TiltController::updateLogPlayback()
     if (targetIndex > m_currentLogIndex) {
         // Воспроизводим последний найденный кадр
         const LogEntry &entry = m_logData[targetIndex - 1];
+
+        // ВЫЧИСЛЯЕМ УГЛОВЫЕ СКОРОСТИ
+        float speedPitch = calculateAngularSpeed(m_pitchHistory, entry.pitch, entry.time);
+        float speedRoll = calculateAngularSpeed(m_rollHistory, entry.roll, entry.time);
+        float speedYaw = calculateAngularSpeed(m_yawHistory, entry.yaw, entry.time);
+
         updateHeadModel(entry.pitch, entry.roll, entry.yaw,
-                        entry.speedPitch, entry.speedRoll, entry.speedYaw,
-                        entry.dizziness || entry.doctorDizziness); // Комбинированное головокружение
+                        speedPitch, speedRoll, speedYaw,
+                        entry.dizziness || entry.doctorDizziness);
 
         m_currentTime = entry.time;
         m_currentLogIndex = targetIndex;
@@ -1047,6 +1303,74 @@ void TiltController::updateLogPlayback()
         stopLog();
     }
 }
+
+// void TiltController::updateLogPlayback()
+// {
+//     if (m_currentLogIndex >= m_logData.size()) {
+//         stopLog();
+//         return;
+//     }
+
+//     // Инициализация времени при первом вызове
+//     if (!m_playbackTimeInitialized) {
+//         m_playbackStartRealTime = QDateTime::currentMSecsSinceEpoch();
+//         m_playbackStartLogTime = m_currentTime;
+//         m_playbackTimeInitialized = true;
+//     }
+
+//     // Вычисляем, сколько реального времени прошло с начала воспроизведения
+//     qint64 currentRealTime = QDateTime::currentMSecsSinceEpoch();
+//     qint64 realTimeElapsed = currentRealTime - m_playbackStartRealTime;
+
+//     // Целевое время в логе = начальное время + прошедшее реальное время
+//     qint64 targetLogTime = m_playbackStartLogTime + realTimeElapsed;
+
+//     // Находим индекс, соответствующий целевому времени
+//     int targetIndex = m_currentLogIndex;
+//     while (targetIndex < m_logData.size() && m_logData[targetIndex].time <= targetLogTime) {
+//         targetIndex++;
+//     }
+
+//     // Если нашли кадры для воспроизведения
+//     if (targetIndex > m_currentLogIndex) {
+//         // Воспроизводим последний найденный кадр
+//         const LogEntry &entry = m_logData[targetIndex - 1];
+//         updateHeadModel(entry.pitch, entry.roll, entry.yaw,
+//                         entry.speedPitch, entry.speedRoll, entry.speedYaw,
+//                         entry.dizziness || entry.doctorDizziness); // Комбинированное головокружение
+
+//         m_currentTime = entry.time;
+//         m_currentLogIndex = targetIndex;
+
+//         // ОБНОВЛЯЕМ СВОЙСТВА ГОЛОВОКРУЖЕНИЯ ДЛЯ 3D ВИДА
+//         if (m_patientDizziness != entry.dizziness) {
+//             m_patientDizziness = entry.dizziness;
+//             emit patientDizzinessChanged(m_patientDizziness);
+//         }
+
+//         if (m_doctorDizziness != entry.doctorDizziness) {
+//             m_doctorDizziness = entry.doctorDizziness;
+//             emit doctorDizzinessChanged(m_doctorDizziness);
+//         }
+
+//         // ОБНОВЛЯЕМ ПОЗИЦИЮ ГРАФИКА для отображения текущего момента
+//         m_graphDisplayTime = m_currentTime + 30000;
+
+//         emit currentTimeChanged(m_currentTime);
+//     }
+
+//     // Обновляем графики с фиксированной частотой
+//     static qint64 lastGraphUpdate = 0;
+//     if (currentRealTime - lastGraphUpdate >= 33) { // ~30 FPS для графиков
+//         updateGraphDataFromBuffer();
+//         lastGraphUpdate = currentRealTime;
+//     }
+
+//     // Если достигли конца лога, останавливаем воспроизведение
+//     if (m_currentLogIndex >= m_logData.size()) {
+//         stopLog();
+//     }
+// }
 
 void TiltController::updateGraphDataFromBuffer()
 {
@@ -1441,3 +1765,73 @@ int TiltController::findLogIndexByTime(qint64 targetTime)
     // Возвращаем ближайший индекс, не превышающий targetTime
     return result;
 }
+
+// float TiltController::calculateAngularSpeed(QVector<AngleHistory>& history, float currentAngle, qint64 currentTime)
+// {
+//     // Добавляем текущее значение в историю
+//     AngleHistory newPoint;
+//     newPoint.timestamp = currentTime;
+//     newPoint.angle = currentAngle;
+//     history.append(newPoint);
+
+//     // Ограничиваем размер истории
+//     while (history.size() > m_speedCalculationPoints) {
+//         history.removeFirst();
+//     }
+
+//     // Если недостаточно точек для расчета, возвращаем 0
+//     if (history.size() < 2) {
+//         return 0.0f;
+//     }
+
+//     // Вычисляем временное окно
+//     qint64 timeWindow = history.last().timestamp - history.first().timestamp;
+
+//     // Если временное окно слишком мало, используем минимальное значение
+//     if (timeWindow < m_minTimeWindow) {
+//         timeWindow = m_minTimeWindow;
+//     }
+//     // Если временное окно слишком велико, ограничиваем его
+//     else if (timeWindow > m_maxTimeWindow) {
+//         timeWindow = m_maxTimeWindow;
+//     }
+
+//     // Вычисляем общее изменение угла с учетом переходов через 180/-180
+//     float totalAngleChange = 0.0f;
+//     int validTransitions = 0;
+
+//     for (int i = 1; i < history.size(); ++i) {
+//         float prevAngle = history[i-1].angle;
+//         float currAngle = history[i].angle;
+
+//         // Вычисляем изменение угла с учетом переходов через границы
+//         float angleChange = currAngle - prevAngle;
+
+//         // Корректируем переходы через 180/-180
+//         if (angleChange > 180.0f) {
+//             angleChange -= 360.0f;
+//         } else if (angleChange < -180.0f) {
+//             angleChange += 360.0f;
+//         }
+
+//         totalAngleChange += angleChange;
+//         validTransitions++;
+//     }
+
+//     if (validTransitions == 0) {
+//         return 0.0f;
+//     }
+
+//     // Вычисляем среднее изменение угла
+//     float averageAngleChange = totalAngleChange / validTransitions;
+
+//     // Вычисляем угловую скорость в градусах/секунду
+//     float angularSpeed = (averageAngleChange * 1000.0f) / timeWindow;
+
+//     // Ограничиваем максимальную скорость (для устранения выбросов)
+//     const float maxSpeed = 360.0f; // градусов/секунду
+//     if (angularSpeed > maxSpeed) angularSpeed = maxSpeed;
+//     if (angularSpeed < -maxSpeed) angularSpeed = -maxSpeed;
+
+//     return angularSpeed;
+// }

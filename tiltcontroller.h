@@ -223,9 +223,6 @@ private:
     // Кольцевой буфер для хранения данных
     CircularBuffer m_dataBuffer;
 
-
-
-
     struct LogEntry {
         int time;
         float pitch;
@@ -327,6 +324,26 @@ private:
     bool m_playbackTimeInitialized;  // Флаг инициализации времени
 
     qint64 m_graphDisplayTime;  // Время для отображения графика (независимо от воспроизведения)
+
+    // Структура для хранения данных об угле и времени
+    struct AngleHistory {
+        qint64 timestamp;
+        float angle;
+        AngleHistory(qint64 t, float a) : timestamp(t), angle(a) {}
+    };
+
+    // Буферы для хранения истории углов
+    QVector<AngleHistory> m_pitchHistory;
+    QVector<AngleHistory> m_rollHistory;
+    QVector<AngleHistory> m_yawHistory;
+
+    // Настройки расчета скорости
+    const int m_speedCalculationPoints = 6; // Количество точек для расчета
+    const qint64 m_minTimeWindow = 300;     // Минимальное окно времени в мс
+    const qint64 m_maxTimeWindow = 2000;    // Максимальное окно времени в мс
+
+    // Функция для расчета угловой скорости
+    float calculateAngularSpeed(QVector<AngleHistory>& history, float currentAngle, qint64 currentTime);
 
 signals:
     void connectedChanged(bool connected);
