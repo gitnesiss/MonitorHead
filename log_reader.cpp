@@ -14,15 +14,30 @@ void LogReader::setData(const QVector<LogDataEntry> &data)
     m_logData = data;
 }
 
+
+
+
+
+
 void LogReader::setUpdateFrequency(float frequencyHz)
 {
     float oldFrequency = m_updateFrequency;
-    m_updateFrequency = qBound(0.1f, frequencyHz, 10.0f);  // Было: 1.0f
+    m_updateFrequency = qBound(0.1f, frequencyHz, 10.0f);  // Расширяем диапазон
     m_windowDuration = 1.0f / m_updateFrequency;
 
     qDebug() << "LogReader: Update frequency changed from" << oldFrequency << "Hz to" << m_updateFrequency << "Hz";
     qDebug() << "LogReader: Window duration:" << m_windowDuration << "seconds (" << (m_windowDuration * 1000) << "ms)";
 }
+
+// void LogReader::setUpdateFrequency(float frequencyHz)
+// {
+//     float oldFrequency = m_updateFrequency;
+//     m_updateFrequency = qBound(0.1f, frequencyHz, 10.0f);  // Было: 1.0f
+//     m_windowDuration = 1.0f / m_updateFrequency;
+
+//     qDebug() << "LogReader: Update frequency changed from" << oldFrequency << "Hz to" << m_updateFrequency << "Hz";
+//     qDebug() << "LogReader: Window duration:" << m_windowDuration << "seconds (" << (m_windowDuration * 1000) << "ms)";
+// }
 
 float LogReader::calculateAngularSpeed(qint64 currentTime, const QString &angleType, bool isPlaying)
 {

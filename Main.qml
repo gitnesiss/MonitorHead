@@ -649,12 +649,88 @@ ApplicationWindow {
                         }
                     }
 
+                    // === НОВЫЙ БЛОК: УПРАВЛЕНИЕ ЧАСТОТОЙ ОБНОВЛЕНИЯ СКОРОСТИ ДЛЯ COM-ПОРТА ===
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        visible: controller.connected && !controller.logMode
+                        spacing: 10
 
+                        Text {
+                            text: "Частота скорости COM:"
+                            color: controller.connected ? "#aaa" : "#666"
+                            font.pixelSize: 11
+                            Layout.alignment: Qt.AlignVCenter
+                        }
 
+                        // Контейнер для слайдера с прозрачным фоном
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 30
+                            Layout.alignment: Qt.AlignVCenter
 
+                            Slider {
+                                id: comSpeedUpdateSlider
+                                anchors.fill: parent
+                                from: 0.1
+                                to: 10
+                                stepSize: 0.1
+                                value: controller.angularSpeedUpdateFrequency
+                                enabled: controller.connected && !controller.logMode
 
-                    // В разделе воспроизведения исследования ДОБАВЬТЕ этот блок:
-                    // ЗАМЕНИТЕ ВЕСЬ ЭТОТ БЛОК:
+                                onValueChanged: {
+                                    if (pressed) {
+                                        controller.angularSpeedUpdateFrequency = value
+                                    }
+                                }
+
+                                background: Rectangle {
+                                    x: comSpeedUpdateSlider.leftPadding
+                                    y: comSpeedUpdateSlider.topPadding + (comSpeedUpdateSlider.availableHeight - height) / 2
+                                    implicitWidth: 200
+                                    implicitHeight: 6
+                                    width: comSpeedUpdateSlider.availableWidth
+                                    height: implicitHeight
+                                    radius: 3
+                                    color: controller.connected && !controller.logMode ? "#3c3c3c" : "#2c2c2c"
+
+                                    Rectangle {
+                                        width: comSpeedUpdateSlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: controller.connected && !controller.logMode ? "#2196F3" : "#666"
+                                        radius: 3
+                                    }
+                                }
+
+                                handle: Rectangle {
+                                    x: comSpeedUpdateSlider.leftPadding + comSpeedUpdateSlider.visualPosition * (comSpeedUpdateSlider.availableWidth - width)
+                                    y: comSpeedUpdateSlider.topPadding + (comSpeedUpdateSlider.availableHeight - height) / 2
+                                    implicitWidth: 20
+                                    implicitHeight: 20
+                                    radius: 10
+                                    color: comSpeedUpdateSlider.pressed ? "#1976d2" : (controller.connected && !controller.logMode ? "#2196F3" : "#666")
+                                    border.color: controller.connected && !controller.logMode ? "#1976d2" : "#555"
+                                    border.width: 2
+
+                                    // Эффект при наведении
+                                    scale: comSpeedUpdateSlider.hovered ? 1.2 : 1.0
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 150 }
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: controller.angularSpeedUpdateFrequency.toFixed(1) + " Гц"
+                            color: controller.connected && !controller.logMode ? "#aaa" : "#666"
+                            font.pixelSize: 11
+                            Layout.preferredWidth: 40
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+                    }
+
+                    // === БЛОК УПРАВЛЕНИЯ ЧАСТОТОЙ ДЛЯ ЛОГ-ФАЙЛА (СУЩЕСТВУЮЩИЙ) ===
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
@@ -677,9 +753,9 @@ ApplicationWindow {
                             Slider {
                                 id: speedUpdateSlider
                                 anchors.fill: parent
-                                from: 0.1  // Было: 1
+                                from: 0.1
                                 to: 10
-                                stepSize: 0.1  // Было: 1
+                                stepSize: 0.1
                                 value: controller.angularSpeedUpdateFrequency
                                 enabled: controller.logControlsEnabled
 
@@ -727,7 +803,7 @@ ApplicationWindow {
                         }
 
                         Text {
-                            text: controller.angularSpeedUpdateFrequency.toFixed(1) + " Гц"  // Было toFixed(0)
+                            text: controller.angularSpeedUpdateFrequency.toFixed(1) + " Гц"
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 11
                             Layout.preferredWidth: 40
@@ -735,36 +811,7 @@ ApplicationWindow {
                         }
                     }
 
-                    // // В панели управления лог-файлом добавляем:
-                    // RowLayout {
-                    //     Layout.fillWidth: true
-                    //     visible: controller.logLoaded
-
-                    //     Text {
-                    //         text: "Частота обновления скорости:"
-                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //         font.pixelSize: 11
-                    //     }
-
-                    //     Slider {
-                    //         id: speedUpdateSlider
-                    //         Layout.fillWidth: true
-                    //         from: 1
-                    //         to: 10
-                    //         stepSize: 1
-                    //         value: controller.angularSpeedUpdateFrequency
-                    //         onMoved: controller.angularSpeedUpdateFrequency = value
-                    //         enabled: controller.logControlsEnabled
-                    //     }
-
-                    //     Text {
-                    //         text: speedUpdateSlider.value.toFixed(0) + " Гц"
-                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //         font.pixelSize: 11
-                    //         Layout.preferredWidth: 40
-                    //     }
-                    // }
-
+                    // Блок информации о частотах (существующий)
                     Rectangle {
                         Layout.preferredWidth: 220
                         Layout.preferredHeight: 50

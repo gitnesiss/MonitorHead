@@ -28,6 +28,12 @@ struct DataFrame {
         patientDizziness(false), doctorDizziness(false) {}
 };
 
+struct AngleDataPoint {
+    qint64 timestamp;
+    float angle;
+    AngleDataPoint(qint64 t, float a) : timestamp(t), angle(a) {}
+};
+
 // Кольцевой буфер на 1800 кадров
 class CircularBuffer {
 public:
@@ -360,6 +366,19 @@ private:
     float m_angularSpeedUpdateFrequency = 4.0f; // default 4 Hz
 
     Q_PROPERTY(float angularSpeedUpdateFrequency READ angularSpeedUpdateFrequency WRITE setAngularSpeedUpdateFrequency NOTIFY angularSpeedUpdateFrequencyChanged)
+
+    // Для усреднения данных COM-порта
+    QVector<AngleDataPoint> m_comPitchBuffer;
+    QVector<AngleDataPoint> m_comRollBuffer;
+    QVector<AngleDataPoint> m_comYawBuffer;
+    QTimer m_comSpeedUpdateTimer;
+    float m_currentComSpeedPitch = 0.0f;
+    float m_currentComSpeedRoll = 0.0f;
+    float m_currentComSpeedYaw = 0.0f;
+
+    void updateCOMAngularSpeeds();
+    float calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuffer);
+    void clearCOMBuffers();
 
 signals:
     void connectedChanged(bool connected);
