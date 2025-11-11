@@ -8,12 +8,6 @@
 #include <QRegularExpression>
 #include <algorithm>
 
-
-
-
-
-
-
 TiltController::TiltController(QObject *parent) : QObject(parent)
     , m_logReader(this)  // инициализация log reader
     , m_angularSpeedUpdateFrequency(1.25f)
@@ -113,9 +107,6 @@ void TiltController::setupLogReader()
 {
     m_logReader.setUpdateFrequency(m_angularSpeedUpdateFrequency);
 }
-
-
-
 
 // Новый метод для обновления угловых скоростей с использованием LogReader
 void TiltController::updateAngularSpeeds()
@@ -1435,11 +1426,6 @@ int TiltController::findLogIndexByTime(qint64 targetTime)
     return result;
 }
 
-
-
-
-
-
 void TiltController::updateCOMAngularSpeeds()
 {
     if (!m_connected || m_logMode) return;
@@ -1472,51 +1458,6 @@ void TiltController::updateCOMAngularSpeeds()
     // Очищаем буферы для следующего периода
     clearCOMBuffers();
 }
-
-// void TiltController::updateCOMAngularSpeeds()
-// {
-//     if (!m_connected || m_logMode) return;
-
-//     m_currentComSpeedPitch = calculateCOMAngularSpeed(m_comPitchBuffer);
-//     m_currentComSpeedRoll = calculateCOMAngularSpeed(m_comRollBuffer);
-//     m_currentComSpeedYaw = calculateCOMAngularSpeed(m_comYawBuffer);
-
-//     // Обновляем модель с вычисленными скоростями
-//     if (m_dataBuffer.size() > 0) {
-//         const DataFrame& lastFrame = m_dataBuffer.last();
-//         updateHeadModel(lastFrame.pitch, lastFrame.roll, lastFrame.yaw,
-//                         m_currentComSpeedPitch, m_currentComSpeedRoll, m_currentComSpeedYaw,
-//                         lastFrame.patientDizziness || lastFrame.doctorDizziness);
-//     }
-
-//     // Очищаем буферы для следующего периода
-//     clearCOMBuffers();
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 float TiltController::calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuffer)
 {
@@ -1609,133 +1550,12 @@ float TiltController::calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuff
     return qBound(-maxSpeed, angularSpeed, maxSpeed);
 }
 
-// float TiltController::calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuffer)
-// {
-//     if (dataBuffer.size() < 2) {
-//         return 0.0f;
-//     }
-
-//     // Ваша точная формула:
-//     // a = (сумма_изменений_между_точками) / (количество_изменений)
-//     // angularSpeed = a * (1 / период_обновления)
-
-//     float totalChange = 0.0f;
-//     int changeCount = 0;
-
-//     for (int i = 1; i < dataBuffer.size(); ++i) {
-//         float currentAngle = dataBuffer[i].angle;
-//         float previousAngle = dataBuffer[i-1].angle;
-
-//         float angleChange = currentAngle - previousAngle;
-
-//         // Корректируем переход через ±180 градусов
-//         if (angleChange > 180.0f) {
-//             angleChange -= 360.0f;
-//         } else if (angleChange < -180.0f) {
-//             angleChange += 360.0f;
-//         }
-
-//         totalChange += angleChange;
-//         changeCount++;
-//     }
-
-//     if (changeCount == 0) {
-//         return 0.0f;
-//     }
-
-//     // a = totalChange / changeCount
-//     float averageChangePerStep = totalChange / changeCount;
-
-//     // angularSpeed = averageChangePerStep * (1 / updatePeriod)
-//     // Но поскольку averageChangePerStep - это изменение за один шаг данных,
-//     // а нам нужно изменение за период обновления, учитываем количество шагов за период
-//     float angularSpeed = averageChangePerStep * changeCount * m_angularSpeedUpdateFrequency;
-
-//     // Отладочный вывод
-//     static int debugCounter = 0;
-//     if (debugCounter++ % 5 == 0) {
-//         qDebug() << "=== SIMPLIFIED CORRECT CALCULATION ===";
-//         qDebug() << "Data points:" << dataBuffer.size();
-//         qDebug() << "Change count:" << changeCount;
-//         qDebug() << "Total change:" << totalChange;
-//         qDebug() << "Average change per step:" << averageChangePerStep;
-//         qDebug() << "Frequency:" << m_angularSpeedUpdateFrequency << "Hz";
-//         qDebug() << "Calculated speed:" << angularSpeed << "deg/s";
-
-//         // Проверка по общему изменению
-//         if (dataBuffer.size() >= 2) {
-//             float overallChange = dataBuffer.last().angle - dataBuffer.first().angle;
-//             if (overallChange > 180.0f) overallChange -= 360.0f;
-//             else if (overallChange < -180.0f) overallChange += 360.0f;
-
-//             float updatePeriod = 1.0f / m_angularSpeedUpdateFrequency;
-//             float expectedSpeed = overallChange / updatePeriod;
-//             qDebug() << "Overall change:" << overallChange;
-//             qDebug() << "Expected speed:" << expectedSpeed << "deg/s";
-//         }
-//         qDebug() << "======================================";
-//     }
-
-//     const float maxSpeed = 360.0f;
-//     return qBound(-maxSpeed, angularSpeed, maxSpeed);
-// }
-
-// float TiltController::calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuffer)
-// {
-//     if (dataBuffer.size() < 2) {
-//         return 0.0f;
-//     }
-
-//     // Вычисляем сумму изменений между последовательными точками
-//     float totalChange = 0.0f;
-//     for (int i = 1; i < dataBuffer.size(); ++i) {
-//         float diff = dataBuffer[i].angle - dataBuffer[i-1].angle;
-
-//         // Корректируем переход через ±180 градусов
-//         if (diff > 180.0f) {
-//             diff -= 360.0f;
-//         } else if (diff < -180.0f) {
-//             diff += 360.0f;
-//         }
-
-//         totalChange += diff;
-//     }
-
-//     // Вычисляем среднее изменение за период
-//     float averageChange = totalChange / (dataBuffer.size() - 1);
-
-//     // Время в секундах (период обновления)
-//     float timeSpan = (1000.0f / m_angularSpeedUpdateFrequency) / 1000.0f; // в секундах
-
-//     // Угловая скорость в градусах/секунду
-//     float angularSpeed = averageChange / timeSpan;
-
-//     // Ограничиваем разумными пределами
-//     const float maxSpeed = 360.0f;
-//     angularSpeed = qBound(-maxSpeed, angularSpeed, maxSpeed);
-
-//     qDebug() << "COM Angular speed calculation:"
-//              << "Points:" << dataBuffer.size()
-//              << "Total change:" << totalChange
-//              << "Average change:" << averageChange
-//              << "Time span:" << timeSpan << "s"
-//              << "Speed:" << angularSpeed << "deg/s";
-
-//     return angularSpeed;
-// }
-
 void TiltController::clearCOMBuffers()
 {
     m_comPitchBuffer.clear();
     m_comRollBuffer.clear();
     m_comYawBuffer.clear();
 }
-
-
-
-
-
-
 
 void TiltController::setAngularSpeedUpdateFrequency(float frequency)
 {
@@ -1768,59 +1588,6 @@ void TiltController::setAngularSpeedUpdateFrequency(float frequency)
         qDebug() << "=== FREQUENCY CHANGE COMPLETE ===";
     }
 }
-
-// void TiltController::setAngularSpeedUpdateFrequency(float frequency)
-// {
-//     frequency = qBound(0.1f, frequency, 10.0f);  // Было: 1.0f
-
-//     if (!qFuzzyCompare(m_angularSpeedUpdateFrequency, frequency)) {
-//         qDebug() << "=== ANGULAR SPEED FREQUENCY CHANGE ===";
-//         qDebug() << "Setting angular speed update frequency from" << m_angularSpeedUpdateFrequency << "to" << frequency;
-
-//         m_angularSpeedUpdateFrequency = frequency;
-//         m_logReader.setUpdateFrequency(frequency);
-
-//         // Пересчитываем скорости, если в режиме лога
-//         if (m_logMode && m_logLoaded) {
-//             qDebug() << "Recalculating angular speeds...";
-//             updateAngularSpeeds();
-//         }
-
-//         emit angularSpeedUpdateFrequencyChanged(frequency);
-//         qDebug() << "=== FREQUENCY CHANGE COMPLETE ===";
-//     }
-// }
-
-// void TiltController::setAngularSpeedUpdateFrequency(float frequency)
-// {
-//     // Округляем до целого числа, так как ползунок работает с целыми значениями
-//     int roundedFrequency = qRound(frequency);
-//     roundedFrequency = qBound(1, roundedFrequency, 10);
-
-//     float newFrequency = static_cast<float>(roundedFrequency);
-
-//     if (!qFuzzyCompare(m_angularSpeedUpdateFrequency, newFrequency)) {
-//         qDebug() << "=== ANGULAR SPEED FREQUENCY CHANGE ===";
-//         qDebug() << "Setting angular speed update frequency from" << m_angularSpeedUpdateFrequency << "to" << newFrequency;
-
-//         m_angularSpeedUpdateFrequency = newFrequency;
-//         m_logReader.setUpdateFrequency(newFrequency);
-
-//         // Пересчитываем скорости, если в режиме лога
-//         if (m_logMode && m_logLoaded) {
-//             qDebug() << "Recalculating angular speeds...";
-//             updateAngularSpeeds();
-//         }
-
-//         emit angularSpeedUpdateFrequencyChanged(newFrequency);
-//         qDebug() << "=== FREQUENCY CHANGE COMPLETE ===";
-//     }
-// }
-
-
-
-
-
 
 void TiltController::processDataFrame(const DataFrame& frame)
 {
@@ -1917,91 +1684,6 @@ void TiltController::processDataFrame(const DataFrame& frame)
     }
 }
 
-// void TiltController::processDataFrame(const DataFrame& frame)
-// {
-//     // Вычисляем угловые скорости
-//     float speedPitch = 0.0f;
-//     float speedRoll = 0.0f;
-//     float speedYaw = 0.0f;
-
-//     m_dataTimestamps.append(QDateTime::currentMSecsSinceEpoch());
-
-//     if (m_prevFrame.timestamp > 0) {
-//         qint64 timeDiff = frame.timestamp - m_prevFrame.timestamp;
-//         if (timeDiff > 0) {
-//             speedPitch = (frame.pitch - m_prevFrame.pitch) * 1000.0f / timeDiff;
-//             speedRoll = (frame.roll - m_prevFrame.roll) * 1000.0f / timeDiff;
-//             speedYaw = (frame.yaw - m_prevFrame.yaw) * 1000.0f / timeDiff;
-
-//             // Ограничиваем максимальную скорость
-//             const float maxSpeed = 180.0f;
-//             speedPitch = qBound(-maxSpeed, speedPitch, maxSpeed);
-//             speedRoll = qBound(-maxSpeed, speedRoll, maxSpeed);
-//             speedYaw = qBound(-maxSpeed, speedYaw, maxSpeed);
-//         }
-//     }
-
-//     m_prevFrame = frame;
-
-//     // Обновляем свойства головокружения
-//     if (m_patientDizziness != frame.patientDizziness) {
-//         m_patientDizziness = frame.patientDizziness;
-//         emit patientDizzinessChanged(m_patientDizziness);
-//     }
-
-//     if (m_doctorDizziness != frame.doctorDizziness) {
-//         m_doctorDizziness = frame.doctorDizziness;
-//         emit doctorDizzinessChanged(m_doctorDizziness);
-//     }
-
-//     // Обновляем модель (передаем комбинированное головокружение для обратной совместимости)
-//     bool combinedDizziness = frame.patientDizziness || frame.doctorDizziness;
-//     updateHeadModel(frame.pitch, frame.roll, frame.yaw, speedPitch, speedRoll, speedYaw, combinedDizziness);
-
-//     // Устанавливаем флаг hasData
-//     if (!m_headModel.hasData()) {
-//         m_headModel.setHasData(true);
-//     }
-
-//     // Запись в файл исследования
-//     if (m_recording && m_researchStream) {
-//         // ВЫЧИСЛЯЕМ ВРЕМЯ ОТНОСИТЕЛЬНО НАЧАЛА ЗАПИСИ, А НЕ НАЧАЛА ПОДКЛЮЧЕНИЯ
-//         qint64 researchTime = frame.timestamp - m_researchRecordingStartTime;
-
-//         // Гарантируем, что время не отрицательное
-//         if (researchTime < 0) {
-//             researchTime = 0;
-//         }
-
-//         // Форматируем время как 10-значное число с ведущими нулями
-//         QString timestamp = QString::number(researchTime).rightJustified(10, '0');
-//         QString formattedLine = QString("%1;%2;%3;%4;%5;%6")
-//                                     .arg(timestamp)
-//                                     .arg(frame.pitch, 0, 'f', 2)
-//                                     .arg(frame.roll, 0, 'f', 2)
-//                                     .arg(frame.yaw, 0, 'f', 2)
-//                                     .arg(frame.patientDizziness ? 1 : 0)
-//                                     .arg(frame.doctorDizziness ? 1 : 0);
-
-//         *m_researchStream << formattedLine << "\n";
-//         m_researchStream->flush();
-//         m_researchFrameCounter++;
-
-//         qDebug() << "Research data written - Time:" << researchTime << "ms, Frame:" << formattedLine;
-//     }
-// }
-
-
-
-
-
-
-
-
-
-
-
-
 bool TiltController::setupCOMPort()
 {
     if (m_serialPort) {
@@ -2080,81 +1762,6 @@ bool TiltController::setupCOMPort()
     return true;
 }
 
-// bool TiltController::setupCOMPort()
-// {
-//     if (m_serialPort) {
-//         cleanupCOMPort();
-//     }
-
-//     // ОПТИМИЗАЦИЯ: Полная очистка при новом подключении
-//     m_dataBuffer.clear();
-//     m_prevFrame = DataFrame();
-//     m_incompleteData.clear();
-
-//     // ОПТИМИЗАЦИЯ: Сбрасываем временные метки
-//     m_startTime = QDateTime::currentMSecsSinceEpoch();
-//     m_lastDataTime = 0;
-
-//     // ОПТИМИЗАЦИЯ: Сбрасываем кэши графиков
-//     m_lastPitchData.clear();
-//     m_lastRollData.clear();
-//     m_lastYawData.clear();
-//     m_updateCounter = 0;
-
-//     m_serialPort = new QSerialPort(this);
-//     m_serialPort->setPortName(m_selectedPort);
-//     m_serialPort->setBaudRate(QSerialPort::Baud115200);
-//     m_serialPort->setDataBits(QSerialPort::Data8);
-//     m_serialPort->setParity(QSerialPort::NoParity);
-//     m_serialPort->setStopBits(QSerialPort::OneStop);
-//     m_serialPort->setFlowControl(QSerialPort::NoFlowControl);
-
-//     // ОПТИМИЗАЦИЯ: Настраиваем размеры буферов
-//     m_serialPort->setReadBufferSize(2048);
-
-//     connect(m_serialPort, &QSerialPort::readyRead, this, &TiltController::readCOMPortData, Qt::QueuedConnection);
-//     connect(m_serialPort, &QSerialPort::errorOccurred, this, &TiltController::handleCOMPortError, Qt::QueuedConnection);
-
-//     try {
-//         if (m_serialPort->open(QIODevice::ReadOnly)) {
-//             m_connected = true;
-//             m_autoConnectTimer.stop();
-//             m_safetyTimer.start();
-
-//             if (m_logMode) {
-//                 stopLog();
-//                 m_logMode = false;
-//                 emit logModeChanged(m_logMode);
-//                 emit logControlsEnabledChanged(logControlsEnabled());
-//             }
-
-//             m_incompleteData.clear();
-//             m_dataBuffer.clear();
-//             m_prevFrame = DataFrame();
-
-//             addNotification("Успешное подключение к " + m_selectedPort);
-//             emit connectedChanged(m_connected);
-//             return true;
-//         } else {
-//             addNotification("Ошибка подключения к " + m_selectedPort + ": " + m_serialPort->errorString());
-//             cleanupCOMPort();
-//             return false;
-//         }
-//     } catch (const std::exception& e) {
-//         addNotification("Исключение при подключении к COM-порту: " + QString(e.what()));
-//         cleanupCOMPort();
-//         return false;
-//     }
-// }
-
-
-
-
-
-
-
-
-
 void TiltController::cleanupCOMPort()
 {
     m_safetyTimer.stop();
@@ -2177,25 +1784,3 @@ void TiltController::cleanupCOMPort()
 
     m_incompleteData.clear();
 }
-
-// void TiltController::cleanupCOMPort()
-// {
-//     m_safetyTimer.stop();
-
-//     if (m_serialPort) {
-//         disconnect(m_serialPort, nullptr, this, nullptr);
-
-//         if (m_serialPort->isOpen()) {
-//             try {
-//                 m_serialPort->close();
-//             } catch (const std::exception& e) {
-//                 qDebug() << "Exception while closing port:" << e.what();
-//             }
-//         }
-
-//         m_serialPort->deleteLater();
-//         m_serialPort = nullptr;
-//     }
-
-//     m_incompleteData.clear();
-// }
