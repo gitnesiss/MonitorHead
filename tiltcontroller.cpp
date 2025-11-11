@@ -10,7 +10,9 @@
 
 TiltController::TiltController(QObject *parent) : QObject(parent)
     , m_logReader(this)  // инициализация log reader
-    , m_angularSpeedUpdateFrequency(1.25f)
+    // , m_angularSpeedUpdateFrequency(1.25f)
+    , m_angularSpeedUpdateFrequencyCOM(4.0f)
+    , m_angularSpeedUpdateFrequencyLog(1.2f)
 {
     m_logTimer.setInterval(16);
     connect(&m_logTimer, &QTimer::timeout, this, &TiltController::updateLogPlayback);
@@ -92,7 +94,7 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
 
     emit angularSpeedUpdateFrequencyChanged(m_angularSpeedUpdateFrequency);
 
-    m_comSpeedUpdateTimer.setInterval(1000 / m_angularSpeedUpdateFrequency);
+    m_comSpeedUpdateTimer.setInterval(1000 / m_angularSpeedUpdateFrequencyCOM);
     connect(&m_comSpeedUpdateTimer, &QTimer::timeout, this, &TiltController::updateCOMAngularSpeeds);
 }
 
@@ -1459,96 +1461,150 @@ void TiltController::updateCOMAngularSpeeds()
     clearCOMBuffers();
 }
 
+
+
+
+
+
+
 float TiltController::calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuffer)
 {
     if (dataBuffer.size() < 2) {
         return 0.0f;
     }
 
-    // Ваша формула:
-    // a = (((-0.5) - (-1.0)) + (0.2 - (-0.5)) + (0.5 - 0.2)) / (lmas - 1) = 1.5 / 3 = 0.5 градуса за 0.1 секунды
-    // angularSpeed = 0.5 * (1 / 0.1) = 0.5 * 10 = 5.0 градуса/секунду
+    // Берем первое и последнее значение в буфере
+    const AngleDataPoint& firstPoint = dataBuffer.first();
+    const AngleDataPoint& lastPoint = dataBuffer.last();
 
-    // Вычисляем сумму изменений между последовательными точками
-    float totalChange = 0.0f;
-    int changeCount = 0;
+    // Вычисляем изменение угла
+    float angleChange = lastPoint.angle - firstPoint.angle;
 
-    for (int i = 1; i < dataBuffer.size(); ++i) {
-        float currentAngle = dataBuffer[i].angle;
-        float previousAngle = dataBuffer[i-1].angle;
-
-        // Вычисляем изменение угла между последовательными точками
-        float angleChange = currentAngle - previousAngle;
-
-        // Корректируем переход через ±180 градусов
-        if (angleChange > 180.0f) {
-            angleChange -= 360.0f;
-        } else if (angleChange < -180.0f) {
-            angleChange += 360.0f;
-        }
-
-        totalChange += angleChange;
-        changeCount++;
+    // Корректируем переход через ±180 градусов
+    if (angleChange > 180.0f) {
+        angleChange -= 360.0f;
+    } else if (angleChange < -180.0f) {
+        angleChange += 360.0f;
     }
 
-    if (changeCount == 0) {
+    // Вычисляем временной интервал в секундах
+    float timeDiff = (lastPoint.timestamp - firstPoint.timestamp) / 1000.0f;
+
+    if (timeDiff <= 0) {
         return 0.0f;
     }
 
-    // Среднее изменение между последовательными точками (ваша формула)
-    float averageChangePerStep = totalChange / changeCount;
-
-    // Период обновления в секундах (например, 0.1 секунды для 10 Гц)
-    float updatePeriod = 1.0f / m_angularSpeedUpdateFrequency; // в секундах
-
-    // ВАЖНО: В вашей формуле angularSpeed = averageChangePerStep * (1 / updatePeriod)
-    // Но averageChangePerStep - это среднее изменение за один шаг данных
-    // Нам нужно пересчитать это в скорость: изменение за время updatePeriod
-
-    // Количество шагов данных за период обновления
-    float stepsPerUpdatePeriod = changeCount; // количество изменений за период
-
-    // Общее изменение за период обновления = среднее_изменение_за_шаг * количество_шагов
-    float totalChangePerPeriod = averageChangePerStep * stepsPerUpdatePeriod;
-
-    // Угловая скорость = общее_изменение_за_период / период_обновления
-    float angularSpeed = totalChangePerPeriod / updatePeriod;
-
-    // Альтернативный (более простой) расчет:
-    // angularSpeed = averageChangePerStep * stepsPerUpdatePeriod / updatePeriod;
-    // что эквивалентно: angularSpeed = averageChangePerStep * stepsPerUpdatePeriod * m_angularSpeedUpdateFrequency;
+    // Вычисляем угловую скорость (градусы/секунду)
+    float angularSpeed = angleChange / timeDiff;
 
     // Отладочный вывод для проверки расчетов
     static int debugCounter = 0;
-    if (debugCounter++ % 5 == 0) {
-        qDebug() << "=== CORRECTED COM ANGULAR SPEED CALCULATION ===";
+    if (debugCounter++ % 10 == 0) {
+        qDebug() << "=== COM ANGULAR SPEED CALCULATION ===";
         qDebug() << "Data points:" << dataBuffer.size();
-        qDebug() << "Change count:" << changeCount;
-        qDebug() << "Total change between steps:" << totalChange;
-        qDebug() << "Average change per step:" << averageChangePerStep;
-        qDebug() << "Update period:" << updatePeriod << "seconds";
-        qDebug() << "Steps per update period:" << stepsPerUpdatePeriod;
-        qDebug() << "Total change per period:" << totalChangePerPeriod;
+        qDebug() << "First angle:" << firstPoint.angle << "at time:" << firstPoint.timestamp;
+        qDebug() << "Last angle:" << lastPoint.angle << "at time:" << lastPoint.timestamp;
+        qDebug() << "Angle change:" << angleChange << "degrees";
+        qDebug() << "Time difference:" << timeDiff << "seconds";
         qDebug() << "Calculated speed:" << angularSpeed << "deg/s";
-
-        // Проверяем общее изменение за период
-        if (dataBuffer.size() >= 2) {
-            float overallChange = dataBuffer.last().angle - dataBuffer.first().angle;
-            // Корректируем переход через ±180
-            if (overallChange > 180.0f) overallChange -= 360.0f;
-            else if (overallChange < -180.0f) overallChange += 360.0f;
-
-            float expectedSpeed = overallChange / updatePeriod;
-            qDebug() << "Overall change:" << overallChange;
-            qDebug() << "Expected speed (overall):" << expectedSpeed << "deg/s";
-        }
-        qDebug() << "===============================================";
+        qDebug() << "=====================================";
     }
 
     // Ограничиваем разумными пределами
     const float maxSpeed = 360.0f;
     return qBound(-maxSpeed, angularSpeed, maxSpeed);
 }
+
+// float TiltController::calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuffer)
+// {
+//     if (dataBuffer.size() < 2) {
+//         return 0.0f;
+//     }
+
+//     // Ваша формула:
+//     // a = (((-0.5) - (-1.0)) + (0.2 - (-0.5)) + (0.5 - 0.2)) / (lmas - 1) = 1.5 / 3 = 0.5 градуса за 0.1 секунды
+//     // angularSpeed = 0.5 * (1 / 0.1) = 0.5 * 10 = 5.0 градуса/секунду
+
+//     // Вычисляем сумму изменений между последовательными точками
+//     float totalChange = 0.0f;
+//     int changeCount = 0;
+
+//     for (int i = 1; i < dataBuffer.size(); ++i) {
+//         float currentAngle = dataBuffer[i].angle;
+//         float previousAngle = dataBuffer[i-1].angle;
+
+//         // Вычисляем изменение угла между последовательными точками
+//         float angleChange = currentAngle - previousAngle;
+
+//         // Корректируем переход через ±180 градусов
+//         if (angleChange > 180.0f) {
+//             angleChange -= 360.0f;
+//         } else if (angleChange < -180.0f) {
+//             angleChange += 360.0f;
+//         }
+
+//         totalChange += angleChange;
+//         changeCount++;
+//     }
+
+//     if (changeCount == 0) {
+//         return 0.0f;
+//     }
+
+//     // Среднее изменение между последовательными точками (ваша формула)
+//     float averageChangePerStep = totalChange / changeCount;
+
+//     // Период обновления в секундах (например, 0.1 секунды для 10 Гц)
+//     float updatePeriod = 1.0f / m_angularSpeedUpdateFrequency; // в секундах
+
+//     // ВАЖНО: В вашей формуле angularSpeed = averageChangePerStep * (1 / updatePeriod)
+//     // Но averageChangePerStep - это среднее изменение за один шаг данных
+//     // Нам нужно пересчитать это в скорость: изменение за время updatePeriod
+
+//     // Количество шагов данных за период обновления
+//     float stepsPerUpdatePeriod = changeCount; // количество изменений за период
+
+//     // Общее изменение за период обновления = среднее_изменение_за_шаг * количество_шагов
+//     float totalChangePerPeriod = averageChangePerStep * stepsPerUpdatePeriod;
+
+//     // Угловая скорость = общее_изменение_за_период / период_обновления
+//     float angularSpeed = totalChangePerPeriod / updatePeriod;
+
+//     // Альтернативный (более простой) расчет:
+//     // angularSpeed = averageChangePerStep * stepsPerUpdatePeriod / updatePeriod;
+//     // что эквивалентно: angularSpeed = averageChangePerStep * stepsPerUpdatePeriod * m_angularSpeedUpdateFrequency;
+
+//     // Отладочный вывод для проверки расчетов
+//     static int debugCounter = 0;
+//     if (debugCounter++ % 5 == 0) {
+//         qDebug() << "=== CORRECTED COM ANGULAR SPEED CALCULATION ===";
+//         qDebug() << "Data points:" << dataBuffer.size();
+//         qDebug() << "Change count:" << changeCount;
+//         qDebug() << "Total change between steps:" << totalChange;
+//         qDebug() << "Average change per step:" << averageChangePerStep;
+//         qDebug() << "Update period:" << updatePeriod << "seconds";
+//         qDebug() << "Steps per update period:" << stepsPerUpdatePeriod;
+//         qDebug() << "Total change per period:" << totalChangePerPeriod;
+//         qDebug() << "Calculated speed:" << angularSpeed << "deg/s";
+
+//         // Проверяем общее изменение за период
+//         if (dataBuffer.size() >= 2) {
+//             float overallChange = dataBuffer.last().angle - dataBuffer.first().angle;
+//             // Корректируем переход через ±180
+//             if (overallChange > 180.0f) overallChange -= 360.0f;
+//             else if (overallChange < -180.0f) overallChange += 360.0f;
+
+//             float expectedSpeed = overallChange / updatePeriod;
+//             qDebug() << "Overall change:" << overallChange;
+//             qDebug() << "Expected speed (overall):" << expectedSpeed << "deg/s";
+//         }
+//         qDebug() << "===============================================";
+//     }
+
+//     // Ограничиваем разумными пределами
+//     const float maxSpeed = 360.0f;
+//     return qBound(-maxSpeed, angularSpeed, maxSpeed);
+// }
 
 void TiltController::clearCOMBuffers()
 {
@@ -1783,4 +1839,60 @@ void TiltController::cleanupCOMPort()
     }
 
     m_incompleteData.clear();
+}
+
+
+
+
+
+
+
+void TiltController::setAngularSpeedUpdateFrequencyCOM(float frequency)
+{
+    frequency = qBound(0.1f, frequency, 10.0f);
+
+    if (!qFuzzyCompare(m_angularSpeedUpdateFrequencyCOM, frequency)) {
+        qDebug() << "=== COM ANGULAR SPEED FREQUENCY CHANGE ===";
+        qDebug() << "Setting COM angular speed update frequency from" << m_angularSpeedUpdateFrequencyCOM << "to" << frequency;
+
+        m_angularSpeedUpdateFrequencyCOM = frequency;
+
+        // Обновляем интервал таймера для COM-порта
+        m_comSpeedUpdateTimer.setInterval(1000 / frequency);
+
+        // Пересчитываем скорости для COM-порта
+        if (m_connected && !m_logMode) {
+            qDebug() << "Restarting COM speed timer with new frequency...";
+            if (m_comSpeedUpdateTimer.isActive()) {
+                m_comSpeedUpdateTimer.stop();
+            }
+            m_comSpeedUpdateTimer.start();
+            clearCOMBuffers();
+        }
+
+        emit angularSpeedUpdateFrequencyCOMChanged(frequency);
+        qDebug() << "=== COM FREQUENCY CHANGE COMPLETE ===";
+    }
+}
+
+void TiltController::setAngularSpeedUpdateFrequencyLog(float frequency)
+{
+    frequency = qBound(0.1f, frequency, 10.0f);
+
+    if (!qFuzzyCompare(m_angularSpeedUpdateFrequencyLog, frequency)) {
+        qDebug() << "=== LOG ANGULAR SPEED FREQUENCY CHANGE ===";
+        qDebug() << "Setting Log angular speed update frequency from" << m_angularSpeedUpdateFrequencyLog << "to" << frequency;
+
+        m_angularSpeedUpdateFrequencyLog = frequency;
+        m_logReader.setUpdateFrequency(frequency);
+
+        // Пересчитываем скорости для лог-файла
+        if (m_logMode && m_logLoaded) {
+            qDebug() << "Recalculating angular speeds for log mode...";
+            updateAngularSpeeds();
+        }
+
+        emit angularSpeedUpdateFrequencyLogChanged(frequency);
+        qDebug() << "=== LOG FREQUENCY CHANGE COMPLETE ===";
+    }
 }

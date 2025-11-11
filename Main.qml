@@ -649,7 +649,7 @@ ApplicationWindow {
                         }
                     }
 
-                    // === НОВЫЙ БЛОК: УПРАВЛЕНИЕ ЧАСТОТОЙ ОБНОВЛЕНИЯ СКОРОСТИ ДЛЯ COM-ПОРТА ===
+                    // НОВЫЙ БЛОК: УПРАВЛЕНИЕ ЧАСТОТОЙ ОБНОВЛЕНИЯ СКОРОСТИ ДЛЯ COM-ПОРТА
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
@@ -663,7 +663,6 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignVCenter
                         }
 
-                        // Контейнер для слайдера с прозрачным фоном
                         Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 30
@@ -675,12 +674,12 @@ ApplicationWindow {
                                 from: 0.1
                                 to: 10
                                 stepSize: 0.1
-                                value: controller.angularSpeedUpdateFrequency
+                                value: controller.angularSpeedUpdateFrequencyCOM
                                 enabled: controller.connected && !controller.logMode
 
                                 onValueChanged: {
                                     if (pressed) {
-                                        controller.angularSpeedUpdateFrequency = value
+                                        controller.angularSpeedUpdateFrequencyCOM = value
                                     }
                                 }
 
@@ -712,7 +711,6 @@ ApplicationWindow {
                                     border.color: controller.connected && !controller.logMode ? "#1976d2" : "#555"
                                     border.width: 2
 
-                                    // Эффект при наведении
                                     scale: comSpeedUpdateSlider.hovered ? 1.2 : 1.0
                                     Behavior on scale {
                                         NumberAnimation { duration: 150 }
@@ -722,7 +720,7 @@ ApplicationWindow {
                         }
 
                         Text {
-                            text: controller.angularSpeedUpdateFrequency.toFixed(1) + " Гц"
+                            text: controller.angularSpeedUpdateFrequencyCOM.toFixed(1) + " Гц"
                             color: controller.connected && !controller.logMode ? "#aaa" : "#666"
                             font.pixelSize: 11
                             Layout.preferredWidth: 40
@@ -730,7 +728,7 @@ ApplicationWindow {
                         }
                     }
 
-                    // === БЛОК УПРАВЛЕНИЯ ЧАСТОТОЙ ДЛЯ ЛОГ-ФАЙЛА (СУЩЕСТВУЮЩИЙ) ===
+                    // БЛОК УПРАВЛЕНИЯ ЧАСТОТОЙ ДЛЯ ЛОГ-ФАЙЛА
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 40
@@ -738,13 +736,12 @@ ApplicationWindow {
                         spacing: 10
 
                         Text {
-                            text: "Частота обновления скорости:"
+                            text: "Частота скорости лога:"
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 11
                             Layout.alignment: Qt.AlignVCenter
                         }
 
-                        // Контейнер для слайдера с прозрачным фоном
                         Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 30
@@ -756,12 +753,12 @@ ApplicationWindow {
                                 from: 0.1
                                 to: 10
                                 stepSize: 0.1
-                                value: controller.angularSpeedUpdateFrequency
+                                value: controller.angularSpeedUpdateFrequencyLog
                                 enabled: controller.logControlsEnabled
 
                                 onValueChanged: {
                                     if (pressed) {
-                                        controller.angularSpeedUpdateFrequency = value
+                                        controller.angularSpeedUpdateFrequencyLog = value
                                     }
                                 }
 
@@ -793,7 +790,6 @@ ApplicationWindow {
                                     border.color: controller.logControlsEnabled ? "#45a049" : "#555"
                                     border.width: 2
 
-                                    // Эффект при наведении
                                     scale: speedUpdateSlider.hovered ? 1.2 : 1.0
                                     Behavior on scale {
                                         NumberAnimation { duration: 150 }
@@ -803,7 +799,7 @@ ApplicationWindow {
                         }
 
                         Text {
-                            text: controller.angularSpeedUpdateFrequency.toFixed(1) + " Гц"
+                            text: controller.angularSpeedUpdateFrequencyLog.toFixed(1) + " Гц"
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 11
                             Layout.preferredWidth: 40

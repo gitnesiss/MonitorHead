@@ -133,6 +133,8 @@ class TiltController : public QObject
     Q_PROPERTY(bool patientDizziness READ patientDizziness NOTIFY patientDizzinessChanged)
     Q_PROPERTY(bool doctorDizziness READ doctorDizziness NOTIFY doctorDizzinessChanged)
     Q_PROPERTY(float angularSpeedUpdateFrequency READ angularSpeedUpdateFrequency WRITE setAngularSpeedUpdateFrequency NOTIFY angularSpeedUpdateFrequencyChanged)
+    Q_PROPERTY(float angularSpeedUpdateFrequencyCOM READ angularSpeedUpdateFrequencyCOM WRITE setAngularSpeedUpdateFrequencyCOM NOTIFY angularSpeedUpdateFrequencyCOMChanged)
+    Q_PROPERTY(float angularSpeedUpdateFrequencyLog READ angularSpeedUpdateFrequencyLog WRITE setAngularSpeedUpdateFrequencyLog NOTIFY angularSpeedUpdateFrequencyLogChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -176,6 +178,9 @@ public:
     float angularSpeedUpdateFrequency() const { return m_angularSpeedUpdateFrequency; }
     void setAngularSpeedUpdateFrequency(float frequency);
 
+    float angularSpeedUpdateFrequencyCOM() const { return m_angularSpeedUpdateFrequencyCOM; }
+    float angularSpeedUpdateFrequencyLog() const { return m_angularSpeedUpdateFrequencyLog; }
+
 public slots:
     void connectDevice();
     void disconnectDevice();
@@ -199,6 +204,8 @@ private slots:
     void readCOMPortData();
     void handleCOMPortError(QSerialPort::SerialPortError error);
     void updateDataDisplay();
+    void setAngularSpeedUpdateFrequencyCOM(float frequency);
+    void setAngularSpeedUpdateFrequencyLog(float frequency);
 
 private:
     void updateHeadModel(float pitch, float roll, float yaw, float speedPitch, float speedRoll, float speedYaw, bool dizziness);
@@ -380,6 +387,9 @@ private:
     float calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuffer);
     void clearCOMBuffers();
 
+    float m_angularSpeedUpdateFrequencyCOM = 4.0f;  // для COM-порта
+    float m_angularSpeedUpdateFrequencyLog = 4.0f;  // для лог-файла
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -406,6 +416,9 @@ signals:
     void patientDizzinessChanged(bool patientDizziness);
     void doctorDizzinessChanged(bool doctorDizziness);
     void angularSpeedUpdateFrequencyChanged(float frequency);
+
+    void angularSpeedUpdateFrequencyCOMChanged(float frequency);
+    void angularSpeedUpdateFrequencyLogChanged(float frequency);
 };
 
 #endif // TILTCONTROLLER_H
