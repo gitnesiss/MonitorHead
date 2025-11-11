@@ -649,34 +649,121 @@ ApplicationWindow {
                         }
                     }
 
-                    Button {
-                        text: "Debug"
-                        onClicked: debugGraphs()
-                        background: Rectangle {
-                            color: "#444"
-                            radius: 4
+
+
+
+
+                    // В разделе воспроизведения исследования ДОБАВЬТЕ этот блок:
+                    // ЗАМЕНИТЕ ВЕСЬ ЭТОТ БЛОК:
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        visible: controller.logLoaded
+                        spacing: 10
+
+                        Text {
+                            text: "Частота обновления скорости:"
+                            color: controller.logControlsEnabled ? "#aaa" : "#666"
+                            font.pixelSize: 11
+                            Layout.alignment: Qt.AlignVCenter
                         }
-                    }
 
-                    Button {
-                        text: "Debug Graphs"
-                        onClicked: {
-                            console.log("=== GRAPH DEBUG ===")
-                            console.log("Pitch data points:", controller.pitchGraphData.length)
-                            console.log("Roll data points:", controller.rollGraphData.length)
-                            console.log("Yaw data points:", controller.yawGraphData.length)
-                            console.log("Patient dizziness intervals:", controller.dizzinessPatientData.length)
-                            console.log("Doctor dizziness intervals:", controller.dizzinessDoctorData.length)
+                        // Контейнер для слайдера с прозрачным фоном
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 30
+                            Layout.alignment: Qt.AlignVCenter
 
-                            if (controller.pitchGraphData.length > 0) {
-                                var first = controller.pitchGraphData[0]
-                                var last = controller.pitchGraphData[controller.pitchGraphData.length - 1]
-                                console.log("First pitch point - time:", first.time, "value:", first.value)
-                                console.log("Last pitch point - time:", last.time, "value:", last.value)
+                            Slider {
+                                id: speedUpdateSlider
+                                anchors.fill: parent
+                                from: 0.1  // Было: 1
+                                to: 10
+                                stepSize: 0.1  // Было: 1
+                                value: controller.angularSpeedUpdateFrequency
+                                enabled: controller.logControlsEnabled
+
+                                onValueChanged: {
+                                    if (pressed) {
+                                        controller.angularSpeedUpdateFrequency = value
+                                    }
+                                }
+
+                                background: Rectangle {
+                                    x: speedUpdateSlider.leftPadding
+                                    y: speedUpdateSlider.topPadding + (speedUpdateSlider.availableHeight - height) / 2
+                                    implicitWidth: 200
+                                    implicitHeight: 6
+                                    width: speedUpdateSlider.availableWidth
+                                    height: implicitHeight
+                                    radius: 3
+                                    color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
+
+                                    Rectangle {
+                                        width: speedUpdateSlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: controller.logControlsEnabled ? "#4CAF50" : "#666"
+                                        radius: 3
+                                    }
+                                }
+
+                                handle: Rectangle {
+                                    x: speedUpdateSlider.leftPadding + speedUpdateSlider.visualPosition * (speedUpdateSlider.availableWidth - width)
+                                    y: speedUpdateSlider.topPadding + (speedUpdateSlider.availableHeight - height) / 2
+                                    implicitWidth: 20
+                                    implicitHeight: 20
+                                    radius: 10
+                                    color: speedUpdateSlider.pressed ? "#45a049" : (controller.logControlsEnabled ? "#4CAF50" : "#666")
+                                    border.color: controller.logControlsEnabled ? "#45a049" : "#555"
+                                    border.width: 2
+
+                                    // Эффект при наведении
+                                    scale: speedUpdateSlider.hovered ? 1.2 : 1.0
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 150 }
+                                    }
+                                }
                             }
-                            console.log("=== GRAPH DEBUG ===")
+                        }
+
+                        Text {
+                            text: controller.angularSpeedUpdateFrequency.toFixed(1) + " Гц"  // Было toFixed(0)
+                            color: controller.logControlsEnabled ? "#aaa" : "#666"
+                            font.pixelSize: 11
+                            Layout.preferredWidth: 40
+                            Layout.alignment: Qt.AlignVCenter
                         }
                     }
+
+                    // // В панели управления лог-файлом добавляем:
+                    // RowLayout {
+                    //     Layout.fillWidth: true
+                    //     visible: controller.logLoaded
+
+                    //     Text {
+                    //         text: "Частота обновления скорости:"
+                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //         font.pixelSize: 11
+                    //     }
+
+                    //     Slider {
+                    //         id: speedUpdateSlider
+                    //         Layout.fillWidth: true
+                    //         from: 1
+                    //         to: 10
+                    //         stepSize: 1
+                    //         value: controller.angularSpeedUpdateFrequency
+                    //         onMoved: controller.angularSpeedUpdateFrequency = value
+                    //         enabled: controller.logControlsEnabled
+                    //     }
+
+                    //     Text {
+                    //         text: speedUpdateSlider.value.toFixed(0) + " Гц"
+                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
+                    //         font.pixelSize: 11
+                    //         Layout.preferredWidth: 40
+                    //     }
+                    // }
 
                     Rectangle {
                         Layout.preferredWidth: 220

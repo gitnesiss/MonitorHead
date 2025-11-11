@@ -53,6 +53,8 @@ qt_add_qml_module(appMonitorHead
         headmodel.h
         tiltcontroller.cpp
         tiltcontroller.h
+        log_reader.h
+        log_reader.cpp
     QML_FILES
         Main.qml
         GraphCanvas.qml

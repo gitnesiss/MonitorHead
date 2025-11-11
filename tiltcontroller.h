@@ -13,6 +13,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
 #include "headmodel.h"
+#include "log_reader.h"
 
 // Структура для хранения одного кадра данных
 struct DataFrame {
@@ -125,6 +126,7 @@ class TiltController : public QObject
     Q_PROPERTY(int bufferSize READ bufferSize NOTIFY bufferSizeChanged)
     Q_PROPERTY(bool patientDizziness READ patientDizziness NOTIFY patientDizzinessChanged)
     Q_PROPERTY(bool doctorDizziness READ doctorDizziness NOTIFY doctorDizzinessChanged)
+    Q_PROPERTY(float angularSpeedUpdateFrequency READ angularSpeedUpdateFrequency WRITE setAngularSpeedUpdateFrequency NOTIFY angularSpeedUpdateFrequencyChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -164,6 +166,10 @@ public:
     bool patientDizziness() const { return m_patientDizziness; }
     bool doctorDizziness() const { return m_doctorDizziness; }
 
+    // Новые методы для управления частотой обновления угловой скорости
+    float angularSpeedUpdateFrequency() const { return m_angularSpeedUpdateFrequency; }
+    void setAngularSpeedUpdateFrequency(float frequency);
+
 public slots:
     void connectDevice();
     void disconnectDevice();
@@ -180,7 +186,7 @@ public slots:
     void stopResearchRecording();
     void toggleResearchRecording();
     void initializeResearchNumber();
-    // void resetData(); // Добавляем новый слот
+    void testAngularSpeedFrequency(); // для тестирования
 
 private slots:
     void updateLogPlayback();
@@ -202,6 +208,10 @@ private:
     void processDataFrame(const DataFrame& frame);
     QString generateResearchFileName(const QString &number);
     void writeResearchHeader();
+
+    // Новые методы для работы с LogReader
+    void updateAngularSpeeds();
+    void setupLogReader();
 
     HeadModel m_headModel;
     QTimer m_logTimer;
@@ -345,6 +355,12 @@ private:
     // Функция для расчета угловой скорости
     float calculateAngularSpeed(QVector<AngleHistory>& history, float currentAngle, qint64 currentTime);
 
+    // LogReader для расчета угловых скоростей в режиме лог-файла
+    LogReader m_logReader;
+    float m_angularSpeedUpdateFrequency = 4.0f; // default 4 Hz
+
+    Q_PROPERTY(float angularSpeedUpdateFrequency READ angularSpeedUpdateFrequency WRITE setAngularSpeedUpdateFrequency NOTIFY angularSpeedUpdateFrequencyChanged)
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -370,6 +386,7 @@ signals:
 
     void patientDizzinessChanged(bool patientDizziness);
     void doctorDizzinessChanged(bool doctorDizziness);
+    void angularSpeedUpdateFrequencyChanged(float frequency);
 };
 
 #endif // TILTCONTROLLER_H
