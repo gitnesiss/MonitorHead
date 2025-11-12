@@ -1518,7 +1518,7 @@ ApplicationWindow {
                                     spacing: 5
 
                                     Text {
-                                        text: "YAW"
+                                        text: "ТЕКУЩИЙ УГОЛ"
                                         color: "#CF6679"
                                         font.pixelSize: 12
                                         font.bold: true

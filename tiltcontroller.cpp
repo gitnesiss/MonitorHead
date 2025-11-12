@@ -59,10 +59,10 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_lastDizzinessState = false;
     m_currentDizzinessStart = 0;
 
-    // Таймер для обновления информации о частотах
-    m_frequencyTimer.setInterval(1000);
-    connect(&m_frequencyTimer, &QTimer::timeout, this, &TiltController::updateFrequencyInfo);
-    m_frequencyTimer.start();
+    // // Таймер для обновления информации о частотах
+    // m_frequencyTimer.setInterval(1000);
+    // connect(&m_frequencyTimer, &QTimer::timeout, this, &TiltController::updateFrequencyInfo);
+    // m_frequencyTimer.start();
 
     // Инициализация переменных синхронизации
     m_playbackStartRealTime = 0;
@@ -576,29 +576,29 @@ void TiltController::setGraphDuration(int duration)
     }
 }
 
-void TiltController::updateFrequencyInfo()
-{
-    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+// void TiltController::updateFrequencyInfo()
+// {
+//     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
 
-    // Вычисляем частоту данных (количество данных за последнюю секунду)
-    while (!m_dataTimestamps.isEmpty() && currentTime - m_dataTimestamps.first() > 1000) {
-        m_dataTimestamps.removeFirst();
-    }
-    m_dataFrequency = m_dataTimestamps.size();
+//     // Вычисляем частоту данных (количество данных за последнюю секунду)
+//     while (!m_dataTimestamps.isEmpty() && currentTime - m_dataTimestamps.first() > 1000) {
+//         m_dataTimestamps.removeFirst();
+//     }
+//     m_dataFrequency = m_dataTimestamps.size();
 
-    // Вычисляем частоту отрисовки (количество обновлений за последнюю секунду)
-    while (!m_displayTimestamps.isEmpty() && currentTime - m_displayTimestamps.first() > 1000) {
-        m_displayTimestamps.removeFirst();
-    }
-    m_displayFrequency = m_displayTimestamps.size();
+//     // Вычисляем частоту отрисовки (количество обновлений за последнюю секунду)
+//     while (!m_displayTimestamps.isEmpty() && currentTime - m_displayTimestamps.first() > 1000) {
+//         m_displayTimestamps.removeFirst();
+//     }
+//     m_displayFrequency = m_displayTimestamps.size();
 
-    // Размер буфера
-    m_bufferSize = m_dataBuffer.size();
+//     // Размер буфера
+//     m_bufferSize = m_dataBuffer.size();
 
-    emit dataFrequencyChanged(m_dataFrequency);
-    emit displayFrequencyChanged(m_displayFrequency);
-    emit bufferSizeChanged(m_bufferSize);
-}
+//     // emit dataFrequencyChanged(m_dataFrequency);
+//     // emit displayFrequencyChanged(m_displayFrequency);
+//     // emit bufferSizeChanged(m_bufferSize);
+// }
 
 void TiltController::updateDataDisplay()
 {
@@ -1079,9 +1079,6 @@ void TiltController::updateLogPlayback()
 
 void TiltController::updateGraphDataFromBuffer()
 {
-    // Добавляем временную метку для расчета частоты отрисовки
-    m_displayTimestamps.append(QDateTime::currentMSecsSinceEpoch());
-
     if (m_logMode) {
         // РЕЖИМ ЛОГ-ФАЙЛА: используем отдельную логику
         updateGraphDataFromLogFile();
@@ -1625,9 +1622,6 @@ void TiltController::processDataFrame(const DataFrame& frame)
         }
     }
 
-    // Остальная существующая логика processDataFrame...
-    m_dataTimestamps.append(QDateTime::currentMSecsSinceEpoch());
-
     if (m_prevFrame.timestamp > 0) {
         qint64 timeDiff = frame.timestamp - m_prevFrame.timestamp;
         if (timeDiff > 0) {
@@ -1802,10 +1796,6 @@ void TiltController::cleanupCOMPort()
 
     // ДОПОЛНИТЕЛЬНАЯ ОЧИСТКА ДАННЫХ
     m_incompleteData.clear();
-
-    // Очищаем временные метки для частот
-    m_dataTimestamps.clear();
-    m_displayTimestamps.clear();
 }
 
 void TiltController::setAngularSpeedUpdateFrequencyCOM(float frequency)

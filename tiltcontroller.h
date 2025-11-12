@@ -127,9 +127,9 @@ class TiltController : public QObject
     Q_PROPERTY(bool recording READ recording NOTIFY recordingChanged)
     Q_PROPERTY(QVariantList dizzinessPatientData READ dizzinessPatientData NOTIFY graphDataChanged)
     Q_PROPERTY(QVariantList dizzinessDoctorData READ dizzinessDoctorData NOTIFY graphDataChanged)
-    Q_PROPERTY(int dataFrequency READ dataFrequency NOTIFY dataFrequencyChanged)
-    Q_PROPERTY(int displayFrequency READ displayFrequency NOTIFY displayFrequencyChanged)
-    Q_PROPERTY(int bufferSize READ bufferSize NOTIFY bufferSizeChanged)
+    // Q_PROPERTY(int dataFrequency READ dataFrequency NOTIFY dataFrequencyChanged)
+    // Q_PROPERTY(int displayFrequency READ displayFrequency NOTIFY displayFrequencyChanged)
+    // Q_PROPERTY(int bufferSize READ bufferSize NOTIFY bufferSizeChanged)
     Q_PROPERTY(bool patientDizziness READ patientDizziness NOTIFY patientDizzinessChanged)
     Q_PROPERTY(bool doctorDizziness READ doctorDizziness NOTIFY doctorDizzinessChanged)
     Q_PROPERTY(float angularSpeedUpdateFrequencyCOM READ angularSpeedUpdateFrequencyCOM WRITE setAngularSpeedUpdateFrequencyCOM NOTIFY angularSpeedUpdateFrequencyCOMChanged)
@@ -164,11 +164,6 @@ public:
 
     QVariantList dizzinessPatientData() const { return m_dizzinessPatientData; }
     QVariantList dizzinessDoctorData() const { return m_dizzinessDoctorData; }
-
-    // для отображения частоты обновления
-    int dataFrequency() const { return m_dataFrequency; }
-    int displayFrequency() const { return m_displayFrequency; }
-    int bufferSize() const { return m_bufferSize; }
 
     bool patientDizziness() const { return m_patientDizziness; }
     bool doctorDizziness() const { return m_doctorDizziness; }
@@ -310,15 +305,6 @@ private:
     QVariantList m_dizzinessPatientData;
     QVariantList m_dizzinessDoctorData;
 
-    // для отображения частоты обновления
-    int m_dataFrequency = 0;
-    int m_displayFrequency = 0;
-    int m_bufferSize = 0;
-
-    QVector<qint64> m_dataTimestamps;
-    QVector<qint64> m_displayTimestamps;
-    QTimer m_frequencyTimer;
-
     void updateFrequencyInfo();
 
     qint64 m_startTime; // Время начала работы для относительных временных меток
@@ -408,9 +394,9 @@ signals:
     void recordingChanged(bool recording);
 
     // для отображения частоты обновления
-    void dataFrequencyChanged(int frequency);
-    void displayFrequencyChanged(int frequency);
-    void bufferSizeChanged(int size);
+    // void dataFrequencyChanged(int frequency);
+    // void displayFrequencyChanged(int frequency);
+    // void bufferSizeChanged(int size);
 
     void patientDizzinessChanged(bool patientDizziness);
     void doctorDizzinessChanged(bool doctorDizziness);
