@@ -98,7 +98,7 @@ void HeadModel::resetData()
     setSpeedRoll(0.0f);
     setSpeedYaw(0.0f);
     setDizziness(false);
-    setHasData(false);
+    setHasData(false);  // Важно: устанавливаем флаг отсутствия данных
 }
 
 QMatrix4x4 HeadModel::transformationMatrix() const

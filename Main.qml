@@ -2060,9 +2060,6 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: 5
 
-
-
-
                     // Метки времени над ползунком
                     RowLayout {
                         Layout.fillWidth: true
@@ -2120,39 +2117,6 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignRight
                         }
                     }
-                    // RowLayout {
-                    //     Layout.fillWidth: true
-
-                    //     // Начальное время
-                    //     Text {
-                    //         text: formatResearchTime(0, controller.totalTime)
-                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //         font.pixelSize: 10
-                    //         font.bold: true
-                    //     }
-
-                    //     Item { Layout.fillWidth: true } // Распорка
-
-                    //     // Среднее время
-                    //     Text {
-                    //         text: formatResearchTime(Math.round(controller.totalTime / 2), controller.totalTime)
-                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //         font.pixelSize: 10
-                    //         font.bold: true
-                    //         Layout.alignment: Qt.AlignHCenter
-                    //     }
-
-                    //     Item { Layout.fillWidth: true } // Распорка
-
-                    //     // Конечное время
-                    //     Text {
-                    //         text: formatResearchTime(controller.totalTime, controller.totalTime)
-                    //         color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //         font.pixelSize: 10
-                    //         font.bold: true
-                    //         Layout.alignment: Qt.AlignRight
-                    //     }
-                    // }
 
                     // Контейнер для ползунка с дополнительной областью для клика
                     Item {
@@ -2232,14 +2196,6 @@ ApplicationWindow {
                                 text: formatResearchTime(Math.round(timeSlider.value), controller.totalTime) // Убрали номер кадра
                                 delay: 500
                             }
-
-                            // // Показываем текущее время при наведении (время в формате, кадр целым числом)
-                            // ToolTip {
-                            //     parent: timeSlider.handle
-                            //     visible: timeSlider.hovered && controller.logLoaded
-                            //     text: formatResearchTime(Math.round(timeSlider.value), controller.totalTime) + " (" + Math.round(timeSlider.value) + " кадр)"
-                            //     delay: 500
-                            // }
                         }
 
                         // Дополнительная MouseArea для клика в любом месте таймлайна
@@ -2297,12 +2253,6 @@ ApplicationWindow {
                         color: controller.logControlsEnabled ? "#aaa" : "#666"
                         font.pixelSize: 11
                     }
-
-                    // Text {
-                    //     text: "Длительность: " + formatResearchTime(controller.totalTime, controller.totalTime)
-                    //     color: controller.logControlsEnabled ? "#aaa" : "#666"
-                    //     font.pixelSize: 11
-                    // }
 
                     Item { Layout.fillWidth: true }
 
@@ -2370,6 +2320,21 @@ ApplicationWindow {
         }
         function onDoctorDizzinessChanged() {
             advanced3DHead.setDizzinessEffects(controller.patientDizziness, controller.doctorDizziness)
+        }
+    }
+
+    Connections {
+        target: controller
+        function onConnectedChanged(connected) {
+            if (!connected && !controller.logMode) {
+                // Принудительно обновляем графики при отключении в режиме COM-порта
+                pitchGraph.requestPaint()
+                rollGraph.requestPaint()
+                yawGraph.requestPaint()
+
+                // Обновляем 3D вид
+                advanced3DHead.setDizzinessEffects(false, false)
+            }
         }
     }
 
