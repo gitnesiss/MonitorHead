@@ -8,6 +8,7 @@ import Qt3D.Core 2.15
 import Qt3D.Render 2.15
 import Qt3D.Input 2.15
 import Qt3D.Extras 2.15
+import "Formatters.js" as Formatters
 
 ApplicationWindow {
     id: mainWindow
@@ -24,6 +25,10 @@ ApplicationWindow {
         sequence: "Space"
         onActivated: handleSpaceKey()
     }
+
+    property bool pitchIsLeftView: true
+    property bool rollIsFrontView: true
+    property bool yawIsFlipped: false
 
     // Свойства для управления 3D видом
     property bool innerEarVisible: true
@@ -110,109 +115,6 @@ ApplicationWindow {
         notificationBackground.color = isError ? "#f44336" : "#4CAF50"
         notificationLayout.height = 40
         notificationTimer.restart()
-    }
-
-    // Функция для форматирования значений
-    function formatValue(value, hasData) {
-        return hasData ? value.toFixed(1) + "°" : "нет данных"
-    }
-
-    function formatSpeed(value, hasData) {
-        return hasData ? value.toFixed(1) + "°/с" : "нет данных"
-    }
-
-    function formatResearchTime(milliseconds, totalMilliseconds) {
-        if (milliseconds === undefined || totalMilliseconds === undefined) {
-            return "00:00:00:000";
-        }
-
-        // Округляем миллисекунды до целого
-        var roundedMs = Math.round(milliseconds);
-
-        // Вычисляем компоненты времени
-        var hours = Math.floor(roundedMs / 3600000);
-        var minutes = Math.floor((roundedMs % 3600000) / 60000);
-        var seconds = Math.floor((roundedMs % 60000) / 1000);
-        var ms = roundedMs % 1000;
-
-        // Форматируем с ведущими нулями
-        var hoursStr = hours.toString().padStart(2, '0');
-        var minutesStr = minutes.toString().padStart(2, '0');
-        var secondsStr = seconds.toString().padStart(2, '0');
-        var msStr = ms.toString().padStart(3, '0');
-
-        return hoursStr + ":" + minutesStr + ":" + secondsStr + ":" + msStr;
-    }
-
-    // Новая функция для форматирования времени в секундах для меток на графике
-    function formatGraphTime(milliseconds) {
-        var seconds = milliseconds / 1000;
-        return seconds.toFixed(0) + "с";
-    }
-
-    // Функция для форматирования информации об исследовании
-    function formatStudyInfo(studyInfo) {
-        if (!studyInfo) return "Исследование не загружено";
-
-        // Убираем решетки и лишние пробелы
-        var cleaned = studyInfo.replace(/#+/g, '').trim();
-
-        // Разделяем на части
-        var parts = cleaned.split('|').map(function(part) {
-            return part.trim();
-        }).filter(function(part) {
-            return part.length > 0;
-        });
-
-        // Ищем части с номером исследования и датой
-        var researchNumber = "";
-        var researchDate = "";
-
-        for (var i = 0; i < parts.length; i++) {
-            var part = parts[i];
-            if (part.includes("Исследование №")) {
-                researchNumber = part;
-            } else if (part.match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)) {
-                researchDate = part;
-            }
-        }
-
-        // Форматируем результат
-        if (researchNumber && researchDate) {
-            return researchNumber + " [" + researchDate + "]";
-        } else if (researchNumber) {
-            return researchNumber;
-        } else if (researchDate) {
-            return "Исследование [" + researchDate + "]";
-        } else {
-            return cleaned || "Исследование не загружено";
-        }
-    }
-
-    // Новая функция для форматирования времени без миллисекунд
-    function formatTimeWithoutMs(milliseconds, totalMilliseconds) {
-        if (milliseconds === undefined || totalMilliseconds === undefined) {
-            return "00:00:00";
-        }
-
-        // Округляем миллисекунды до целого
-        var roundedMs = Math.round(milliseconds);
-
-        // Вычисляем компоненты времени
-        var hours = Math.floor(roundedMs / 3600000);
-        var minutes = Math.floor((roundedMs % 3600000) / 60000);
-        var seconds = Math.floor((roundedMs % 60000) / 1000);
-
-        // Форматируем с ведущими нулями
-        var hoursStr = hours.toString().padStart(2, '0');
-        var minutesStr = minutes.toString().padStart(2, '0');
-        var secondsStr = seconds.toString().padStart(2, '0');
-
-        return hoursStr + ":" + minutesStr + ":" + secondsStr;
-    }
-
-    function formatCurrentAndTotalTime(currentMs, totalMs) {
-        return formatTimeWithoutMs(currentMs, totalMs) + " / " + formatTimeWithoutMs(totalMs, totalMs);
     }
 
     // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ ===
@@ -709,7 +611,7 @@ ApplicationWindow {
                                 if (!enabled) {
                                     return "Невозможно загрузить исследование во время записи"
                                 } else {
-                                    return "Загрузить файл исследования для воспроизведения\n(ПРОБЕЛ - начать/приостановить воспроизведение)"
+                                    return "Загрузить файл исследования для воспроизведения"
                                 }
                             }
 
@@ -1066,7 +968,7 @@ ApplicationWindow {
 
                     Text {
                         text: controller.logMode ?
-                              "Чтение данных из файла" :  // НОВАЯ СТРОКА вместо formatStudyInfo(controller.studyInfo)
+                              Formatters.formatStudyInfo(controller.studyInfo) :
                               "Получение данных с датчика"
                         color: "#aaa"
                         font.pixelSize: 12
@@ -1091,808 +993,78 @@ ApplicationWindow {
                 spacing: 10
 
                 // === PITCH (тангаж) - ПЕРВАЯ СТРОКА ===
-                Rectangle {
-                    id: pitchContainer
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.preferredHeight: 200
-                    Layout.minimumHeight: 200
-                    color: "#252525"
-                    radius: 8
-                    border.color: "#444"
-                    border.width: 1
+                AxisPanel {
+                    axisName: "ТАНГАЖ / PITCH"
+                    axisColor: "#BB86FC"
+                    graphData: controller.pitchGraphData
+                    lineColor: "#BB86FC"
+                    currentAngle: controller.headModel.pitch
+                    currentSpeed: controller.headModel.speedPitch
+                    hasData: controller.headModel.hasData
+                    graphDuration: controller.graphDuration
+                    viewType: "pitch"
+                    isLeftView: pitchIsLeftView
 
-                    // Свойство для отслеживания текущего вида
-                    property bool isLeftView: true
+                    formattedAngle: Formatters.formatValue(controller.headModel.pitch, controller.headModel.hasData)
+                    formattedSpeed: Formatters.getFormattedSpeed(
+                        controller.headModel.speedPitch,
+                        controller.connected,
+                        controller.logMode,
+                        controller.logLoaded,
+                        controller.headModel.hasData
+                    )
 
-                    // Вычисляемое свойство для правильного вращения
-                    property real displayPitch: isLeftView ? controller.headModel.pitch : -controller.headModel.pitch
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
-
-                        // Вид слева/справа (PITCH) - квадратная область с возможностью переключения
-                        Rectangle {
-                            id: pitchViewContainer
-                            Layout.preferredWidth: 180
-                            Layout.preferredHeight: 180
-                            Layout.alignment: Qt.AlignCenter
-                            color: "#1a1a1a"
-                            radius: 6
-                            border.color: "#333"
-
-                            // Область клика для переключения вида
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    pitchContainer.isLeftView = !pitchContainer.isLeftView
-                                }
-                                ToolTip.visible: containsMouse
-                                ToolTip.text: "Нажмите для переключения между видом слева и справа"
-                                ToolTip.delay: 1000
-                                hoverEnabled: true
-                            }
-
-                            // Изображение головы (вид слева или справа)
-                            Image {
-                                id: headImagePitch
-                                anchors.fill: parent
-                                anchors.margins: 15
-                                source: pitchContainer.isLeftView ? "qrc:/images/left_view.png" : "qrc:/images/right_view.png"
-                                fillMode: Image.PreserveAspectFit
-                                rotation: pitchContainer.displayPitch  // Используем вычисляемое свойство
-                                transformOrigin: Item.Center
-                                smooth: true
-                                opacity: controller.headModel.hasData ? 1.0 : 0.5
-
-                                // Точка вращения (центр) - визуальный маркер
-                                Rectangle {
-                                    width: 6
-                                    height: 6
-                                    radius: 3
-                                    color: "#FFA000"
-                                    anchors.centerIn: parent
-                                    visible: controller.headModel.hasData
-                                }
-                            }
-
-                            // Индикатор горизонта
-                            Rectangle {
-                                width: parent.width - 30
-                                height: 1
-                                color: controller.headModel.hasData ? "#FFA000" : "#666"
-                                opacity: 0.5
-                                anchors.centerIn: parent
-                            }
-
-                            // Индикатор текущего вида с пояснением направления
-                            Column {
-                                anchors {
-                                    top: parent.top
-                                    left: parent.left
-                                    margins: 5
-                                }
-                                spacing: 2
-
-                                Text {
-                                    text: pitchContainer.isLeftView ? "СЛЕВА" : "СПРАВА"
-                                    color: "#BB86FC"
-                                    font.pixelSize: 10
-                                    font.bold: true
-                                }
-                            }
-
-                            // Иконка переключения в углу
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                radius: 10
-                                color: "#333"
-                                border.color: "#666"
-                                border.width: 1
-                                anchors {
-                                    top: parent.top
-                                    right: parent.right
-                                    margins: 5
-                                }
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: pitchContainer.isLeftView ? "↺" : "↻"
-                                    color: pitchContainer.isLeftView ? "white" : "#FFA000"
-                                    font.pixelSize: 10
-                                    font.bold: true
-                                }
-                            }
-
-                            // Текст с текущим углом
-                            Text {
-                                anchors {
-                                    bottom: parent.bottom
-                                    horizontalCenter: parent.horizontalCenter
-                                    bottomMargin: 5
-                                }
-                                text: controller.headModel.hasData ? controller.headModel.pitch.toFixed(1) + "°" : ""
-                                color: "#FFA000"
-                                font.pixelSize: 12
-                                font.bold: true
-                            }
-                        }
-
-                        // Блоки данных PITCH (остаются без изменений, показывают реальные значения с датчика)
-                        ColumnLayout {
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: 100
-                            spacing: 10
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 40
-                                color: "#252525"
-                                radius: 6
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "ТАНГАЖ / PITCH"
-                                        color: "#BB86FC"
-                                        font.pixelSize: 16
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 60
-                                color: "#2d2d2d"
-                                radius: 6
-                                border.color: "#BB86FC"
-                                border.width: 2
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "ТЕКУЩИЙ УГОЛ"
-                                        color: "#BB86FC"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-
-                                    Text {
-                                        text: formatValue(controller.headModel.pitch, controller.headModel.hasData)
-                                        color: controller.headModel.hasData ? "white" : "#888"
-                                        font.pixelSize: controller.headModel.hasData ? 18 : 14
-                                        font.bold: controller.headModel.hasData
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 60
-                                color: "#2d2d2d"
-                                radius: 6
-                                border.color: "#BB86FC"
-                                border.width: 2
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "УГЛОВАЯ СКОРОСТЬ"
-                                        color: "#BB86FC"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-
-                                    Text {
-                                        text: {
-                                            if (controller.connected && controller.headModel.hasData) {
-                                                return formatSpeed(controller.headModel.speedPitch, true)
-                                            } else if (controller.logLoaded && controller.headModel.hasData) {
-                                                return formatSpeed(controller.headModel.speedPitch, true)
-                                            } else {
-                                                return "нет данных"
-                                            }
-                                        }
-                                        color: (controller.connected || controller.logLoaded) && controller.headModel.hasData ? "white" : "#888"
-                                        font.pixelSize: ((controller.connected || controller.logLoaded) && controller.headModel.hasData) ? 16 : 14
-                                        font.bold: (controller.connected || controller.logLoaded) && controller.headModel.hasData
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-                        }
-
-                        // График PITCH (без изменений - показывает реальные данные)
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            color: "#252525"
-                            radius: 8
-                            border.color: "#444"
-                            border.width: 1
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: 2
-
-                                Text {
-                                    text: "График PITCH (" + controller.graphDuration + " сек)"
-                                    // color: "#666"
-                                    color: graphTextColor
-                                    font.pixelSize: 12
-                                    Layout.topMargin: 5
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-
-                                GraphCanvas {
-                                    id: pitchGraph
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    graphData: controller.pitchGraphData
-                                    dizzinessPatientData: controller.dizzinessPatientData
-                                    dizzinessDoctorData: controller.dizzinessDoctorData
-                                    graphDuration: controller.graphDuration
-                                    lineColor: "#BB86FC"
-                                    minValue: -120
-                                    maxValue: 120
-                                }
-                            }
-                        }
-                    }
+                    onViewToggled: pitchIsLeftView = !pitchIsLeftView
                 }
 
                 // === ROLL (крен) - ВТОРАЯ СТРОКА ===
-                Rectangle {
-                    id: rollContainer
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.preferredHeight: 200
-                    Layout.minimumHeight: 200
-                    color: "#252525"
-                    radius: 8
-                    border.color: "#444"
-                    border.width: 1
+                AxisPanel {
+                    axisName: "КРЕН / ROLL"
+                    axisColor: "#03DAC6"
+                    graphData: controller.rollGraphData
+                    lineColor: "#03DAC6"
+                    currentAngle: controller.headModel.roll
+                    currentSpeed: controller.headModel.speedRoll
+                    hasData: controller.headModel.hasData
+                    graphDuration: controller.graphDuration
+                    viewType: "roll"
+                    isFrontView: rollIsFrontView
 
-                    // Свойство для отслеживания текущего вида
-                    property bool isFrontView: true
+                    formattedAngle: Formatters.formatValue(controller.headModel.roll, controller.headModel.hasData)
+                    formattedSpeed: Formatters.getFormattedSpeed(
+                        controller.headModel.speedRoll,
+                        controller.connected,
+                        controller.logMode,
+                        controller.logLoaded,
+                        controller.headModel.hasData
+                    )
 
-                    // Вычисляемое свойство для правильного вращения
-                    property real displayRoll: isFrontView ? -controller.headModel.roll : controller.headModel.roll
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
-
-                        // Вид спереди/сзади (ROLL) - квадратная область с возможностью переключения
-                        Rectangle {
-                            id: rollViewContainer
-                            Layout.preferredWidth: 180
-                            Layout.preferredHeight: 180
-                            Layout.alignment: Qt.AlignCenter
-                            color: "#1a1a1a"
-                            radius: 6
-                            border.color: "#333"
-
-                            // Область клика для переключения вида
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    rollContainer.isFrontView = !rollContainer.isFrontView
-                                }
-                                ToolTip.visible: containsMouse
-                                ToolTip.text: "Нажмите для переключения между видом спереди и сзади"
-                                ToolTip.delay: 1000
-                                hoverEnabled: true
-                            }
-
-                            // Изображение головы (вид спереди или сзади)
-                            Image {
-                                id: headImageRoll
-                                anchors.fill: parent
-                                anchors.margins: 15
-                                source: rollContainer.isFrontView ? "qrc:/images/front_view.png" : "qrc:/images/back_view.png"
-                                fillMode: Image.PreserveAspectFit
-                                rotation: rollContainer.displayRoll  // Используем вычисляемое свойство
-                                transformOrigin: Item.Center
-                                smooth: true
-                                opacity: controller.headModel.hasData ? 1.0 : 0.5
-
-                                // Точка вращения (центр) - визуальный маркер
-                                Rectangle {
-                                    width: 6
-                                    height: 6
-                                    radius: 3
-                                    color: "#FFA000"
-                                    anchors.centerIn: parent
-                                    visible: controller.headModel.hasData
-                                }
-                            }
-
-                            // Индикатор горизонта
-                            Rectangle {
-                                width: 1
-                                height: parent.height - 30
-                                color: controller.headModel.hasData ? "#FFA000" : "#666"
-                                opacity: 0.5
-                                anchors.centerIn: parent
-                            }
-
-                            // Индикатор текущего вида с пояснением направления
-                            Column {
-                                anchors {
-                                    top: parent.top
-                                    left: parent.left
-                                    margins: 5
-                                }
-                                spacing: 2
-
-                                Text {
-                                    text: rollContainer.isFrontView ? "СПЕРЕДИ" : "СЗАДИ"
-                                    color: "#03DAC6"
-                                    font.pixelSize: 10
-                                    font.bold: true
-                                }
-                            }
-
-                            // Иконка переключения в углу
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                radius: 10
-                                color: "#333"
-                                border.color: "#666"
-                                border.width: 1
-                                anchors {
-                                    top: parent.top
-                                    right: parent.right
-                                    margins: 5
-                                }
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: rollContainer.isFrontView ? "↺" : "↻"
-                                    color: rollContainer.isFrontView ? "white" : "#FFA000"
-                                    font.pixelSize: 10
-                                    font.bold: true
-                                }
-                            }
-
-                            // Текст с текущим углом (опционально)
-                            Text {
-                                anchors {
-                                    bottom: parent.bottom
-                                    horizontalCenter: parent.horizontalCenter
-                                    bottomMargin: 5
-                                }
-                                text: controller.headModel.hasData ? controller.headModel.roll.toFixed(1) + "°" : ""
-                                color: "#FFA000"
-                                font.pixelSize: 12
-                                font.bold: true
-                            }
-                        }
-
-                        // Блоки данных ROLL (остаются без изменений, показывают реальные значения с датчика)
-                        ColumnLayout {
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: 100
-                            spacing: 10
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 40
-                                color: "#252525"
-                                radius: 6
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "КРЕН / ROLL"
-                                        color: "#03DAC6"
-                                        font.pixelSize: 16
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 60
-                                color: "#2d2d2d"
-                                radius: 6
-                                border.color: "#03DAC6"
-                                border.width: 2
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "ТЕКУЩИЙ УГОЛ"
-                                        color: "#03DAC6"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-
-                                    Text {
-                                        text: formatValue(controller.headModel.roll, controller.headModel.hasData)
-                                        color: controller.headModel.hasData ? "white" : "#888"
-                                        font.pixelSize: controller.headModel.hasData ? 18 : 14
-                                        font.bold: controller.headModel.hasData
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 60
-                                color: "#2d2d2d"
-                                radius: 6
-                                border.color: "#03DAC6"
-                                border.width: 2
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "УГЛОВАЯ СКОРОСТЬ"
-                                        color: "#03DAC6"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-
-                                    Text {
-                                        text: {
-                                            if (controller.connected && controller.headModel.hasData) {
-                                                return formatSpeed(controller.headModel.speedRoll, true)
-                                            } else if (controller.logLoaded && controller.headModel.hasData) {
-                                                return formatSpeed(controller.headModel.speedRoll, true)
-                                            } else {
-                                                return "нет данных"
-                                            }
-                                        }
-                                        color: (controller.connected || controller.logLoaded) && controller.headModel.hasData ? "white" : "#888"
-                                        font.pixelSize: ((controller.connected || controller.logLoaded) && controller.headModel.hasData) ? 16 : 14
-                                        font.bold: (controller.connected || controller.logLoaded) && controller.headModel.hasData
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-                        }
-
-                        // График ROLL (без изменений - показывает реальные данные)
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            color: "#252525"
-                            radius: 8
-                            border.color: "#444"
-                            border.width: 1
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: 0
-
-                                Text {
-                                    text: "График ROLL (" + controller.graphDuration + " сек)"
-                                    // color: "#666"
-                                    color: graphTextColor
-                                    font.pixelSize: 12
-                                    Layout.topMargin: 5
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-
-                                GraphCanvas {
-                                    id: rollGraph
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    graphData: controller.rollGraphData
-                                    // dizzinessData: controller.dizzinessData
-                                    dizzinessPatientData: controller.dizzinessPatientData
-                                    dizzinessDoctorData: controller.dizzinessDoctorData
-                                    graphDuration: controller.graphDuration
-                                    lineColor: "#03DAC6"
-                                    minValue: -120
-                                    maxValue: 120
-                                }
-                            }
-                        }
-                    }
+                    onViewToggled: rollIsFrontView = !rollIsFrontView
                 }
 
                 // === YAW (рыскание) - ТРЕТЬЯ СТРОКА ===
-                Rectangle {
-                    id: yawContainer
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.preferredHeight: 200
-                    Layout.minimumHeight: 200
-                    color: "#252525"
-                    radius: 8
-                    border.color: "#444"
-                    border.width: 1
+                AxisPanel {
+                    axisName: "РЫСКАНЬЕ / YAW"
+                    axisColor: "#CF6679"
+                    graphData: controller.yawGraphData
+                    lineColor: "#CF6679"
+                    currentAngle: controller.headModel.yaw
+                    currentSpeed: controller.headModel.speedYaw
+                    hasData: controller.headModel.hasData
+                    graphDuration: controller.graphDuration
+                    viewType: "yaw"
+                    isFlipped: yawIsFlipped
 
-                    // Свойство для отслеживания переворота изображения
-                    property bool isFlipped: false
+                    formattedAngle: Formatters.formatValue(controller.headModel.yaw, controller.headModel.hasData)
+                    formattedSpeed: Formatters.getFormattedSpeed(
+                        controller.headModel.speedYaw,
+                        controller.connected,
+                        controller.logMode,
+                        controller.logLoaded,
+                        controller.headModel.hasData
+                    )
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
-
-                        // Вид сверху (YAW) - квадратная область с возможностью переворота
-                        Rectangle {
-                            id: yawViewContainer
-                            Layout.preferredWidth: 180
-                            Layout.preferredHeight: 180
-                            Layout.alignment: Qt.AlignCenter
-                            color: "#1a1a1a"
-                            radius: 6
-                            border.color: "#333"
-
-                            // Область клика для переворота
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    yawContainer.isFlipped = !yawContainer.isFlipped
-                                }
-                                ToolTip.visible: containsMouse
-                                ToolTip.text: "Нажмите для переворота изображения"
-                                ToolTip.delay: 1000
-                                hoverEnabled: true
-                            }
-
-                            // Изображение головы (вид сверху)
-                            Image {
-                                id: headImageYaw
-                                anchors.fill: parent
-                                anchors.margins: 15
-                                source: "qrc:/images/top_view.png"
-                                fillMode: Image.PreserveAspectFit
-                                rotation: yawContainer.isFlipped ? (180 + controller.headModel.yaw) : controller.headModel.yaw
-                                transformOrigin: Item.Center
-                                smooth: true
-                                opacity: controller.headModel.hasData ? 1.0 : 0.5
-
-                                // Анимации
-                                Behavior on rotation {
-                                    PropertyAnimation { duration: 300 }
-                                }
-                                Behavior on opacity {
-                                    NumberAnimation { duration: 200 }
-                                }
-
-                                // Точка вращения (центр) - визуальный маркер
-                                Rectangle {
-                                    width: 6
-                                    height: 6
-                                    radius: 3
-                                    color: "#FFA000"
-                                    anchors.centerIn: parent
-                                    visible: controller.headModel.hasData
-                                }
-                            }
-
-                            // Индикатор горизонта
-                            Rectangle {
-                                width: 1
-                                height: parent.height - 30
-                                color: controller.headModel.hasData ? "#FFA000" : "#666"
-                                opacity: 0.5
-                                anchors.centerIn: parent
-                            }
-
-                            // Индикатор вида (всегда "СВЕРХУ")
-                            Column {
-                                anchors {
-                                    top: parent.top
-                                    left: parent.left
-                                    margins: 5
-                                }
-                                spacing: 2
-
-                                Text {
-                                    text: "СВЕРХУ"
-                                    color: "#CF6679"
-                                    font.pixelSize: 10
-                                    font.bold: true
-                                }
-                            }
-
-                            // Индикатор состояния переворота (Иконка переключения в углу)
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                radius: 10
-                                color: "#333"
-                                border.color: "#666"
-                                border.width: 1
-                                anchors {
-                                    top: parent.top
-                                    right: parent.right
-                                    margins: 5
-                                }
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: yawContainer.isFlipped ? "↻" : "↺"
-                                    color: yawContainer.isFlipped ? "#FFA000" : "white"
-                                    font.pixelSize: 10
-                                    font.bold: true
-                                }
-                            }
-
-                            // Текст с текущим углом
-                            Text {
-                                anchors {
-                                    bottom: parent.bottom
-                                    horizontalCenter: parent.horizontalCenter
-                                    bottomMargin: 5
-                                }
-                                text: controller.headModel.hasData ? controller.headModel.yaw.toFixed(1) + "°" : ""
-                                color: "#FFA000"
-                                font.pixelSize: 12
-                                font.bold: true
-                            }
-                        }
-
-                        // Блоки данных YAW (остаются без изменений, показывают реальные значения с датчика)
-                        ColumnLayout {
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: 100
-                            spacing: 10
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 40
-                                color: "#252525"
-                                radius: 6
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "РЫСКАНЬЕ / YAW"
-                                        color: "#CF6679"
-                                        font.pixelSize: 16
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 60
-                                color: "#2d2d2d"
-                                radius: 6
-                                border.color: "#CF6679"
-                                border.width: 2
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "ТЕКУЩИЙ УГОЛ"
-                                        color: "#CF6679"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-
-                                    Text {
-                                        text: formatValue(controller.headModel.yaw, controller.headModel.hasData)
-                                        color: controller.headModel.hasData ? "white" : "#888"
-                                        font.pixelSize: controller.headModel.hasData ? 18 : 14
-                                        font.bold: controller.headModel.hasData
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 60
-                                color: "#2d2d2d"
-                                radius: 6
-                                border.color: "#CF6679"
-                                border.width: 2
-
-                                Column {
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Text {
-                                        text: "УГЛОВАЯ СКОРОСТЬ"
-                                        color: "#CF6679"
-                                        font.pixelSize: 12
-                                        font.bold: true
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-
-                                    Text {
-                                        text: {
-                                            if (controller.connected && controller.headModel.hasData) {
-                                                return formatSpeed(controller.headModel.speedYaw, true)
-                                            } else if (controller.logLoaded && controller.headModel.hasData) {
-                                                return formatSpeed(controller.headModel.speedYaw, true)
-                                            } else {
-                                                return "нет данных"
-                                            }
-                                        }
-                                        color: (controller.connected || controller.logLoaded) && controller.headModel.hasData ? "white" : "#888"
-                                        font.pixelSize: ((controller.connected || controller.logLoaded) && controller.headModel.hasData) ? 16 : 14
-                                        font.bold: (controller.connected || controller.logLoaded) && controller.headModel.hasData
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
-                                }
-                            }
-                        }
-
-                        // График YAW (без изменений - показывает реальные данные)
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            color: "#252525"
-                            radius: 8
-                            border.color: "#444"
-                            border.width: 1
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: 0
-
-                                Text {
-                                    text: "График YAW (" + controller.graphDuration + " сек)"
-                                    // color: "#666"
-                                    color: graphTextColor
-                                    font.pixelSize: 12
-                                    Layout.topMargin: 5
-                                    Layout.alignment: Qt.AlignHCenter
-                                }
-
-                                GraphCanvas {
-                                    id: yawGraph
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    graphData: controller.yawGraphData
-                                    // dizzinessData: controller.dizzinessData
-                                    dizzinessPatientData: controller.dizzinessPatientData
-                                    dizzinessDoctorData: controller.dizzinessDoctorData
-                                    graphDuration: controller.graphDuration
-                                    lineColor: "#CF6679"
-                                    minValue: -120
-                                    maxValue: 120
-                                }
-                            }
-                        }
-                    }
+                    onViewToggled: yawIsFlipped = !yawIsFlipped
                 }
             }
 
@@ -2143,7 +1315,9 @@ ApplicationWindow {
                         }
 
                         Text {
-                            text: controller.logMode ? formatStudyInfo(controller.studyInfo) : "Исследование не загружено"
+                            text: controller.logMode ?
+                                  Formatters.formatStudyInfo(controller.studyInfo) :
+                                  "Исследование не загружено"
                             color: controller.logControlsEnabled ? "#ccc" : "#888"
                             font.pixelSize: 12
                             elide: Text.ElideRight
@@ -2307,7 +1481,7 @@ ApplicationWindow {
 
                         // Начальное время
                         Text {
-                            text: formatTimeWithoutMs(0, controller.totalTime)
+                            text: Formatters.formatTimeWithoutMs(0, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 12
                             font.bold: true
@@ -2317,7 +1491,7 @@ ApplicationWindow {
 
                         // 25%
                         Text {
-                            text: formatTimeWithoutMs(controller.totalTime * 0.25, controller.totalTime)
+                            text: Formatters.formatTimeWithoutMs(controller.totalTime * 0.25, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 12
                             font.bold: true
@@ -2328,7 +1502,7 @@ ApplicationWindow {
 
                         // Среднее время (50%)
                         Text {
-                            text: formatTimeWithoutMs(Math.round(controller.totalTime / 2), controller.totalTime)
+                            text: Formatters.formatTimeWithoutMs(Math.round(controller.totalTime / 2), controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 12
                             font.bold: true
@@ -2339,7 +1513,7 @@ ApplicationWindow {
 
                         // 75%
                         Text {
-                            text: formatTimeWithoutMs(controller.totalTime * 0.75, controller.totalTime)
+                            text: Formatters.formatTimeWithoutMs(controller.totalTime * 0.75, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 12
                             font.bold: true
@@ -2351,7 +1525,7 @@ ApplicationWindow {
                         // Конечное время - теперь в формате "текущее / общее"
                         Text {
                             id: currentTimeLabel
-                            text: formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+                            text: Formatters.formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 12
                             font.bold: true
@@ -2435,7 +1609,7 @@ ApplicationWindow {
                             ToolTip {
                                 parent: timeSlider.handle
                                 visible: timeSlider.hovered && controller.logLoaded
-                                text: formatResearchTime(Math.round(timeSlider.value), controller.totalTime) // Убрали номер кадра
+                                text: Formatters.formatResearchTime(Math.round(timeSlider.value), controller.totalTime)
                                 delay: 500
                             }
                         }
@@ -2462,7 +1636,7 @@ ApplicationWindow {
                                 timeSlider.value = targetTime;
 
                                 // НЕМЕДЛЕННО ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ
-                                currentTimeLabel.text = formatCurrentAndTotalTime(targetTime, controller.totalTime);
+                                currentTimeLabel.text = Formatters.formatCurrentAndTotalTime(targetTime, controller.totalTime);
                             }
 
                             // Обработка перетаскивания для плавного следования бегунка за мышью
@@ -2476,14 +1650,14 @@ ApplicationWindow {
                                     timeSlider.value = targetTime;
 
                                     // ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ ПРИ ПЕРЕТАСКИВАНИИ
-                                    currentTimeLabel.text = formatCurrentAndTotalTime(targetTime, controller.totalTime);
+                                    currentTimeLabel.text = Formatters.formatCurrentAndTotalTime(targetTime, controller.totalTime);
                                 }
                             }
 
                             // ОБРАБОТКА ОТПУСКАНИЯ МЫШИ - ДОБАВЛЯЕМ ЭТОТ БЛОК
                             onReleased: {
                                 // При отпускании мыши обновляем отображение времени
-                                currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+                                currentTimeLabel.text = Formatters.formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
                             }
                         }
                     }
@@ -2649,7 +1823,7 @@ ApplicationWindow {
         target: controller
         function onCurrentTimeChanged() {
             // Всегда обновляем отображение времени при изменении currentTime
-            currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+            currentTimeLabel.text = Formatters.formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
         }
     }
 
@@ -2658,7 +1832,7 @@ ApplicationWindow {
         target: controller
         function onLogPlayingChanged() {
             // Обновляем время при запуске/остановке воспроизведения
-            currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+            currentTimeLabel.text = Formatters.formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
         }
     }
 
@@ -2666,7 +1840,7 @@ ApplicationWindow {
         target: controller
         function onCurrentTimeChanged() {
             // Всегда обновляем отображение времени при изменении currentTime
-            currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+            currentTimeLabel.text = Formatters.formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
 
             // Также обновляем значение слайдера, если он не нажат
             if (!timeSlider.pressed) {
@@ -2693,7 +1867,7 @@ ApplicationWindow {
         repeat: true
         onTriggered: {
             // Принудительно обновляем текст метки текущего времени
-            currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+            currentTimeLabel.text = Formatters.formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
         }
     }
 

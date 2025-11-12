@@ -59,6 +59,8 @@ qt_add_qml_module(appMonitorHead
         Main.qml
         GraphCanvas.qml
         Advanced3DHead.qml
+        AxisPanel.qml
+        Formatters.js
 )
 
 target_link_libraries(appMonitorHead
