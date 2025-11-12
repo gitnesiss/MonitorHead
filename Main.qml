@@ -35,22 +35,68 @@ ApplicationWindow {
 
     property color graphTextColor: "#CCCCCC"  // Более яркий цвет для текста
 
+    // Таймер записи исследования
+    property int researchTimerSeconds: 0
+
+    function startResearchTimer() {
+        researchTimerSeconds = 0
+        researchTimer.start()
+        updateResearchTimerDisplay()
+    }
+
+    function stopResearchTimer() {
+        researchTimer.stop()
+        researchTimerSeconds = 0
+        updateResearchTimerDisplay()
+    }
+
+    function updateResearchTimerDisplay() {
+        var seconds = researchTimerSeconds % 60
+        var minutes = Math.floor(researchTimerSeconds / 60) % 60
+        var hours = Math.floor(researchTimerSeconds / 3600)
+
+        researchTimerText.text =
+            (hours < 10 ? "0" + hours : hours) + ":" +
+            (minutes < 10 ? "0" + minutes : minutes) + ":" +
+            (seconds < 10 ? "0" + seconds : seconds)
+    }
+
+    Timer {
+        id: researchTimer
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            researchTimerSeconds++
+            updateResearchTimerDisplay()
+        }
+    }
+
     // Функция для обработки клавиши пробела
     function handleSpaceKey() {
-        // Работает только в режиме COM-порта при подключении
-        if (controller.connected && !controller.logMode) {
+        // РЕЖИМ ВОСПРОИЗВЕДЕНИЯ: пробел работает как плей/пауза
+        if (controller.logMode && controller.logLoaded) {
+            if (controller.logPlaying) {
+                controller.pauseLog()
+                showNotification("Воспроизведение приостановлено (ПРОБЕЛ)", false)
+            } else {
+                controller.playLog()
+                showNotification("Воспроизведение продолжено (ПРОБЕЛ)", false)
+            }
+        }
+        // РЕЖИМ РЕАЛЬНОГО ВРЕМЕНИ: пробел работает как запись/остановка записи
+        else if (controller.connected && !controller.logMode) {
             if (!recording) {
                 // Начинаем запись
                 if (researchField.text.length === 6) {
-                    controller.startResearchRecording(researchField.text);
-                    showNotification("Запись исследования начата (ПРОБЕЛ)", false);
+                    controller.startResearchRecording(researchField.text)
+                    showNotification("Запись исследования начата (ПРОБЕЛ)", false)
                 } else {
-                    showNotification("Номер исследования должен состоять из 6 цифр", true);
+                    showNotification("Номер исследования должен состоять из 6 цифр", true)
                 }
             } else {
                 // Останавливаем запись
-                controller.stopResearchRecording();
-                showNotification("Запись исследования остановлена (ПРОБЕЛ)", false);
+                controller.stopResearchRecording()
+                showNotification("Запись исследования остановлена (ПРОБЕЛ)", false)
             }
         }
     }
@@ -399,7 +445,7 @@ ApplicationWindow {
         // === ПАНЕЛЬ УПРАВЛЕНИЯ ===
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 80
+            Layout.preferredHeight: 90
             color: "#2d2d2d"
             radius: 8
 
@@ -419,8 +465,9 @@ ApplicationWindow {
                         Layout.alignment: Qt.AlignVCenter
                         width: 120 // Фиксированная ширина для центрирования
 
+
                         Text {
-                            text: controller.logMode ? "Исследование:" : "Следующее исследование:"
+                            text: "Исследование"  // Всегда одинаковая надпись в обоих режимах
                             color: "#aaa"
                             font.pixelSize: 14
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -458,13 +505,20 @@ ApplicationWindow {
                                 "Номер следующего исследования для записи"
                         }
 
-                        // Подсказка про пробел (только для режима COM-порта)
+                        // Таймер записи исследования
                         Text {
-                            text: "ПРОБЕЛ - запись"
-                            color: "#666"
-                            font.pixelSize: 10
+                            id: researchTimerText
                             anchors.horizontalCenter: parent.horizontalCenter
-                            visible: controller.connected && !controller.logMode
+                            text: "00:00:00"
+                            color: {
+                                if (controller.recording && controller.connected && !controller.logMode) {
+                                    return "#4CAF50"  // Зеленый при активной записи
+                                } else {
+                                    return "#888"   // Серый в остальных случаях
+                                }
+                            }
+                            font.pixelSize: 14
+                            font.bold: controller.recording && controller.connected && !controller.logMode
                         }
                     }
 
@@ -474,7 +528,7 @@ ApplicationWindow {
                         width: 100
                         height: 50
                         radius: 6
-                        enabled: controller.connected
+                        enabled: controller.connected && !controller.logMode
 
                         property color normalColor: recording ? "#e44a2a" : (enabled ? "#2a7be4" : "#555")
                         property color hoverColor: recording ? "#f55a3a" : (enabled ? "#3a8bff" : "#666")
@@ -509,11 +563,30 @@ ApplicationWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                            ToolTip.visible: containsMouse
+                            ToolTip.delay: 500
+                            ToolTip.text: {
+                                if (!controller.connected) {
+                                    return "Запись недоступна: нет подключения к COM-порту"
+                                } else if (controller.logMode) {
+                                    return "Запись недоступна в режиме воспроизведения"
+                                } else if (recording) {
+                                    return "Остановить запись текущего исследования\n(ПРОБЕЛ - остановка записи)"
+                                } else {
+                                    return "Начать запись нового исследования\n(ПРОБЕЛ - начало записи)"
+                                }
+                            }
+
                             onClicked: {
                                 if (enabled) {
                                     if (!recording) {
-                                        controller.startResearchRecording(researchField.text)
-                                        recording = true
+                                        if (researchField.text.length === 6) {
+                                            controller.startResearchRecording(researchField.text)
+                                            recording = true
+                                        } else {
+                                            showNotification("Номер исследования должен состоять из 6 цифр", true)
+                                        }
                                     } else {
                                         controller.stopResearchRecording()
                                         recording = false
@@ -531,10 +604,11 @@ ApplicationWindow {
                         width: 100
                         height: 50
                         radius: 6
+                        enabled: controller.connected && !controller.logMode && !controller.recording
 
-                        property color normalColor: "#9c27b0"
-                        property color hoverColor: "#ac37c0"
-                        property color pressedColor: "#7c3a5c"
+                        property color normalColor: enabled ? "#9c27b0" : "#555"
+                        property color hoverColor: enabled ? "#ac37c0" : "#666"
+                        property color pressedColor: enabled ? "#7c3a5c" : "#444"
 
                         color: {
                             if (calibrationMouseArea.pressed) {
@@ -553,9 +627,9 @@ ApplicationWindow {
                         Text {
                             anchors.centerIn: parent
                             text: "Калибровка"
-                            color: "white"
+                            color: enabled ? "white" : "#888"
                             font.pixelSize: 14
-                            font.bold: true
+                            font.bold: enabled
                             horizontalAlignment: Text.AlignHCenter
                         }
 
@@ -563,9 +637,27 @@ ApplicationWindow {
                             id: calibrationMouseArea
                             anchors.fill: parent
                             hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
+                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                            ToolTip.visible: containsMouse
+                            ToolTip.delay: 500
+                            ToolTip.text: {
+                                if (!controller.connected) {
+                                    return "Калибровка недоступна: нет подключения"
+                                } else if (controller.logMode) {
+                                    return "Калибровка недоступна в режиме воспроизведения"
+                                } else if (controller.recording) {
+                                    return "Калибровка недоступна во время записи"
+                                } else {
+                                    return "Выполнить калибровку устройства"
+                                }
+                            }
+
                             onClicked: {
-                                // Действие для калибровки
+                                if (enabled) {
+                                    // Действие для калибровки
+                                    showNotification("Запущена калибровка устройства", false)
+                                }
                             }
                         }
                     }
@@ -610,6 +702,17 @@ ApplicationWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                            ToolTip.visible: containsMouse
+                            ToolTip.delay: 500
+                            ToolTip.text: {
+                                if (!enabled) {
+                                    return "Невозможно загрузить исследование во время записи"
+                                } else {
+                                    return "Загрузить файл исследования для воспроизведения\n(ПРОБЕЛ - начать/приостановить воспроизведение)"
+                                }
+                            }
+
                             onClicked: {
                                 if (enabled) {
                                     loadResearchDialog.open()
@@ -709,14 +812,12 @@ ApplicationWindow {
                         }
                     }
 
-
-
                     // НАСТРОЙКИ ДЛЯ ЛОГ-ФАЙЛА (компактный двухколоночный вид)
                     RowLayout {
                         Layout.preferredWidth: 320  // Фиксированная ширина для компактности
                         Layout.preferredHeight: 60
                         Layout.alignment: Qt.AlignVCenter
-                        visible: controller.logLoaded
+                        visible: controller.logLoaded && controller.logMode // ДОБАВЬТЕ controller.logMode
                         spacing: 15
 
                         // Первый столбец - Сглаживание
@@ -966,20 +1067,12 @@ ApplicationWindow {
                     Text {
                         text: controller.logMode ?
                               "Чтение данных из файла" :  // НОВАЯ СТРОКА вместо formatStudyInfo(controller.studyInfo)
-                              "Прямое измерение с датчика"
+                              "Получение данных с датчика"
                         color: "#aaa"
                         font.pixelSize: 12
                         elide: Text.ElideRight
                         Layout.maximumWidth: 400
                     }
-
-                    // Text {
-                    //     text: controller.logMode ? formatStudyInfo(controller.studyInfo) : "Прямое измерение с датчика"  // Было: "Режим реального времени"
-                    //     color: "#aaa"
-                    //     font.pixelSize: 12
-                    //     elide: Text.ElideRight
-                    //     Layout.maximumWidth: 400
-                    // }
                 }
             }
         }
@@ -2097,27 +2190,58 @@ ApplicationWindow {
                             }
                         }
 
-                        Button {
+
+
+
+                        Rectangle {
                             id: playPauseBtn
-                            text: controller.logPlaying ? "⏸️" : "▶️"
                             Layout.preferredWidth: 80
-                            onClicked: {
-                                if (controller.logControlsEnabled && controller.logLoaded) {
-                                    controller.logPlaying ? controller.pauseLog() : controller.playLog()
+                            Layout.preferredHeight: 40
+                            radius: 4
+                            color: {
+                                if (!controller.logControlsEnabled || !controller.logLoaded) {
+                                    return "#3a5c42"
+                                } else if (playPauseMouseArea.pressed) {
+                                    return "#3a5c42"
+                                } else if (playPauseMouseArea.containsMouse) {
+                                    return "#5cbf62"
+                                } else {
+                                    return "#4caf50"
                                 }
                             }
                             enabled: controller.logControlsEnabled && controller.logLoaded
-                            ToolTip.text: controller.logPlaying ? "Пауза" : "Продолжить"
-                            background: Rectangle {
-                                color: parent.down ? "#3a5c42" : (parent.enabled ? "#4caf50" : "#3a5c42")
-                                radius: 4
-                            }
-                            contentItem: Text {
-                                text: parent.text
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: controller.logPlaying ? "⏸️" : "▶️"
                                 color: "white"
                                 font.pixelSize: 14
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
+                            }
+
+                            MouseArea {
+                                id: playPauseMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: {
+                                    if (parent.enabled) {
+                                        controller.logPlaying ? controller.pauseLog() : controller.playLog()
+                                    }
+                                }
+
+                                ToolTip.visible: containsMouse
+                                ToolTip.delay: 500
+                                ToolTip.text: {
+                                    if (!parent.enabled) {
+                                        return "Воспроизведение недоступно"
+                                    } else if (controller.logPlaying) {
+                                        return "Приостановить воспроизведение\n[ ПРОБЕЛ ]"
+                                    } else {
+                                        return "Начать воспроизведение\n[ ПРОБЕЛ ]"
+                                    }
+                                }
                             }
                         }
 
@@ -2384,16 +2508,9 @@ ApplicationWindow {
         }
 
         function onLogLoadedChanged(loaded) {
-            if (loaded) {
-                showNotification("Лог-файл успешно загружен", false)
+            if (loaded && controller.logMode) {
+                showNotification("Лог-файл успешно загружен.\nПРОБЕЛ - управление воспроизведением", false)
             }
-        }
-
-        function onLogModeChanged() {
-            // Принудительно обновляем текст поля при смене режима
-            researchField.text = controller.logMode ?
-                controller.loadedResearchNumber :
-                controller.researchNumber
         }
 
         function onLoadedResearchNumberChanged() {
@@ -2430,6 +2547,43 @@ ApplicationWindow {
             var index = updateRateCombo.find(valueToFind);
             if (index !== -1 && updateRateCombo.currentIndex !== index) {
                 updateRateCombo.currentIndex = index;
+            }
+        }
+
+        function onRecordingChanged(isRecording) {
+            recording = isRecording
+            if (isRecording && controller.connected && !controller.logMode) {
+                startResearchTimer()
+            } else {
+                stopResearchTimer()
+            }
+        }
+
+        function onConnectedChanged(connected) {
+            if (!connected) {
+                stopResearchTimer()
+            }
+        }
+
+        function onLogModeChanged() {
+            // При переключении в режим воспроизведения останавливаем и сбрасываем таймер
+            stopResearchTimer()
+
+            // Принудительно обновляем текст поля при смене режима
+            researchField.text = controller.logMode ?
+                controller.loadedResearchNumber :
+                controller.researchNumber
+
+            // Принудительно обновляем интерфейс при смене режима
+            if (controller.logMode) {
+                console.log("Переключено в режим воспроизведения - блокируем калибровку и запись")
+            } else {
+                console.log("Переключено в режим реального времени - разблокируем калибровку")
+            }
+
+            // При переключении в режим воспроизведения показываем подсказку про пробел
+            if (controller.logMode && controller.logLoaded) {
+                showNotification("ПРОБЕЛ - управление воспроизведением", false)
             }
         }
     }
