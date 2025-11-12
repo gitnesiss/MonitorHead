@@ -413,14 +413,14 @@ ApplicationWindow {
                     spacing: 15
                     Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
 
-                    // Поле исследования с центрированной надписью
+                    // Заменяем существующий блок исследования на:
                     Column {
                         spacing: 5
                         Layout.alignment: Qt.AlignVCenter
                         width: 120 // Фиксированная ширина для центрирования
 
                         Text {
-                            text: "Исследование:"
+                            text: controller.logMode ? "Исследование:" : "Следующее исследование:"
                             color: "#aaa"
                             font.pixelSize: 14
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -432,9 +432,13 @@ ApplicationWindow {
                             placeholderText: "000000"
                             maximumLength: 6
                             validator: RegularExpressionValidator { regularExpression: /[0-9]{6}/ }
-                            text: researchNumber
+                            // ОТОБРАЖАЕМ РАЗНЫЕ НОМЕРА В ЗАВИСИМОСТИ ОТ РЕЖИМА
+                            text: controller.logMode ? controller.loadedResearchNumber : controller.researchNumber
+                            enabled: !controller.logMode // Разрешаем редактирование только в режиме COM-порта
                             onTextChanged: {
-                                if (text.length === 6) researchNumber = text
+                                if (!controller.logMode && text.length === 6) {
+                                    controller.researchNumber = text
+                                }
                             }
                             background: Rectangle {
                                 color: "#3c3c3c"
@@ -446,9 +450,15 @@ ApplicationWindow {
                             font.pixelSize: 14
                             horizontalAlignment: TextInput.AlignHCenter
                             anchors.horizontalCenter: parent.horizontalCenter
+
+                            // Подсказка при наведении
+                            ToolTip.visible: hovered
+                            ToolTip.text: controller.logMode ?
+                                "Номер загруженного исследования (только просмотр)" :
+                                "Номер следующего исследования для записи"
                         }
 
-                        // Подсказка про пробел
+                        // Подсказка про пробел (только для режима COM-порта)
                         Text {
                             text: "ПРОБЕЛ - запись"
                             color: "#666"
@@ -786,12 +796,22 @@ ApplicationWindow {
                     }
 
                     Text {
-                        text: controller.logMode ? formatStudyInfo(controller.studyInfo) : "Прямое измерение с датчика"  // Было: "Режим реального времени"
+                        text: controller.logMode ?
+                              "Чтение данных из файла" :  // НОВАЯ СТРОКА вместо formatStudyInfo(controller.studyInfo)
+                              "Прямое измерение с датчика"
                         color: "#aaa"
                         font.pixelSize: 12
                         elide: Text.ElideRight
                         Layout.maximumWidth: 400
                     }
+
+                    // Text {
+                    //     text: controller.logMode ? formatStudyInfo(controller.studyInfo) : "Прямое измерение с датчика"  // Было: "Режим реального времени"
+                    //     color: "#aaa"
+                    //     font.pixelSize: 12
+                    //     elide: Text.ElideRight
+                    //     Layout.maximumWidth: 400
+                    // }
                 }
             }
         }
@@ -2201,9 +2221,16 @@ ApplicationWindow {
             }
         }
 
-        function onLogModeChanged(logMode) {
-            if (logMode) {
-                showNotification("Переключено в режим лог-файла", false)
+        function onLogModeChanged() {
+            // Принудительно обновляем текст поля при смене режима
+            researchField.text = controller.logMode ?
+                controller.loadedResearchNumber :
+                controller.researchNumber
+        }
+
+        function onLoadedResearchNumberChanged() {
+            if (controller.logMode) {
+                researchField.text = controller.loadedResearchNumber
             }
         }
 

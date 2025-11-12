@@ -127,13 +127,11 @@ class TiltController : public QObject
     Q_PROPERTY(bool recording READ recording NOTIFY recordingChanged)
     Q_PROPERTY(QVariantList dizzinessPatientData READ dizzinessPatientData NOTIFY graphDataChanged)
     Q_PROPERTY(QVariantList dizzinessDoctorData READ dizzinessDoctorData NOTIFY graphDataChanged)
-    // Q_PROPERTY(int dataFrequency READ dataFrequency NOTIFY dataFrequencyChanged)
-    // Q_PROPERTY(int displayFrequency READ displayFrequency NOTIFY displayFrequencyChanged)
-    // Q_PROPERTY(int bufferSize READ bufferSize NOTIFY bufferSizeChanged)
     Q_PROPERTY(bool patientDizziness READ patientDizziness NOTIFY patientDizzinessChanged)
     Q_PROPERTY(bool doctorDizziness READ doctorDizziness NOTIFY doctorDizzinessChanged)
     Q_PROPERTY(float angularSpeedUpdateFrequencyCOM READ angularSpeedUpdateFrequencyCOM WRITE setAngularSpeedUpdateFrequencyCOM NOTIFY angularSpeedUpdateFrequencyCOMChanged)
     Q_PROPERTY(float angularSpeedUpdateFrequencyLog READ angularSpeedUpdateFrequencyLog WRITE setAngularSpeedUpdateFrequencyLog NOTIFY angularSpeedUpdateFrequencyLogChanged)
+    Q_PROPERTY(QString loadedResearchNumber READ loadedResearchNumber NOTIFY loadedResearchNumberChanged)  // Обновление надписи в поле номера исследования в режиме воспроизведения
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -174,6 +172,8 @@ public:
 
     float angularSpeedUpdateFrequencyCOM() const { return m_angularSpeedUpdateFrequencyCOM; }
     float angularSpeedUpdateFrequencyLog() const { return m_angularSpeedUpdateFrequencyLog; }
+
+    QString loadedResearchNumber() const { return m_loadedResearchNumber; }  // Обновление надписи в поле номера исследования в режиме воспроизведения
 
 public slots:
     void connectDevice();
@@ -375,6 +375,10 @@ private:
     float m_angularSpeedUpdateFrequencyCOM = 4.0f;  // для COM-порта
     float m_angularSpeedUpdateFrequencyLog = 4.0f;  // для лог-файла
 
+    QString m_loadedResearchNumber;  // Обновление надписи в поле номера исследования в режиме воспроизведения
+
+    QString extractResearchNumber(const QStringList &studyLines);
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -392,18 +396,12 @@ signals:
     void updateFrequencyChanged(int frequency);
     void researchNumberChanged(const QString &researchNumber);
     void recordingChanged(bool recording);
-
-    // для отображения частоты обновления
-    // void dataFrequencyChanged(int frequency);
-    // void displayFrequencyChanged(int frequency);
-    // void bufferSizeChanged(int size);
-
     void patientDizzinessChanged(bool patientDizziness);
     void doctorDizzinessChanged(bool doctorDizziness);
     void angularSpeedUpdateFrequencyChanged(float frequency);
-
     void angularSpeedUpdateFrequencyCOMChanged(float frequency);
     void angularSpeedUpdateFrequencyLogChanged(float frequency);
+    void loadedResearchNumberChanged(const QString &loadedResearchNumber);  // Обновление надписи в поле номера исследования в режиме воспроизведения
 };
 
 #endif // TILTCONTROLLER_H

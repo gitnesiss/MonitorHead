@@ -59,11 +59,6 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_lastDizzinessState = false;
     m_currentDizzinessStart = 0;
 
-    // // Таймер для обновления информации о частотах
-    // m_frequencyTimer.setInterval(1000);
-    // connect(&m_frequencyTimer, &QTimer::timeout, this, &TiltController::updateFrequencyInfo);
-    // m_frequencyTimer.start();
-
     // Инициализация переменных синхронизации
     m_playbackStartRealTime = 0;
     m_playbackStartLogTime = 0;
@@ -269,6 +264,12 @@ void TiltController::safeDisconnect()
         emit doctorDizzinessChanged(m_doctorDizziness);
     }
 
+    // Сбрасываем номер загруженного исследования при отключении (только в режиме COM-порта)
+    if (!m_logMode && !m_loadedResearchNumber.isEmpty()) {
+        m_loadedResearchNumber.clear();
+        emit loadedResearchNumberChanged(m_loadedResearchNumber);
+    }
+
     // Форсируем обновление графиков
     emit graphDataChanged();
 
@@ -470,12 +471,15 @@ void TiltController::switchToCOMPortMode()
             emit doctorDizzinessChanged(m_doctorDizziness);
         }
 
+        // СБРАСЫВАЕМ НОМЕР ЗАГРУЖЕННОГО ИССЛЕДОВАНИЯ
+        m_loadedResearchNumber.clear();
+        emit loadedResearchNumberChanged(m_loadedResearchNumber);
+
         // Форсируем обновление графиков
         emit graphDataChanged();
 
         m_autoConnectTimer.start();
-        // addNotification("Переключено в режим COM-порта. Данные сброшены.");
-        addNotification("Переключено в режим реального времени");
+        addNotification("Переключено в режим реального времени. Данные сброшены.");
     }
 }
 
@@ -576,30 +580,6 @@ void TiltController::setGraphDuration(int duration)
     }
 }
 
-// void TiltController::updateFrequencyInfo()
-// {
-//     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
-
-//     // Вычисляем частоту данных (количество данных за последнюю секунду)
-//     while (!m_dataTimestamps.isEmpty() && currentTime - m_dataTimestamps.first() > 1000) {
-//         m_dataTimestamps.removeFirst();
-//     }
-//     m_dataFrequency = m_dataTimestamps.size();
-
-//     // Вычисляем частоту отрисовки (количество обновлений за последнюю секунду)
-//     while (!m_displayTimestamps.isEmpty() && currentTime - m_displayTimestamps.first() > 1000) {
-//         m_displayTimestamps.removeFirst();
-//     }
-//     m_displayFrequency = m_displayTimestamps.size();
-
-//     // Размер буфера
-//     m_bufferSize = m_dataBuffer.size();
-
-//     // emit dataFrequencyChanged(m_dataFrequency);
-//     // emit displayFrequencyChanged(m_displayFrequency);
-//     // emit bufferSizeChanged(m_bufferSize);
-// }
-
 void TiltController::updateDataDisplay()
 {
     static int updateCounter = 0;
@@ -631,7 +611,6 @@ void TiltController::testAngularSpeedFrequency()
     qDebug() << "LogReader frequency:" << m_logReader.getUpdateFrequency(); // если нужно добавить геттер
 }
 
-// В методе loadLogFile (исправленная версия):
 void TiltController::loadLogFile(const QString &filePath)
 {
     QString fileName = filePath;
@@ -645,7 +624,7 @@ void TiltController::loadLogFile(const QString &filePath)
 #endif
     }
 
-    qDebug() << "Loading data file:" << fileName;
+    qDebug() << "Loading log file:" << fileName;
 
     if (fileName.isEmpty()) {
         addNotification("Файл не выбран");
@@ -658,10 +637,14 @@ void TiltController::loadLogFile(const QString &filePath)
         return;
     }
 
+    // СОЗДАЕМ fileInfo ДО его использования
+    QFileInfo fileInfo(fileName);
+
     m_logData.clear();
     m_currentLogIndex = 0;
     m_studyInfo.clear();
     m_dataBuffer.clear(); // Очищаем буфер
+    m_loadedResearchNumber.clear(); // Сбрасываем номер загруженного исследования
 
     QTextStream in(&file);
     int lineNumber = 0;
@@ -729,9 +712,13 @@ void TiltController::loadLogFile(const QString &filePath)
 
     if (!studyLines.isEmpty()) {
         m_studyInfo = studyLines.join(" | ");
+
+        // ИЗВЛЕКАЕМ НОМЕР ИССЛЕДОВАНИЯ ИЗ ЗАГОЛОВКА
+        m_loadedResearchNumber = extractResearchNumber(studyLines);
     } else {
-        QFileInfo fileInfo(fileName);
+        // ИСПОЛЬЗУЕМ fileInfo КОТОРЫЙ УЖЕ ОБЪЯВЛЕН ВЫШЕ
         m_studyInfo = "Исследование: " + fileInfo.fileName();
+        m_loadedResearchNumber = "000000"; // значение по умолчанию
     }
 
     if (m_logData.isEmpty()) {
@@ -761,13 +748,20 @@ void TiltController::loadLogFile(const QString &filePath)
         qint64 maxTime = m_logData.last().time;
         qint64 duration = maxTime - minTime;
 
+        qDebug() << "Log file loaded - Duration:" << duration << "ms,"
+                 << "Frames:" << m_logData.size() << ","
+                 << "Avg frequency:" << (m_logData.size() * 1000.0 / duration) << "Hz";
+
         // Если длительность слишком мала или велика, скорректируем
         if (duration < 1000) {
             qDebug() << "Warning: Log file duration is very short";
         }
     }
 
-    addNotification("Файл с данными загружен: " + QString::number(m_logData.size()) + " записей");
+    // УВЕДОМЛЯЕМ ОБ ИЗМЕНЕНИИ НОМЕРА ЗАГРУЖЕННОГО ИССЛЕДОВАНИЯ
+    emit loadedResearchNumberChanged(m_loadedResearchNumber);
+
+    addNotification("Лог-файл загружен: " + QString::number(m_logData.size()) + " записей");
     emit logLoadedChanged(m_logLoaded);
     emit logModeChanged(m_logMode);
     emit logControlsEnabledChanged(logControlsEnabled());
@@ -874,7 +868,7 @@ void TiltController::stopLog()
     emit currentTimeChanged(m_currentTime);
 
     emit logPlayingChanged(m_logPlaying);
-    addNotification("Воспроизведение даных остановлено и сброшено в начало");
+    addNotification("Воспроизведение лога остановлено и сброшено в начало");
 }
 
 void TiltController::startResearchRecording(const QString &researchNumber)
@@ -1840,4 +1834,27 @@ void TiltController::setAngularSpeedUpdateFrequencyLog(float frequency)
 
         emit angularSpeedUpdateFrequencyLogChanged(frequency);
     }
+}
+
+QString TiltController::extractResearchNumber(const QStringList &studyLines)
+{
+    for (const QString &line : studyLines) {
+        // Ищем паттерн "Исследование № XXXXXX"
+        QRegularExpression re("Исследование №\\s*(\\d{6})");
+        QRegularExpressionMatch match = re.match(line);
+
+        if (match.hasMatch()) {
+            return match.captured(1);
+        }
+
+        // Альтернативный поиск по другим паттернам
+        QRegularExpression re2("Research_(\\d{6})_");
+        QRegularExpressionMatch match2 = re2.match(line);
+
+        if (match2.hasMatch()) {
+            return match2.captured(1);
+        }
+    }
+
+    return "000000"; // значение по умолчанию, если не нашли
 }
