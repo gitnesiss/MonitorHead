@@ -474,7 +474,8 @@ void TiltController::switchToCOMPortMode()
         emit graphDataChanged();
 
         m_autoConnectTimer.start();
-        addNotification("Переключено в режим COM-порта. Данные сброшены.");
+        // addNotification("Переключено в режим COM-порта. Данные сброшены.");
+        addNotification("Переключено в режим реального времени");
     }
 }
 
@@ -487,7 +488,11 @@ void TiltController::playLog()
 
     m_logTimer.start();
     emit logPlayingChanged(m_logPlaying);
-    addNotification("Воспроизведение лога начато");
+
+    // ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ ПРИ ЗАПУСКЕ
+    emit currentTimeChanged(m_currentTime);
+
+    addNotification("Воспроизведение данных начато");
 }
 
 void TiltController::pauseLog()
@@ -501,8 +506,11 @@ void TiltController::pauseLog()
     // Обновляем графики для отображения текущей позиции
     updateGraphDataFromBuffer();
 
+    // ВАЖНО: ФОРСИРУЕМ ОБНОВЛЕНИЕ ВРЕМЕНИ ПРИ ПАУЗЕ
+    emit currentTimeChanged(m_currentTime);
+
     emit logPlayingChanged(m_logPlaying);
-    addNotification("Воспроизведение лога приостановлено");
+    addNotification("Воспроизведение данных приостановлено");
 }
 
 void TiltController::setSelectedPort(const QString &port)
@@ -637,7 +645,7 @@ void TiltController::loadLogFile(const QString &filePath)
 #endif
     }
 
-    qDebug() << "Loading log file:" << fileName;
+    qDebug() << "Loading data file:" << fileName;
 
     if (fileName.isEmpty()) {
         addNotification("Файл не выбран");
@@ -753,17 +761,13 @@ void TiltController::loadLogFile(const QString &filePath)
         qint64 maxTime = m_logData.last().time;
         qint64 duration = maxTime - minTime;
 
-        qDebug() << "Log file loaded - Duration:" << duration << "ms,"
-                 << "Frames:" << m_logData.size() << ","
-                 << "Avg frequency:" << (m_logData.size() * 1000.0 / duration) << "Hz";
-
         // Если длительность слишком мала или велика, скорректируем
         if (duration < 1000) {
             qDebug() << "Warning: Log file duration is very short";
         }
     }
 
-    addNotification("Лог-файл загружен: " + QString::number(m_logData.size()) + " записей");
+    addNotification("Файл с данными загружен: " + QString::number(m_logData.size()) + " записей");
     emit logLoadedChanged(m_logLoaded);
     emit logModeChanged(m_logMode);
     emit logControlsEnabledChanged(logControlsEnabled());
@@ -822,6 +826,7 @@ void TiltController::seekLog(int time)
     // ОБНОВЛЯЕМ ГРАФИКИ НЕМЕДЛЕННО
     updateGraphDataFromBuffer();
 
+    // ВАЖНО: ОБНОВЛЯЕМ ВРЕМЯ ДАЖЕ ПРИ ПАУЗЕ
     emit currentTimeChanged(m_currentTime);
 
     // Если воспроизведение активно, продолжаем с новой позиции
@@ -865,9 +870,11 @@ void TiltController::stopLog()
     // Обновляем графики для отображения начальной позиции
     updateGraphDataFromBuffer();
 
-    emit logPlayingChanged(m_logPlaying);
+    // ВАЖНО: ФОРСИРУЕМ ОБНОВЛЕНИЕ ВРЕМЕНИ ПРИ ОСТАНОВКЕ
     emit currentTimeChanged(m_currentTime);
-    addNotification("Воспроизведение лога остановлено и сброшено в начало");
+
+    emit logPlayingChanged(m_logPlaying);
+    addNotification("Воспроизведение даных остановлено и сброшено в начало");
 }
 
 void TiltController::startResearchRecording(const QString &researchNumber)
@@ -991,16 +998,6 @@ float TiltController::calculateAngularSpeed(QVector<AngleHistory>& history, floa
     const float maxSpeed = 720.0f; // градусов/секунду
     if (angularSpeed > maxSpeed) angularSpeed = maxSpeed;
     if (angularSpeed < -maxSpeed) angularSpeed = -maxSpeed;
-
-    // Отладочный вывод для проверки расчетов
-    static int debugCounter = 0;
-    if (debugCounter++ % 30 == 0) { // Выводим каждые 30 кадров
-        qDebug() << "Angle speed calculation:"
-                 << "Change:" << totalAngleChange << "deg"
-                 << "Time:" << timeWindow << "ms"
-                 << "Speed:" << angularSpeed << "deg/s"
-                 << "Points:" << history.size();
-    }
 
     return angularSpeed;
 }
@@ -1504,9 +1501,6 @@ void TiltController::updateCOMAngularSpeeds()
                 m_currentComSpeedPitch = qBound(-maxSpeed, m_currentComSpeedPitch, maxSpeed);
                 m_currentComSpeedRoll = qBound(-maxSpeed, m_currentComSpeedRoll, maxSpeed);
                 m_currentComSpeedYaw = qBound(-maxSpeed, m_currentComSpeedYaw, maxSpeed);
-
-                qDebug() << "Using fallback speed calculation - Pitch:" << m_currentComSpeedPitch
-                         << "Roll:" << m_currentComSpeedRoll << "Yaw:" << m_currentComSpeedYaw;
             }
         } else {
             // Если вообще нет данных, устанавливаем нули
@@ -1527,10 +1521,6 @@ void TiltController::updateCOMAngularSpeeds()
         updateHeadModel(lastFrame.pitch, lastFrame.roll, lastFrame.yaw,
                         m_currentComSpeedPitch, m_currentComSpeedRoll, m_currentComSpeedYaw,
                         lastFrame.patientDizziness || lastFrame.doctorDizziness);
-
-        qDebug() << "Updated COM speeds - Pitch:" << m_currentComSpeedPitch
-                 << "Roll:" << m_currentComSpeedRoll
-                 << "Yaw:" << m_currentComSpeedYaw;
     }
 
     // Очищаем буферы только если они стали слишком большими
@@ -1576,19 +1566,6 @@ float TiltController::calculateCOMAngularSpeed(QVector<AngleDataPoint>& dataBuff
     // Вычисляем угловую скорость (градусы/секунду)
     float angularSpeed = angleChange / timeDiff;
 
-    // Отладочный вывод для проверки расчетов
-    static int debugCounter = 0;
-    if (debugCounter++ % 10 == 0) {
-        qDebug() << "=== COM ANGULAR SPEED CALCULATION ===";
-        qDebug() << "Data points:" << dataBuffer.size();
-        qDebug() << "First angle:" << firstPoint.angle << "at time:" << firstPoint.timestamp;
-        qDebug() << "Last angle:" << lastPoint.angle << "at time:" << lastPoint.timestamp;
-        qDebug() << "Angle change:" << angleChange << "degrees";
-        qDebug() << "Time difference:" << timeDiff << "seconds";
-        qDebug() << "Calculated speed:" << angularSpeed << "deg/s";
-        qDebug() << "=====================================";
-    }
-
     // Ограничиваем разумными пределами
     const float maxSpeed = 360.0f;
     return qBound(-maxSpeed, angularSpeed, maxSpeed);
@@ -1606,8 +1583,6 @@ void TiltController::setAngularSpeedUpdateFrequency(float frequency)
     frequency = qBound(0.1f, frequency, 10.0f);
 
     if (!qFuzzyCompare(m_angularSpeedUpdateFrequency, frequency)) {
-        qDebug() << "=== ANGULAR SPEED FREQUENCY CHANGE ===";
-        qDebug() << "Setting angular speed update frequency from" << m_angularSpeedUpdateFrequency << "to" << frequency;
 
         m_angularSpeedUpdateFrequency = frequency;
         m_logReader.setUpdateFrequency(frequency);
@@ -1617,10 +1592,8 @@ void TiltController::setAngularSpeedUpdateFrequency(float frequency)
 
         // Пересчитываем скорости в зависимости от режима
         if (m_logMode && m_logLoaded) {
-            qDebug() << "Recalculating angular speeds for log mode...";
             updateAngularSpeeds();
         } else if (m_connected) {
-            qDebug() << "Restarting COM speed timer with new frequency...";
             if (m_comSpeedUpdateTimer.isActive()) {
                 m_comSpeedUpdateTimer.stop();
             }
@@ -1629,7 +1602,6 @@ void TiltController::setAngularSpeedUpdateFrequency(float frequency)
         }
 
         emit angularSpeedUpdateFrequencyChanged(frequency);
-        qDebug() << "=== FREQUENCY CHANGE COMPLETE ===";
     }
 }
 
@@ -1644,7 +1616,6 @@ void TiltController::processDataFrame(const DataFrame& frame)
         // Запускаем таймер, если он еще не запущен (дополнительная защита)
         if (!m_comSpeedUpdateTimer.isActive()) {
             m_comSpeedUpdateTimer.start();
-            qDebug() << "COM speed timer started from processDataFrame";
         }
 
         // Если буферы пусты, инициируем немедленный расчет скоростей
@@ -1719,8 +1690,6 @@ void TiltController::processDataFrame(const DataFrame& frame)
                 *m_researchStream << formattedLine << "\n";
                 m_researchStream->flush();
                 m_researchFrameCounter++;
-
-                qDebug() << "Research data written - Time:" << researchTime << "ms, Frame:" << formattedLine;
             }
         }
     } else {
@@ -1789,7 +1758,6 @@ bool TiltController::setupCOMPort()
             // ДОБАВЛЯЕМ ЗАПУСК ТАЙМЕРА ДЛЯ COM-СКОРОСТЕЙ
             if (!m_comSpeedUpdateTimer.isActive()) {
                 m_comSpeedUpdateTimer.start();
-                qDebug() << "COM speed timer started on connection";
             }
 
             addNotification("Успешное подключение к " + m_selectedPort);
@@ -1845,8 +1813,6 @@ void TiltController::setAngularSpeedUpdateFrequencyCOM(float frequency)
     frequency = qBound(0.1f, frequency, 10.0f);
 
     if (!qFuzzyCompare(m_angularSpeedUpdateFrequencyCOM, frequency)) {
-        qDebug() << "=== COM ANGULAR SPEED FREQUENCY CHANGE ===";
-        qDebug() << "Setting COM angular speed update frequency from" << m_angularSpeedUpdateFrequencyCOM << "to" << frequency;
 
         m_angularSpeedUpdateFrequencyCOM = frequency;
 
@@ -1855,7 +1821,6 @@ void TiltController::setAngularSpeedUpdateFrequencyCOM(float frequency)
 
         // Пересчитываем скорости для COM-порта
         if (m_connected && !m_logMode) {
-            qDebug() << "Restarting COM speed timer with new frequency...";
             if (m_comSpeedUpdateTimer.isActive()) {
                 m_comSpeedUpdateTimer.stop();
             }
@@ -1866,7 +1831,6 @@ void TiltController::setAngularSpeedUpdateFrequencyCOM(float frequency)
         }
 
         emit angularSpeedUpdateFrequencyCOMChanged(frequency);
-        qDebug() << "=== COM FREQUENCY CHANGE COMPLETE ===";
     }
 }
 
@@ -1875,19 +1839,15 @@ void TiltController::setAngularSpeedUpdateFrequencyLog(float frequency)
     frequency = qBound(0.1f, frequency, 10.0f);
 
     if (!qFuzzyCompare(m_angularSpeedUpdateFrequencyLog, frequency)) {
-        qDebug() << "=== LOG ANGULAR SPEED FREQUENCY CHANGE ===";
-        qDebug() << "Setting Log angular speed update frequency from" << m_angularSpeedUpdateFrequencyLog << "to" << frequency;
 
         m_angularSpeedUpdateFrequencyLog = frequency;
         m_logReader.setUpdateFrequency(frequency);
 
         // Пересчитываем скорости для лог-файла
         if (m_logMode && m_logLoaded) {
-            qDebug() << "Recalculating angular speeds for log mode...";
             updateAngularSpeeds();
         }
 
         emit angularSpeedUpdateFrequencyLogChanged(frequency);
-        qDebug() << "=== LOG FREQUENCY CHANGE COMPLETE ===";
     }
 }

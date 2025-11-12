@@ -19,9 +19,6 @@ void LogReader::setUpdateFrequency(float frequencyHz)
     float oldFrequency = m_updateFrequency;
     m_updateFrequency = qBound(0.1f, frequencyHz, 10.0f);  // Расширяем диапазон
     m_windowDuration = 1.0f / m_updateFrequency;
-
-    qDebug() << "LogReader: Update frequency changed from" << oldFrequency << "Hz to" << m_updateFrequency << "Hz";
-    qDebug() << "LogReader: Window duration:" << m_windowDuration << "seconds (" << (m_windowDuration * 1000) << "ms)";
 }
 
 float LogReader::calculateAngularSpeed(qint64 currentTime, const QString &angleType, bool isPlaying)
@@ -152,18 +149,6 @@ float LogReader::calculateSimpleSpeed(const QVector<LogDataEntry> &entries, cons
     // Apply reasonable limits
     const float maxSpeed = 180.0f;
     speedDegPerSec = qBound(-maxSpeed, speedDegPerSec, maxSpeed);
-
-    // Debug output (only occasionally to avoid spam)
-    static int debugCounter = 0;
-    if (debugCounter++ % 50 == 0) {
-        qDebug() << "Angular speed calculation [" << angleType << "]:"
-                 << "First:" << firstAngle << "deg at" << firstEntry.time << "ms"
-                 << "Last:" << lastAngle << "deg at" << lastEntry.time << "ms"
-                 << "Change:" << angularChange << "deg"
-                 << "Time:" << timeDiffSec << "s"
-                 << "Speed:" << speedDegPerSec << "deg/s"
-                 << "Points:" << entries.size();
-    }
 
     return speedDegPerSec;
 }

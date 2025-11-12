@@ -169,45 +169,6 @@ ApplicationWindow {
         return formatTimeWithoutMs(currentMs, totalMs) + " / " + formatTimeWithoutMs(totalMs, totalMs);
     }
 
-    // Функция для диагностики графиков
-    function debugGraphs() {
-        console.log("=== GRAPH DEBUG ===")
-        console.log("COM Port connected:", controller.connected)
-        console.log("Log mode:", controller.logMode)
-        console.log("Log loaded:", controller.logLoaded)
-        console.log("Log playing:", controller.logPlaying)
-        console.log("Has data:", controller.headModel.hasData)
-        console.log("Pitch graph points:", controller.pitchGraphData.length)
-        console.log("Roll graph points:", controller.rollGraphData.length)
-        console.log("Yaw graph points:", controller.yawGraphData.length)
-        console.log("Dizziness intervals:", controller.dizzinessData.length)
-        console.log("Graph duration:", controller.graphDuration)
-        console.log("Current time:", controller.currentTime)
-        console.log("Total time:", controller.totalTime)
-
-        // Детальная информация о данных графиков
-        if (controller.pitchGraphData.length > 0) {
-            var firstPoint = controller.pitchGraphData[0]
-            var lastPoint = controller.pitchGraphData[controller.pitchGraphData.length - 1]
-            console.log("First pitch point - time:", firstPoint.time, "value:", firstPoint.value)
-            console.log("Last pitch point - time:", lastPoint.time, "value:", lastPoint.value)
-
-            // Проверяем преобразование координат
-            var canvasWidth = pitchGraph.width
-            var canvasHeight = pitchGraph.height
-            var availableWidth = canvasWidth - 40 // учитываем отступ
-            var xFirst = availableWidth - firstPoint.time / (controller.graphDuration * 1000) * availableWidth
-            var yFirst = canvasHeight - ((firstPoint.value - (-120)) / 240) * canvasHeight
-            console.log("First point coords - x:", xFirst, "y:", yFirst, "canvas:", canvasWidth + "x" + canvasHeight)
-        }
-        console.log("====================")
-
-        // Принудительно обновляем графики
-        pitchGraph.requestPaint()
-        rollGraph.requestPaint()
-        yawGraph.requestPaint()
-    }
-
     // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ ===
     FileDialog {
         id: loadResearchDialog
@@ -806,40 +767,6 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignVCenter
                         }
                     }
-
-                    // Блок информации о частотах (существующий)
-                    Rectangle {
-                        Layout.preferredWidth: 220
-                        Layout.preferredHeight: 50
-                        color: "transparent"
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            spacing: 2
-
-                            Text {
-                                text: "Данные: " + controller.dataFrequency + " Гц | Отрисовка: " + controller.displayFrequency + " Гц"
-                                color: controller.connected ? "#4CAF50" : "#888"
-                                font.pixelSize: 11
-                                font.bold: true
-                            }
-
-                            Text {
-                                text: "Буфер: " + controller.bufferSize + " кадров | График: " + controller.graphDuration + "с"
-                                color: controller.connected ? "#2196F3" : "#888"
-                                font.pixelSize: 11
-                                font.bold: true
-                            }
-
-                            Text {
-                                text: "Режим: " + (controller.logMode ? "Лог" : "Реальное время") +
-                                      " | Точки: " + controller.pitchGraphData.length
-                                color: controller.connected ? "#FF9800" : "#888"
-                                font.pixelSize: 11
-                                font.bold: true
-                            }
-                        }
-                    }
                 }
 
                 Item { Layout.fillWidth: true } // Распорка
@@ -851,15 +778,15 @@ ApplicationWindow {
 
                     Text {
                         text: controller.logMode ?
-                              "📁 Режим лог-файла" :
-                              (controller.connected ? "🔌 Режим COM-порта" : "⏳ Ожидание подключения")
+                              "📁 Режим воспроизведения" :  // Было: "Режим лог-файла"
+                              (controller.connected ? "🔌 Режим реального времени" : "⏳ Ожидание подключения")  // Было: "Режим COM-порта"
                         color: controller.logMode ? "#4caf50" : (controller.connected ? "#2196f3" : "#ff9800")
                         font.pixelSize: 14
                         font.bold: true
                     }
 
                     Text {
-                        text: controller.logMode ? formatStudyInfo(controller.studyInfo) : "Режим реального времени"
+                        text: controller.logMode ? formatStudyInfo(controller.studyInfo) : "Прямое измерение с датчика"  // Было: "Режим реального времени"
                         color: "#aaa"
                         font.pixelSize: 12
                         elide: Text.ElideRight
@@ -1970,7 +1897,8 @@ ApplicationWindow {
                             Layout.preferredWidth: 50
                             onClicked: {
                                 if (controller.logControlsEnabled && controller.logLoaded) {
-                                    controller.seekLog(Math.max(0, controller.currentTime - 5))
+                                            var newTime = Math.max(0, controller.currentTime - 5000); // Назад на 5 секунд
+                                            controller.seekLog(newTime);
                                 }
                             }
                             enabled: controller.logControlsEnabled && controller.logLoaded
@@ -2010,7 +1938,8 @@ ApplicationWindow {
                             Layout.preferredWidth: 50
                             onClicked: {
                                 if (controller.logControlsEnabled && controller.logLoaded) {
-                                    controller.seekLog(Math.min(controller.totalTime, controller.currentTime + 5))
+                                            var newTime = Math.min(controller.totalTime, controller.currentTime + 5000); // Вперед на 5 секунд
+                                            controller.seekLog(newTime);
                                 }
                             }
                             enabled: controller.logControlsEnabled && controller.logLoaded
@@ -2068,7 +1997,7 @@ ApplicationWindow {
                         Text {
                             text: formatTimeWithoutMs(0, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.bold: true
                         }
 
@@ -2078,7 +2007,7 @@ ApplicationWindow {
                         Text {
                             text: formatTimeWithoutMs(controller.totalTime * 0.25, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.bold: true
                             Layout.alignment: Qt.AlignHCenter
                         }
@@ -2089,7 +2018,7 @@ ApplicationWindow {
                         Text {
                             text: formatTimeWithoutMs(Math.round(controller.totalTime / 2), controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.bold: true
                             Layout.alignment: Qt.AlignHCenter
                         }
@@ -2100,7 +2029,7 @@ ApplicationWindow {
                         Text {
                             text: formatTimeWithoutMs(controller.totalTime * 0.75, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.bold: true
                             Layout.alignment: Qt.AlignHCenter
                         }
@@ -2112,7 +2041,7 @@ ApplicationWindow {
                             id: currentTimeLabel
                             text: formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
-                            font.pixelSize: 10
+                            font.pixelSize: 12
                             font.bold: true
                             Layout.alignment: Qt.AlignRight
                         }
@@ -2177,15 +2106,16 @@ ApplicationWindow {
                             onMoved: {
                                 if (controller.logControlsEnabled && controller.logLoaded) {
                                     controller.seekLog(value)
+                                    // ОБНОВЛЯЕМ ВРЕМЯ ПРИ ПЕРЕМЕЩЕНИИ
+                                    currentTimeLabel.text = formatCurrentAndTotalTime(value, controller.totalTime)
                                 }
                             }
 
-                            // Обработка нажатия/отпускания
+                            // Обработка нажатия/отпускания - ИСПРАВЛЕННАЯ ВЕРСИЯ
                             onPressedChanged: {
-                                if (pressed && controller.logControlsEnabled && controller.logLoaded) {
-                                    // Начали перемещение
-                                } else if (!pressed && controller.logControlsEnabled && controller.logLoaded) {
-                                    // Закончили перемещение - значение уже обновлено в onMoved
+                                if (!pressed && controller.logControlsEnabled && controller.logLoaded) {
+                                    // Когда отпускаем слайдер, обновляем отображение времени
+                                    currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
                                 }
                             }
 
@@ -2218,6 +2148,9 @@ ApplicationWindow {
 
                                 // Обновляем значение слайдера
                                 timeSlider.value = targetTime;
+
+                                // НЕМЕДЛЕННО ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ
+                                currentTimeLabel.text = formatCurrentAndTotalTime(targetTime, controller.totalTime);
                             }
 
                             // Обработка перетаскивания для плавного следования бегунка за мышью
@@ -2229,37 +2162,18 @@ ApplicationWindow {
 
                                     controller.seekLog(targetTime);
                                     timeSlider.value = targetTime;
+
+                                    // ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ ПРИ ПЕРЕТАСКИВАНИИ
+                                    currentTimeLabel.text = formatCurrentAndTotalTime(targetTime, controller.totalTime);
                                 }
                             }
+
+                            // ОБРАБОТКА ОТПУСКАНИЯ МЫШИ - ДОБАВЛЯЕМ ЭТОТ БЛОК
+                            onReleased: {
+                                // При отпускании мыши обновляем отображение времени
+                                currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+                            }
                         }
-                    }
-                }
-
-                // Дополнительная информация
-                RowLayout {
-                    Layout.fillWidth: true
-                    visible: controller.logLoaded
-
-                    Text {
-                        text: "Скорость: " + (controller.logPlaying ? "▶ Воспроизведение" : "⏸ Пауза")
-                        color: controller.logControlsEnabled ? "#4caf50" : "#666"
-                        font.pixelSize: 11
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    Text {
-                        text: "Длительность: " + formatTimeWithoutMs(controller.totalTime, controller.totalTime)
-                        color: controller.logControlsEnabled ? "#aaa" : "#666"
-                        font.pixelSize: 11
-                    }
-
-                    Item { Layout.fillWidth: true }
-
-                    Text {
-                        text: "Частота: " + controller.updateFrequency + " Гц"
-                        color: controller.logControlsEnabled ? "#aaa" : "#666"
-                        font.pixelSize: 11
                     }
                 }
             }
@@ -2334,6 +2248,37 @@ ApplicationWindow {
 
                 // Обновляем 3D вид
                 advanced3DHead.setDizzinessEffects(false, false)
+            }
+        }
+    }
+
+    // Обработчик для обновления времени при любом изменении currentTime
+    Connections {
+        target: controller
+        function onCurrentTimeChanged() {
+            // Всегда обновляем отображение времени при изменении currentTime
+            currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+        }
+    }
+
+    // Обработчик для обновления времени при изменении состояния воспроизведения
+    Connections {
+        target: controller
+        function onLogPlayingChanged() {
+            // Обновляем время при запуске/остановке воспроизведения
+            currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+        }
+    }
+
+    Connections {
+        target: controller
+        function onCurrentTimeChanged() {
+            // Всегда обновляем отображение времени при изменении currentTime
+            currentTimeLabel.text = formatCurrentAndTotalTime(controller.currentTime, controller.totalTime)
+
+            // Также обновляем значение слайдера, если он не нажат
+            if (!timeSlider.pressed) {
+                timeSlider.value = controller.currentTime
             }
         }
     }
