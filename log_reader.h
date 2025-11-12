@@ -21,6 +21,7 @@ struct LogDataEntry {
 class LogReader : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(float smoothingWindow READ smoothingWindow WRITE setSmoothingWindow NOTIFY smoothingWindowChanged)
 
 public:
     explicit LogReader(QObject *parent = nullptr);
@@ -32,6 +33,9 @@ public:
 
     float getUpdateFrequency() const { return m_updateFrequency; }
 
+    void setSmoothingWindow(float windowSeconds);
+    float smoothingWindow() const { return m_smoothingWindow; }
+
 private:
     QVector<LogDataEntry> m_logData;
     float m_updateFrequency; // Hz (1-10 Hz)
@@ -40,6 +44,11 @@ private:
     int findIndexByTime(qint64 time);
     QVector<LogDataEntry> getAngleDataInRange(qint64 startTime, qint64 endTime, const QString &angleType);
     float calculateSimpleSpeed(const QVector<LogDataEntry> &entries, const QString &angleType);
+
+    float m_smoothingWindow = 0.8f; // Окно сглаживания в секундах
+
+signals:
+    void smoothingWindowChanged(float window);
 };
 
 #endif // LOG_READER_H

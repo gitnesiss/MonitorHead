@@ -13,6 +13,7 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     , m_logReader(this)  // инициализация log reader
     , m_angularSpeedUpdateFrequencyCOM(4.0f)
     , m_angularSpeedUpdateFrequencyLog(1.2f)
+    , m_angularSpeedDisplayRateLog(10.0f)
 {
     m_logTimer.setInterval(16);
     connect(&m_logTimer, &QTimer::timeout, this, &TiltController::updateLogPlayback);
@@ -87,6 +88,8 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
 
     m_comSpeedUpdateTimer.setInterval(1000 / m_angularSpeedUpdateFrequencyCOM);
     connect(&m_comSpeedUpdateTimer, &QTimer::timeout, this, &TiltController::updateCOMAngularSpeeds);
+
+    m_lastAngularSpeedUpdate = 0;
 }
 
 TiltController::~TiltController()
@@ -477,14 +480,11 @@ void TiltController::playLog()
     if (!m_logLoaded || m_logData.isEmpty()) return;
 
     m_logPlaying = true;
-    m_playbackTimeInitialized = false; // Сбрасываем флаг инициализации
+    m_playbackTimeInitialized = false;
 
     m_logTimer.start();
+
     emit logPlayingChanged(m_logPlaying);
-
-    // ОБНОВЛЯЕМ ОТОБРАЖЕНИЕ ВРЕМЕНИ ПРИ ЗАПУСКЕ
-    emit currentTimeChanged(m_currentTime);
-
     addNotification("Воспроизведение данных начато");
 }
 
@@ -979,7 +979,6 @@ float TiltController::calculateAngularSpeed(QVector<AngleHistory>& history, floa
     return angularSpeed;
 }
 
-// Модифицируем updateLogPlayback:
 void TiltController::updateLogPlayback()
 {
     if (m_currentLogIndex >= m_logData.size()) {
@@ -1012,14 +1011,27 @@ void TiltController::updateLogPlayback()
         // Воспроизводим последний найденный кадр
         const LogEntry &entry = m_logData[targetIndex - 1];
 
-        // ВЫЧИСЛЯЕМ УГЛОВЫЕ СКОРОСТИ С НОВОЙ ЛОГИКОЙ
-        float speedPitch = m_logReader.calculateAngularSpeed(entry.time, "pitch", true);
-        float speedRoll = m_logReader.calculateAngularSpeed(entry.time, "roll", true);
-        float speedYaw = m_logReader.calculateAngularSpeed(entry.time, "yaw", true);
+        // ОБНОВЛЯЕМ УГЛОВЫЕ СКОРОСТИ ТОЛЬКО ЕСЛИ ПРОШЛО ДОСТАТОЧНО ВРЕМЕНИ
+        qint64 updateInterval = 1000 / m_angularSpeedDisplayRateLog; // Интервал в миллисекундах
 
-        updateHeadModel(entry.pitch, entry.roll, entry.yaw,
-                        speedPitch, speedRoll, speedYaw,
-                        entry.dizziness || entry.doctorDizziness);
+        if (currentRealTime - m_lastAngularSpeedUpdate >= updateInterval) {
+            // ВЫЧИСЛЯЕМ УГЛОВЫЕ СКОРОСТИ С НОВОЙ ЛОГИКОЙ
+            float speedPitch = m_logReader.calculateAngularSpeed(entry.time, "pitch", true);
+            float speedRoll = m_logReader.calculateAngularSpeed(entry.time, "roll", true);
+            float speedYaw = m_logReader.calculateAngularSpeed(entry.time, "yaw", true);
+
+            // Обновляем модель с новыми скоростями
+            updateHeadModel(entry.pitch, entry.roll, entry.yaw,
+                            speedPitch, speedRoll, speedYaw,
+                            entry.dizziness || entry.doctorDizziness);
+
+            m_lastAngularSpeedUpdate = currentRealTime;
+        } else {
+            // Обновляем только углы (без пересчета скоростей)
+            updateHeadModel(entry.pitch, entry.roll, entry.yaw,
+                            m_headModel.speedPitch(), m_headModel.speedRoll(), m_headModel.speedYaw(),
+                            entry.dizziness || entry.doctorDizziness);
+        }
 
         m_currentTime = entry.time;
         m_currentLogIndex = targetIndex;
@@ -1841,4 +1853,54 @@ QString TiltController::extractResearchNumber(const QStringList &studyLines)
     }
 
     return "000000"; // значение по умолчанию, если не нашли
+}
+
+void TiltController::setAngularSpeedSmoothingLog(float smoothing)
+{
+    // Окно сглаживания: 0.5-2.0 секунд
+    smoothing = qBound(0.5f, smoothing, 2.0f);
+
+    if (!qFuzzyCompare(m_angularSpeedSmoothingLog, smoothing)) {
+        m_angularSpeedSmoothingLog = smoothing;
+
+        // Обновляем LogReader с новым окном сглаживания
+        m_logReader.setSmoothingWindow(smoothing);
+
+        // Пересчитываем скорости при изменении сглаживания
+        if (m_logMode && m_logLoaded) {
+            updateAngularSpeeds();
+        }
+
+        emit angularSpeedSmoothingLogChanged(smoothing);
+    }
+}
+
+void TiltController::setAngularSpeedUpdateRateLog(float rate)
+{
+    // Частота отображения: 1-30 Гц
+    rate = qBound(1.0f, rate, 30.0f);
+
+    if (!qFuzzyCompare(m_angularSpeedDisplayRateLog, rate)) {
+        m_angularSpeedDisplayRateLog = rate;
+
+        // Сбрасываем таймер, чтобы следующее обновление произошло сразу
+        m_lastAngularSpeedUpdate = 0;
+
+        emit angularSpeedUpdateRateLogChanged(rate);
+    }
+}
+
+void TiltController::setAngularSpeedDisplayRateLog(float rate)
+{
+    // Частота отображения: 1-30 Гц
+    rate = qBound(1.0f, rate, 30.0f);
+
+    if (!qFuzzyCompare(m_angularSpeedDisplayRateLog, rate)) {
+        m_angularSpeedDisplayRateLog = rate;
+
+        // Сбрасываем таймер, чтобы следующее обновление произошло сразу
+        m_lastAngularSpeedUpdate = 0;
+
+        emit angularSpeedDisplayRateLogChanged(rate);
+    }
 }

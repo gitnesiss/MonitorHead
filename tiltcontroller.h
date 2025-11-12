@@ -132,6 +132,9 @@ class TiltController : public QObject
     Q_PROPERTY(float angularSpeedUpdateFrequencyCOM READ angularSpeedUpdateFrequencyCOM WRITE setAngularSpeedUpdateFrequencyCOM NOTIFY angularSpeedUpdateFrequencyCOMChanged)
     Q_PROPERTY(float angularSpeedUpdateFrequencyLog READ angularSpeedUpdateFrequencyLog WRITE setAngularSpeedUpdateFrequencyLog NOTIFY angularSpeedUpdateFrequencyLogChanged)
     Q_PROPERTY(QString loadedResearchNumber READ loadedResearchNumber NOTIFY loadedResearchNumberChanged)  // Обновление надписи в поле номера исследования в режиме воспроизведения
+    Q_PROPERTY(float angularSpeedSmoothingLog READ angularSpeedSmoothingLog WRITE setAngularSpeedSmoothingLog NOTIFY angularSpeedSmoothingLogChanged)
+    Q_PROPERTY(float angularSpeedUpdateRateLog READ angularSpeedUpdateRateLog WRITE setAngularSpeedUpdateRateLog NOTIFY angularSpeedUpdateRateLogChanged)
+    Q_PROPERTY(float angularSpeedDisplayRateLog READ angularSpeedDisplayRateLog WRITE setAngularSpeedDisplayRateLog NOTIFY angularSpeedDisplayRateLogChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -174,6 +177,14 @@ public:
     float angularSpeedUpdateFrequencyLog() const { return m_angularSpeedUpdateFrequencyLog; }
 
     QString loadedResearchNumber() const { return m_loadedResearchNumber; }  // Обновление надписи в поле номера исследования в режиме воспроизведения
+
+    float angularSpeedSmoothingLog() const { return m_angularSpeedSmoothingLog; }
+    float angularSpeedUpdateRateLog() const { return m_angularSpeedUpdateRateLog; }
+    void setAngularSpeedSmoothingLog(float smoothing);
+    void setAngularSpeedUpdateRateLog(float rate);
+
+    float angularSpeedDisplayRateLog() const { return m_angularSpeedDisplayRateLog; }
+    void setAngularSpeedDisplayRateLog(float rate);
 
 public slots:
     void connectDevice();
@@ -379,6 +390,12 @@ private:
 
     QString extractResearchNumber(const QStringList &studyLines);
 
+    float m_angularSpeedSmoothingLog = 0.8f;  // Окно сглаживания в секундах (0.5-2.0)
+    float m_angularSpeedUpdateRateLog = 10.0f; // Частота обновления в Гц (1-30)
+
+    float m_angularSpeedDisplayRateLog = 10.0f; // Частота отображения в Гц (1-30)
+    qint64 m_lastAngularSpeedUpdate = 0; // Время последнего обновления скоростей
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -402,6 +419,10 @@ signals:
     void angularSpeedUpdateFrequencyCOMChanged(float frequency);
     void angularSpeedUpdateFrequencyLogChanged(float frequency);
     void loadedResearchNumberChanged(const QString &loadedResearchNumber);  // Обновление надписи в поле номера исследования в режиме воспроизведения
+
+    void angularSpeedSmoothingLogChanged(float smoothing);
+    void angularSpeedUpdateRateLogChanged(float rate);
+    void angularSpeedDisplayRateLogChanged(float rate);
 };
 
 #endif // TILTCONTROLLER_H

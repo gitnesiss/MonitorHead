@@ -709,99 +709,238 @@ ApplicationWindow {
                         }
                     }
 
-                    // БЛОК УПРАВЛЕНИЯ ЧАСТОТОЙ ДЛЯ ЛОГ-ФАЙЛА (вертикальная компоновка)
-                    ColumnLayout {
-                        Layout.preferredWidth: 140
+
+
+                    // НАСТРОЙКИ ДЛЯ ЛОГ-ФАЙЛА (компактный двухколоночный вид)
+                    RowLayout {
+                        Layout.preferredWidth: 320  // Фиксированная ширина для компактности
                         Layout.preferredHeight: 60
                         Layout.alignment: Qt.AlignVCenter
                         visible: controller.logLoaded
-                        spacing: 5
+                        spacing: 15
 
-                        // Надпись сверху
-                        Text {
-                            text: "Частота скорости лога"
-                            color: controller.logControlsEnabled ? "#aaa" : "#666"
-                            font.pixelSize: 11
+                        // Первый столбец - Сглаживание
+                        ColumnLayout {
+                            Layout.fillWidth: true
                             Layout.alignment: Qt.AlignHCenter
-                        }
+                            spacing: 5
 
-                        // Комбобокс снизу
-                        ComboBox {
-                            id: logFrequencyCombo
-                            Layout.preferredWidth: 120
-                            Layout.preferredHeight: 30
-                            Layout.alignment: Qt.AlignHCenter
-                            model: [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
-                            currentIndex: {
-                                var freq = controller.angularSpeedUpdateFrequencyLog;
-                                if (freq <= 0.8) return 0;
-                                if (freq <= 0.9) return 1;
-                                if (freq <= 1.0) return 2;
-                                if (freq <= 1.1) return 3;
-                                if (freq <= 1.2) return 4;
-                                if (freq <= 1.3) return 5;
-                                if (freq <= 1.4) return 6;
-                                return 7;
-                            }
-                            enabled: controller.logControlsEnabled
-
-                            onActivated: {
-                                var selectedFrequency = model[currentIndex];
-                                controller.angularSpeedUpdateFrequencyLog = selectedFrequency;
-                            }
-
-                            background: Rectangle {
-                                color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
-                                radius: 4
-                                border.color: logFrequencyCombo.activeFocus ? "#4CAF50" : "#555"
-                                border.width: 1
-                            }
-
-                            contentItem: Text {
-                                text: logFrequencyCombo.displayText + " Гц"
-                                color: controller.logControlsEnabled ? "white" : "#888"
+                            // Надпись "Сглаживание" - выровнена по центру
+                            Text {
+                                text: "Сглаживание"
+                                color: controller.logControlsEnabled ? "#aaa" : "#666"
                                 font.pixelSize: 11
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
+                                Layout.alignment: Qt.AlignHCenter
                             }
 
-                            popup: Popup {
-                                y: logFrequencyCombo.height
-                                width: logFrequencyCombo.width
-                                implicitHeight: contentItem.implicitHeight
-                                padding: 1
-
-                                contentItem: ListView {
-                                    clip: true
-                                    implicitHeight: contentHeight
-                                    model: logFrequencyCombo.popup.visible ? logFrequencyCombo.delegateModel : null
-                                    currentIndex: logFrequencyCombo.highlightedIndex
-
-                                    ScrollIndicator.vertical: ScrollIndicator { }
+                            // Комбобокс сглаживания
+                            ComboBox {
+                                id: smoothingCombo
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 30
+                                model: {
+                                    var values = [];
+                                    // Первый диапазон: 0.1с до 1.5с с шагом 0.1с
+                                    for (var i = 1; i <= 15; i++) {
+                                        values.push((i * 0.1).toFixed(1) + "с");
+                                    }
+                                    // Второй диапазон: 2с до 10с с шагом 1с
+                                    for (var j = 2; j <= 10; j++) {
+                                        values.push(j + "с");
+                                    }
+                                    return values;
                                 }
+
+                                // Устанавливаем текущее значение из контроллера
+                                Component.onCompleted: {
+                                    var currentValue = controller.angularSpeedSmoothingLog.toFixed(1) + "с";
+                                    var index = find(currentValue);
+                                    if (index !== -1) {
+                                        currentIndex = index;
+                                    } else {
+                                        // Если точного значения нет, находим ближайшее
+                                        for (var i = 0; i < model.length; i++) {
+                                            var val = parseFloat(model[i]);
+                                            if (val >= controller.angularSpeedSmoothingLog) {
+                                                currentIndex = i;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                onActivated: {
+                                    var textValue = model[currentIndex];
+                                    var numericValue = parseFloat(textValue);
+                                    controller.angularSpeedSmoothingLog = numericValue;
+                                }
+
+                                ToolTip.text: {
+                                    var currentValue = parseFloat(model[currentIndex]);
+                                    return "Окно сглаживания: " + currentValue + " сек\n" +
+                                           "Регулирует плавность отображения угловой скорости.\n" +
+                                           "Больше значение = более плавные, но запаздывающие значения\n" +
+                                           "Меньше значение = более резкие, но быстрые реакции"
+                                }
+                                ToolTip.visible: hovered
+                                ToolTip.delay: 500
 
                                 background: Rectangle {
-                                    color: "#3c3c3c"
-                                    border.color: "#555"
+                                    color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
                                     radius: 4
+                                    border.color: smoothingCombo.activeFocus ? "#4CAF50" : "#555"
+                                    border.width: 1
                                 }
-                            }
-
-                            delegate: ItemDelegate {
-                                width: logFrequencyCombo.width
-                                height: 30
-                                highlighted: logFrequencyCombo.highlightedIndex === index
 
                                 contentItem: Text {
-                                    text: modelData + " Гц"
-                                    color: highlighted ? "#4CAF50" : "white"
+                                    text: smoothingCombo.displayText
+                                    color: controller.logControlsEnabled ? "white" : "#888"
                                     font.pixelSize: 11
                                     verticalAlignment: Text.AlignVCenter
                                     horizontalAlignment: Text.AlignHCenter
                                 }
 
+                                popup: Popup {
+                                    y: smoothingCombo.height
+                                    width: smoothingCombo.width
+                                    implicitHeight: contentItem.implicitHeight
+                                    padding: 1
+
+                                    contentItem: ListView {
+                                        clip: true
+                                        implicitHeight: contentHeight
+                                        model: smoothingCombo.popup.visible ? smoothingCombo.delegateModel : null
+                                        currentIndex: smoothingCombo.highlightedIndex
+                                        ScrollIndicator.vertical: ScrollIndicator { }
+                                    }
+
+                                    background: Rectangle {
+                                        color: "#3c3c3c"
+                                        border.color: "#555"
+                                        radius: 4
+                                    }
+                                }
+
+                                delegate: ItemDelegate {
+                                    width: smoothingCombo.width
+                                    height: 30
+                                    highlighted: smoothingCombo.highlightedIndex === index
+
+                                    contentItem: Text {
+                                        text: modelData
+                                        color: highlighted ? "#4CAF50" : "white"
+                                        font.pixelSize: 11
+                                        verticalAlignment: Text.AlignVCenter
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+
+                                    background: Rectangle {
+                                        color: highlighted ? "#2c2c2c" : "transparent"
+                                    }
+                                }
+                            }
+                        }
+
+                        // Второй столбец - Обновление
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignHCenter
+                            spacing: 5
+
+                            // Надпись "Обновление" - выровнена по центру
+                            Text {
+                                text: "Обновление"
+                                color: controller.logControlsEnabled ? "#aaa" : "#666"
+                                font.pixelSize: 11
+                                Layout.alignment: Qt.AlignHCenter
+                            }
+
+                            // Комбобокс обновления
+                            ComboBox {
+                                id: updateRateCombo
+                                Layout.preferredWidth: 140
+                                Layout.preferredHeight: 30
+                                model: {
+                                    var rates = [];
+                                    for (var i = 1; i <= 30; i++) {
+                                        rates.push(i + " Гц");
+                                    }
+                                    return rates;
+                                }
+
+                                // Устанавливаем текущее значение из контроллера
+                                Component.onCompleted: {
+                                    var currentValue = Math.round(controller.angularSpeedDisplayRateLog) + " Гц";
+                                    currentIndex = find(currentValue);
+                                }
+
+                                onActivated: {
+                                    var textValue = model[currentIndex];
+                                    var numericValue = parseInt(textValue);
+                                    controller.angularSpeedDisplayRateLog = numericValue;
+                                }
+
+                                ToolTip.text: {
+                                    var currentValue = parseInt(model[currentIndex]);
+                                    return "Частота обновления отображения: " + currentValue + " Гц\n" +
+                                           "Регулирует, как часто обновляются цифры угловой скорости на экране.\n" +
+                                           "Больше = плавнее анимация цифр, Меньше = меньше мелькания"
+                                }
+                                ToolTip.visible: hovered
+                                ToolTip.delay: 500
+
                                 background: Rectangle {
-                                    color: highlighted ? "#2c2c2c" : "transparent"
+                                    color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
+                                    radius: 4
+                                    border.color: updateRateCombo.activeFocus ? "#2196F3" : "#555"
+                                    border.width: 1
+                                }
+
+                                contentItem: Text {
+                                    text: updateRateCombo.displayText
+                                    color: controller.logControlsEnabled ? "white" : "#888"
+                                    font.pixelSize: 11
+                                    verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+
+                                popup: Popup {
+                                    y: updateRateCombo.height
+                                    width: updateRateCombo.width
+                                    implicitHeight: contentItem.implicitHeight
+                                    padding: 1
+
+                                    contentItem: ListView {
+                                        clip: true
+                                        implicitHeight: contentHeight
+                                        model: updateRateCombo.popup.visible ? updateRateCombo.delegateModel : null
+                                        currentIndex: updateRateCombo.highlightedIndex
+                                        ScrollIndicator.vertical: ScrollIndicator { }
+                                    }
+
+                                    background: Rectangle {
+                                        color: "#3c3c3c"
+                                        border.color: "#555"
+                                        radius: 4
+                                    }
+                                }
+
+                                delegate: ItemDelegate {
+                                    width: updateRateCombo.width
+                                    height: 30
+                                    highlighted: updateRateCombo.highlightedIndex === index
+
+                                    contentItem: Text {
+                                        text: modelData
+                                        color: highlighted ? "#2196F3" : "white"
+                                        font.pixelSize: 11
+                                        verticalAlignment: Text.AlignVCenter
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+
+                                    background: Rectangle {
+                                        color: highlighted ? "#2c2c2c" : "transparent"
+                                    }
                                 }
                             }
                         }
@@ -2270,6 +2409,28 @@ ApplicationWindow {
         function onResearchNumberChanged(number) {
             researchNumber = number
             researchField.text = number
+        }
+    }
+
+    Connections {
+        target: controller
+
+        function onAngularSpeedSmoothingLogChanged(smoothing) {
+            // Обновляем комбобокс сглаживания при изменении значения из C++
+            var valueToFind = smoothing.toFixed(1) + "с";
+            var index = smoothingCombo.find(valueToFind);
+            if (index !== -1 && smoothingCombo.currentIndex !== index) {
+                smoothingCombo.currentIndex = index;
+            }
+        }
+
+        function onAngularSpeedDisplayRateLogChanged(rate) {
+            // Обновляем комбобокс частоты обновления при изменении значения из C++
+            var valueToFind = Math.round(rate) + " Гц";
+            var index = updateRateCombo.find(valueToFind);
+            if (index !== -1 && updateRateCombo.currentIndex !== index) {
+                updateRateCombo.currentIndex = index;
+            }
         }
     }
 

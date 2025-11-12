@@ -28,7 +28,9 @@ float LogReader::calculateAngularSpeed(qint64 currentTime, const QString &angleT
         return 0.0f;
     }
 
-    qint64 windowMs = static_cast<qint64>(m_windowDuration * 1000);
+    // Заменяем m_windowDuration на m_smoothingWindow
+    qint64 windowMs = static_cast<qint64>(m_smoothingWindow * 1000);
+    // qint64 windowMs = static_cast<qint64>(m_windowDuration * 1000);
     qint64 halfWindowMs = windowMs / 2;
 
     qDebug() << "LogReader: Calculating" << angleType << "speed at time" << currentTime << "ms, window:" << windowMs << "ms";
@@ -151,4 +153,13 @@ float LogReader::calculateSimpleSpeed(const QVector<LogDataEntry> &entries, cons
     speedDegPerSec = qBound(-maxSpeed, speedDegPerSec, maxSpeed);
 
     return speedDegPerSec;
+}
+
+void LogReader::setSmoothingWindow(float windowSeconds)
+{
+    windowSeconds = qBound(0.1f, windowSeconds, 3.0f);
+    if (!qFuzzyCompare(m_smoothingWindow, windowSeconds)) {
+        m_smoothingWindow = windowSeconds;
+        emit smoothingWindowChanged(m_smoothingWindow);
+    }
 }
