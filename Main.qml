@@ -620,161 +620,190 @@ ApplicationWindow {
                         }
                     }
 
-                    // НОВЫЙ БЛОК: УПРАВЛЕНИЕ ЧАСТОТОЙ ОБНОВЛЕНИЯ СКОРОСТИ ДЛЯ COM-ПОРТА
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
+                    // НОВЫЙ БЛОК: УПРАВЛЕНИЕ ЧАСТОТОЙ ОБНОВЛЕНИЯ СКОРОСТИ ДЛЯ COM-ПОРТА (вертикальная компоновка)
+                    ColumnLayout {
+                        Layout.preferredWidth: 140
+                        Layout.preferredHeight: 60
+                        Layout.alignment: Qt.AlignVCenter
                         visible: controller.connected && !controller.logMode
-                        spacing: 10
+                        spacing: 5
 
+                        // Надпись сверху
                         Text {
-                            text: "Частота скорости COM:"
+                            id: comFrequencyLabel
+                            text: "Частота обновления угловой скорости"
                             color: controller.connected ? "#aaa" : "#666"
                             font.pixelSize: 11
-                            Layout.alignment: Qt.AlignVCenter
+                            Layout.alignment: Qt.AlignHCenter
                         }
 
-                        Item {
-                            Layout.fillWidth: true
+                        // Комбобокс снизу
+                        ComboBox {
+                            id: comFrequencyCombo
+                            Layout.preferredWidth: 120
                             Layout.preferredHeight: 30
-                            Layout.alignment: Qt.AlignVCenter
+                            Layout.alignment: Qt.AlignHCenter
+                            model: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+                            currentIndex: controller.angularSpeedUpdateFrequencyCOM - 1
+                            enabled: controller.connected && !controller.logMode
 
-                            Slider {
-                                id: comSpeedUpdateSlider
-                                anchors.fill: parent
-                                from: 0.1
-                                to: 10
-                                stepSize: 0.1
-                                value: controller.angularSpeedUpdateFrequencyCOM
-                                enabled: controller.connected && !controller.logMode
+                            onActivated: {
+                                var selectedFrequency = model[currentIndex];
+                                controller.angularSpeedUpdateFrequencyCOM = selectedFrequency;
+                            }
 
-                                onValueChanged: {
-                                    if (pressed) {
-                                        controller.angularSpeedUpdateFrequencyCOM = value
-                                    }
+                            background: Rectangle {
+                                color: controller.connected && !controller.logMode ? "#3c3c3c" : "#2c2c2c"
+                                radius: 4
+                                border.color: comFrequencyCombo.activeFocus ? "#2196F3" : "#555"
+                                border.width: 1
+                            }
+
+                            contentItem: Text {
+                                text: comFrequencyCombo.displayText + " Гц"
+                                color: controller.connected && !controller.logMode ? "white" : "#888"
+                                font.pixelSize: 11
+                                verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+
+                            popup: Popup {
+                                y: comFrequencyCombo.height
+                                width: comFrequencyCombo.width
+                                implicitHeight: contentItem.implicitHeight
+                                padding: 1
+
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: comFrequencyCombo.popup.visible ? comFrequencyCombo.delegateModel : null
+                                    currentIndex: comFrequencyCombo.highlightedIndex
+
+                                    ScrollIndicator.vertical: ScrollIndicator { }
                                 }
 
                                 background: Rectangle {
-                                    x: comSpeedUpdateSlider.leftPadding
-                                    y: comSpeedUpdateSlider.topPadding + (comSpeedUpdateSlider.availableHeight - height) / 2
-                                    implicitWidth: 200
-                                    implicitHeight: 6
-                                    width: comSpeedUpdateSlider.availableWidth
-                                    height: implicitHeight
-                                    radius: 3
-                                    color: controller.connected && !controller.logMode ? "#3c3c3c" : "#2c2c2c"
-
-                                    Rectangle {
-                                        width: comSpeedUpdateSlider.visualPosition * parent.width
-                                        height: parent.height
-                                        color: controller.connected && !controller.logMode ? "#2196F3" : "#666"
-                                        radius: 3
-                                    }
-                                }
-
-                                handle: Rectangle {
-                                    x: comSpeedUpdateSlider.leftPadding + comSpeedUpdateSlider.visualPosition * (comSpeedUpdateSlider.availableWidth - width)
-                                    y: comSpeedUpdateSlider.topPadding + (comSpeedUpdateSlider.availableHeight - height) / 2
-                                    implicitWidth: 20
-                                    implicitHeight: 20
-                                    radius: 10
-                                    color: comSpeedUpdateSlider.pressed ? "#1976d2" : (controller.connected && !controller.logMode ? "#2196F3" : "#666")
-                                    border.color: controller.connected && !controller.logMode ? "#1976d2" : "#555"
-                                    border.width: 2
-
-                                    scale: comSpeedUpdateSlider.hovered ? 1.2 : 1.0
-                                    Behavior on scale {
-                                        NumberAnimation { duration: 150 }
-                                    }
+                                    color: "#3c3c3c"
+                                    border.color: "#555"
+                                    radius: 4
                                 }
                             }
-                        }
 
-                        Text {
-                            text: controller.angularSpeedUpdateFrequencyCOM.toFixed(1) + " Гц"
-                            color: controller.connected && !controller.logMode ? "#aaa" : "#666"
-                            font.pixelSize: 11
-                            Layout.preferredWidth: 40
-                            Layout.alignment: Qt.AlignVCenter
+                            delegate: ItemDelegate {
+                                width: comFrequencyCombo.width
+                                height: 30
+                                highlighted: comFrequencyCombo.highlightedIndex === index
+
+                                contentItem: Text {
+                                    text: modelData + " Гц"
+                                    color: highlighted ? "#2196F3" : "white"
+                                    font.pixelSize: 11
+                                    verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+
+                                background: Rectangle {
+                                    color: highlighted ? "#2c2c2c" : "transparent"
+                                }
+                            }
                         }
                     }
 
-                    // БЛОК УПРАВЛЕНИЯ ЧАСТОТОЙ ДЛЯ ЛОГ-ФАЙЛА
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
+                    // БЛОК УПРАВЛЕНИЯ ЧАСТОТОЙ ДЛЯ ЛОГ-ФАЙЛА (вертикальная компоновка)
+                    ColumnLayout {
+                        Layout.preferredWidth: 140
+                        Layout.preferredHeight: 60
+                        Layout.alignment: Qt.AlignVCenter
                         visible: controller.logLoaded
-                        spacing: 10
+                        spacing: 5
 
+                        // Надпись сверху
                         Text {
-                            text: "Частота скорости лога:"
+                            text: "Частота скорости лога"
                             color: controller.logControlsEnabled ? "#aaa" : "#666"
                             font.pixelSize: 11
-                            Layout.alignment: Qt.AlignVCenter
+                            Layout.alignment: Qt.AlignHCenter
                         }
 
-                        Item {
-                            Layout.fillWidth: true
+                        // Комбобокс снизу
+                        ComboBox {
+                            id: logFrequencyCombo
+                            Layout.preferredWidth: 120
                             Layout.preferredHeight: 30
-                            Layout.alignment: Qt.AlignVCenter
+                            Layout.alignment: Qt.AlignHCenter
+                            model: [0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+                            currentIndex: {
+                                var freq = controller.angularSpeedUpdateFrequencyLog;
+                                if (freq <= 0.8) return 0;
+                                if (freq <= 0.9) return 1;
+                                if (freq <= 1.0) return 2;
+                                if (freq <= 1.1) return 3;
+                                if (freq <= 1.2) return 4;
+                                if (freq <= 1.3) return 5;
+                                if (freq <= 1.4) return 6;
+                                return 7;
+                            }
+                            enabled: controller.logControlsEnabled
 
-                            Slider {
-                                id: speedUpdateSlider
-                                anchors.fill: parent
-                                from: 0.1
-                                to: 10
-                                stepSize: 0.1
-                                value: controller.angularSpeedUpdateFrequencyLog
-                                enabled: controller.logControlsEnabled
+                            onActivated: {
+                                var selectedFrequency = model[currentIndex];
+                                controller.angularSpeedUpdateFrequencyLog = selectedFrequency;
+                            }
 
-                                onValueChanged: {
-                                    if (pressed) {
-                                        controller.angularSpeedUpdateFrequencyLog = value
-                                    }
+                            background: Rectangle {
+                                color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
+                                radius: 4
+                                border.color: logFrequencyCombo.activeFocus ? "#4CAF50" : "#555"
+                                border.width: 1
+                            }
+
+                            contentItem: Text {
+                                text: logFrequencyCombo.displayText + " Гц"
+                                color: controller.logControlsEnabled ? "white" : "#888"
+                                font.pixelSize: 11
+                                verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+
+                            popup: Popup {
+                                y: logFrequencyCombo.height
+                                width: logFrequencyCombo.width
+                                implicitHeight: contentItem.implicitHeight
+                                padding: 1
+
+                                contentItem: ListView {
+                                    clip: true
+                                    implicitHeight: contentHeight
+                                    model: logFrequencyCombo.popup.visible ? logFrequencyCombo.delegateModel : null
+                                    currentIndex: logFrequencyCombo.highlightedIndex
+
+                                    ScrollIndicator.vertical: ScrollIndicator { }
                                 }
 
                                 background: Rectangle {
-                                    x: speedUpdateSlider.leftPadding
-                                    y: speedUpdateSlider.topPadding + (speedUpdateSlider.availableHeight - height) / 2
-                                    implicitWidth: 200
-                                    implicitHeight: 6
-                                    width: speedUpdateSlider.availableWidth
-                                    height: implicitHeight
-                                    radius: 3
-                                    color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
-
-                                    Rectangle {
-                                        width: speedUpdateSlider.visualPosition * parent.width
-                                        height: parent.height
-                                        color: controller.logControlsEnabled ? "#4CAF50" : "#666"
-                                        radius: 3
-                                    }
-                                }
-
-                                handle: Rectangle {
-                                    x: speedUpdateSlider.leftPadding + speedUpdateSlider.visualPosition * (speedUpdateSlider.availableWidth - width)
-                                    y: speedUpdateSlider.topPadding + (speedUpdateSlider.availableHeight - height) / 2
-                                    implicitWidth: 20
-                                    implicitHeight: 20
-                                    radius: 10
-                                    color: speedUpdateSlider.pressed ? "#45a049" : (controller.logControlsEnabled ? "#4CAF50" : "#666")
-                                    border.color: controller.logControlsEnabled ? "#45a049" : "#555"
-                                    border.width: 2
-
-                                    scale: speedUpdateSlider.hovered ? 1.2 : 1.0
-                                    Behavior on scale {
-                                        NumberAnimation { duration: 150 }
-                                    }
+                                    color: "#3c3c3c"
+                                    border.color: "#555"
+                                    radius: 4
                                 }
                             }
-                        }
 
-                        Text {
-                            text: controller.angularSpeedUpdateFrequencyLog.toFixed(1) + " Гц"
-                            color: controller.logControlsEnabled ? "#aaa" : "#666"
-                            font.pixelSize: 11
-                            Layout.preferredWidth: 40
-                            Layout.alignment: Qt.AlignVCenter
+                            delegate: ItemDelegate {
+                                width: logFrequencyCombo.width
+                                height: 30
+                                highlighted: logFrequencyCombo.highlightedIndex === index
+
+                                contentItem: Text {
+                                    text: modelData + " Гц"
+                                    color: highlighted ? "#4CAF50" : "white"
+                                    font.pixelSize: 11
+                                    verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: Text.AlignHCenter
+                                }
+
+                                background: Rectangle {
+                                    color: highlighted ? "#2c2c2c" : "transparent"
+                                }
+                            }
                         }
                     }
                 }
@@ -2241,6 +2270,27 @@ ApplicationWindow {
         function onResearchNumberChanged(number) {
             researchNumber = number
             researchField.text = number
+        }
+    }
+
+    // Обработчики для обновления комбобоксов частот
+    Connections {
+        target: controller
+        function onAngularSpeedUpdateFrequencyCOMChanged(frequency) {
+            // Обновляем COM комбобокс при изменении значения из C++
+            comFrequencyCombo.currentIndex = frequency - 1;
+        }
+
+        function onAngularSpeedUpdateFrequencyLogChanged(frequency) {
+            // Обновляем Log комбобокс при изменении значения из C++
+            if (frequency <= 0.8) logFrequencyCombo.currentIndex = 0;
+            else if (frequency <= 0.9) logFrequencyCombo.currentIndex = 1;
+            else if (frequency <= 1.0) logFrequencyCombo.currentIndex = 2;
+            else if (frequency <= 1.1) logFrequencyCombo.currentIndex = 3;
+            else if (frequency <= 1.2) logFrequencyCombo.currentIndex = 4;
+            else if (frequency <= 1.3) logFrequencyCombo.currentIndex = 5;
+            else if (frequency <= 1.4) logFrequencyCombo.currentIndex = 6;
+            else logFrequencyCombo.currentIndex = 7;
         }
     }
 

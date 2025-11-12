@@ -11,7 +11,6 @@
 
 TiltController::TiltController(QObject *parent) : QObject(parent)
     , m_logReader(this)  // инициализация log reader
-    // , m_angularSpeedUpdateFrequency(1.25f)
     , m_angularSpeedUpdateFrequencyCOM(4.0f)
     , m_angularSpeedUpdateFrequencyLog(1.2f)
 {
@@ -33,11 +32,8 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
 
     // Инициализация переменных для исследования
     m_researchFrameCounter = 1;
-
     m_headModel.resetData();
-
     refreshPorts();
-
     m_autoConnectTimer.start();
     addNotification("Программа запущена. Попытка автоматического подключения к COM-порту...");
 
@@ -55,7 +51,6 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_startTime = QDateTime::currentMSecsSinceEpoch();
     m_lastDataTime = 0;
     m_useRelativeTime = true; // Используем относительное время для синхронизации
-
     m_lastDizzinessState = false;
     m_currentDizzinessStart = 0;
 
@@ -294,7 +289,6 @@ void TiltController::readCOMPortData()
         processCOMPortData(data);
 
     } catch (const std::exception& e) {
-        qDebug() << "Exception reading COM port:" << e.what();
         safeDisconnect();
     }
 }
@@ -307,7 +301,6 @@ void TiltController::processCOMPortData(const QByteArray &data)
     // Ограничиваем размер буфера неполных данных
     if (m_incompleteData.size() > 2048) {
         m_incompleteData = m_incompleteData.right(1024); // Оставляем последние данные
-        qDebug() << "Incomplete data buffer truncated";
     }
 
     int processedLines = 0;
@@ -363,7 +356,6 @@ void TiltController::processCOMPortData(const QByteArray &data)
                 // ОПТИМИЗАЦИЯ: Проверяем корректность данных
                 if (qIsNaN(pitch) || qIsNaN(roll) || qIsNaN(yaw) ||
                     qIsInf(pitch) || qIsInf(roll) || qIsInf(yaw)) {
-                    qDebug() << "Invalid data detected: NaN or Inf values";
                     continue;
                 }
 
@@ -394,25 +386,22 @@ void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 {
     if (m_isCleaningUp) return;
 
-    qDebug() << "COM port error occurred:" << error;
-
     switch (error) {
     case QSerialPort::NoError:
         return;
 
     case QSerialPort::ResourceError:
-        qDebug() << "COM port resource error (device disconnected)";
-        safeDisconnect();  // Уже есть
+        safeDisconnect();
         break;
 
     case QSerialPort::PermissionError:
         addNotification("Ошибка доступа к COM-порту. Закройте другие программы, использующие этот порт.");
-        safeDisconnect();  // Уже есть
+        safeDisconnect();
         break;
 
     case QSerialPort::DeviceNotFoundError:
         addNotification("COM-порт не найден. Устройство было отключено.");
-        safeDisconnect();  // Уже есть
+        safeDisconnect();
         break;
 
     default:
@@ -624,8 +613,6 @@ void TiltController::loadLogFile(const QString &filePath)
 #endif
     }
 
-    qDebug() << "Loading log file:" << fileName;
-
     if (fileName.isEmpty()) {
         addNotification("Файл не выбран");
         return;
@@ -747,10 +734,6 @@ void TiltController::loadLogFile(const QString &filePath)
         qint64 minTime = m_logData.first().time;
         qint64 maxTime = m_logData.last().time;
         qint64 duration = maxTime - minTime;
-
-        qDebug() << "Log file loaded - Duration:" << duration << "ms,"
-                 << "Frames:" << m_logData.size() << ","
-                 << "Avg frequency:" << (m_logData.size() * 1000.0 / duration) << "Hz";
 
         // Если длительность слишком мала или велика, скорректируем
         if (duration < 1000) {
@@ -1770,7 +1753,6 @@ void TiltController::cleanupCOMPort()
     // Останавливаем таймер COM-порта
     if (m_comSpeedUpdateTimer.isActive()) {
         m_comSpeedUpdateTimer.stop();
-        qDebug() << "COM speed timer stopped on cleanup";
     }
 
     if (m_serialPort) {
@@ -1794,7 +1776,8 @@ void TiltController::cleanupCOMPort()
 
 void TiltController::setAngularSpeedUpdateFrequencyCOM(float frequency)
 {
-    frequency = qBound(0.1f, frequency, 10.0f);
+    // Обновляем диапазон для COM-порта: 1-15 Гц
+    frequency = qBound(1.0f, frequency, 15.0f);
 
     if (!qFuzzyCompare(m_angularSpeedUpdateFrequencyCOM, frequency)) {
 
@@ -1820,7 +1803,8 @@ void TiltController::setAngularSpeedUpdateFrequencyCOM(float frequency)
 
 void TiltController::setAngularSpeedUpdateFrequencyLog(float frequency)
 {
-    frequency = qBound(0.1f, frequency, 10.0f);
+    // Обновляем диапазон для лог-файла: 0.8-1.5 Гц
+    frequency = qBound(0.8f, frequency, 1.5f);
 
     if (!qFuzzyCompare(m_angularSpeedUpdateFrequencyLog, frequency)) {
 
