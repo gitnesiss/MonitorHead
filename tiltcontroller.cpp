@@ -1428,22 +1428,56 @@ int TiltController::findLogIndexByTime(qint64 targetTime)
     return result;
 }
 
+
+
+
+
 void TiltController::updateCOMAngularSpeeds()
 {
     if (!m_connected || m_logMode) return;
 
     // Проверяем, что у нас достаточно данных для расчета
-    if (m_comPitchBuffer.size() < 2 || m_comRollBuffer.size() < 2 || m_comYawBuffer.size() < 2) {
-        qDebug() << "Not enough data for angular speed calculation. Buffers:"
-                 << "Pitch:" << m_comPitchBuffer.size()
-                 << "Roll:" << m_comRollBuffer.size()
-                 << "Yaw:" << m_comYawBuffer.size();
-        return;
-    }
+    // Теперь достаточно хотя бы 2 точек в каждом буфере
+    bool hasEnoughData = (m_comPitchBuffer.size() >= 2) &&
+                         (m_comRollBuffer.size() >= 2) &&
+                         (m_comYawBuffer.size() >= 2);  // ИСПРАВЛЕНО: было m_yawBuffer
 
-    m_currentComSpeedPitch = calculateCOMAngularSpeed(m_comPitchBuffer);
-    m_currentComSpeedRoll = calculateCOMAngularSpeed(m_comRollBuffer);
-    m_currentComSpeedYaw = calculateCOMAngularSpeed(m_comYawBuffer);
+    if (!hasEnoughData) {
+        // Если данных недостаточно, используем простой расчет по последним 2 точкам
+        // или устанавливаем нулевые скорости
+        if (m_dataBuffer.size() >= 2) {
+            // Берем последние 2 кадра из основного буфера
+            DataFrame currentFrame = m_dataBuffer.last();
+            DataFrame prevFrame = m_dataBuffer.at(m_dataBuffer.size() - 2);
+
+            qint64 timeDiff = currentFrame.timestamp - prevFrame.timestamp;
+
+            if (timeDiff > 0) {
+                m_currentComSpeedPitch = (currentFrame.pitch - prevFrame.pitch) * 1000.0f / timeDiff;
+                m_currentComSpeedRoll = (currentFrame.roll - prevFrame.roll) * 1000.0f / timeDiff;
+                m_currentComSpeedYaw = (currentFrame.yaw - prevFrame.yaw) * 1000.0f / timeDiff;
+
+                // Ограничиваем скорости
+                const float maxSpeed = 360.0f;
+                m_currentComSpeedPitch = qBound(-maxSpeed, m_currentComSpeedPitch, maxSpeed);
+                m_currentComSpeedRoll = qBound(-maxSpeed, m_currentComSpeedRoll, maxSpeed);
+                m_currentComSpeedYaw = qBound(-maxSpeed, m_currentComSpeedYaw, maxSpeed);
+
+                qDebug() << "Using fallback speed calculation - Pitch:" << m_currentComSpeedPitch
+                         << "Roll:" << m_currentComSpeedRoll << "Yaw:" << m_currentComSpeedYaw;
+            }
+        } else {
+            // Если вообще нет данных, устанавливаем нули
+            m_currentComSpeedPitch = 0.0f;
+            m_currentComSpeedRoll = 0.0f;
+            m_currentComSpeedYaw = 0.0f;
+        }
+    } else {
+        // Нормальный расчет с использованием буферов
+        m_currentComSpeedPitch = calculateCOMAngularSpeed(m_comPitchBuffer);
+        m_currentComSpeedRoll = calculateCOMAngularSpeed(m_comRollBuffer);
+        m_currentComSpeedYaw = calculateCOMAngularSpeed(m_comYawBuffer);
+    }
 
     // Обновляем модель с вычисленными скоростями
     if (m_dataBuffer.size() > 0) {
@@ -1457,9 +1491,90 @@ void TiltController::updateCOMAngularSpeeds()
                  << "Yaw:" << m_currentComSpeedYaw;
     }
 
-    // Очищаем буферы для следующего периода
-    clearCOMBuffers();
+    // Очищаем буферы только если они стали слишком большими
+    const int maxBufferSize = 100;
+    if (m_comPitchBuffer.size() > maxBufferSize) {
+        m_comPitchBuffer.remove(0, m_comPitchBuffer.size() - maxBufferSize / 2);
+    }
+    if (m_comRollBuffer.size() > maxBufferSize) {
+        m_comRollBuffer.remove(0, m_comRollBuffer.size() - maxBufferSize / 2);
+    }
+    if (m_comYawBuffer.size() > maxBufferSize) {
+        m_comYawBuffer.remove(0, m_comYawBuffer.size() - maxBufferSize / 2);
+    }
 }
+
+// void TiltController::updateCOMAngularSpeeds()
+// {
+//     if (!m_connected || m_logMode) return;
+
+//     // Проверяем, что у нас достаточно данных для расчета
+//     // Теперь достаточно хотя бы 2 точек в каждом буфере
+//     bool hasEnoughData = (m_comPitchBuffer.size() >= 2) &&
+//                          (m_comRollBuffer.size() >= 2) &&
+//                          (m_yawBuffer.size() >= 2);
+
+//     if (!hasEnoughData) {
+//         // Если данных недостаточно, используем простой расчет по последним 2 точкам
+//         // или устанавливаем нулевые скорости
+//         if (m_dataBuffer.size() >= 2) {
+//             // Берем последние 2 кадра из основного буфера
+//             DataFrame currentFrame = m_dataBuffer.last();
+//             DataFrame prevFrame = m_dataBuffer.at(m_dataBuffer.size() - 2);
+
+//             qint64 timeDiff = currentFrame.timestamp - prevFrame.timestamp;
+
+//             if (timeDiff > 0) {
+//                 m_currentComSpeedPitch = (currentFrame.pitch - prevFrame.pitch) * 1000.0f / timeDiff;
+//                 m_currentComSpeedRoll = (currentFrame.roll - prevFrame.roll) * 1000.0f / timeDiff;
+//                 m_currentComSpeedYaw = (currentFrame.yaw - prevFrame.yaw) * 1000.0f / timeDiff;
+
+//                 // Ограничиваем скорости
+//                 const float maxSpeed = 360.0f;
+//                 m_currentComSpeedPitch = qBound(-maxSpeed, m_currentComSpeedPitch, maxSpeed);
+//                 m_currentComSpeedRoll = qBound(-maxSpeed, m_currentComSpeedRoll, maxSpeed);
+//                 m_currentComSpeedYaw = qBound(-maxSpeed, m_currentComSpeedYaw, maxSpeed);
+
+//                 qDebug() << "Using fallback speed calculation - Pitch:" << m_currentComSpeedPitch
+//                          << "Roll:" << m_currentComSpeedRoll << "Yaw:" << m_currentComSpeedYaw;
+//             }
+//         } else {
+//             // Если вообще нет данных, устанавливаем нули
+//             m_currentComSpeedPitch = 0.0f;
+//             m_currentComSpeedRoll = 0.0f;
+//             m_currentComSpeedYaw = 0.0f;
+//         }
+//     } else {
+//         // Нормальный расчет с использованием буферов
+//         m_currentComSpeedPitch = calculateCOMAngularSpeed(m_comPitchBuffer);
+//         m_currentComSpeedRoll = calculateCOMAngularSpeed(m_comRollBuffer);
+//         m_currentComSpeedYaw = calculateCOMAngularSpeed(m_comYawBuffer);
+//     }
+
+//     // Обновляем модель с вычисленными скоростями
+//     if (m_dataBuffer.size() > 0) {
+//         const DataFrame& lastFrame = m_dataBuffer.last();
+//         updateHeadModel(lastFrame.pitch, lastFrame.roll, lastFrame.yaw,
+//                         m_currentComSpeedPitch, m_currentComSpeedRoll, m_currentComSpeedYaw,
+//                         lastFrame.patientDizziness || lastFrame.doctorDizziness);
+
+//         qDebug() << "Updated COM speeds - Pitch:" << m_currentComSpeedPitch
+//                  << "Roll:" << m_currentComSpeedRoll
+//                  << "Yaw:" << m_currentComSpeedYaw;
+//     }
+
+//     // Очищаем буферы только если они стали слишком большими
+//     const int maxBufferSize = 100;
+//     if (m_comPitchBuffer.size() > maxBufferSize) {
+//         m_comPitchBuffer.remove(0, m_comPitchBuffer.size() - maxBufferSize / 2);
+//     }
+//     if (m_comRollBuffer.size() > maxBufferSize) {
+//         m_comRollBuffer.remove(0, m_comRollBuffer.size() - maxBufferSize / 2);
+//     }
+//     if (m_comYawBuffer.size() > maxBufferSize) {
+//         m_comYawBuffer.remove(0, m_comYawBuffer.size() - maxBufferSize / 2);
+//     }
+// }
 
 
 
@@ -1653,16 +1768,16 @@ void TiltController::processDataFrame(const DataFrame& frame)
         m_comRollBuffer.append(AngleDataPoint(frame.timestamp, frame.roll));
         m_comYawBuffer.append(AngleDataPoint(frame.timestamp, frame.yaw));
 
-        // Ограничиваем размер буферов (на всякий случай)
-        const int maxBufferSize = 100;
-        if (m_comPitchBuffer.size() > maxBufferSize) {
-            m_comPitchBuffer.remove(0, m_comPitchBuffer.size() - maxBufferSize);
+        // Запускаем таймер, если он еще не запущен (дополнительная защита)
+        if (!m_comSpeedUpdateTimer.isActive()) {
+            m_comSpeedUpdateTimer.start();
+            qDebug() << "COM speed timer started from processDataFrame";
         }
-        if (m_comRollBuffer.size() > maxBufferSize) {
-            m_comRollBuffer.remove(0, m_comRollBuffer.size() - maxBufferSize);
-        }
-        if (m_comYawBuffer.size() > maxBufferSize) {
-            m_comYawBuffer.remove(0, m_comYawBuffer.size() - maxBufferSize);
+
+        // Если буферы пусты, инициируем немедленный расчет скоростей
+        if (m_comPitchBuffer.size() == 1 && m_comRollBuffer.size() == 1 && m_comYawBuffer.size() == 1) {
+            // Запускаем однократное обновление через короткий интервал
+            QTimer::singleShot(100, this, &TiltController::updateCOMAngularSpeeds);
         }
     }
 
@@ -1798,6 +1913,12 @@ bool TiltController::setupCOMPort()
             m_dataBuffer.clear();
             m_prevFrame = DataFrame();
 
+            // ДОБАВЛЯЕМ ЗАПУСК ТАЙМЕРА ДЛЯ COM-СКОРОСТЕЙ
+            if (!m_comSpeedUpdateTimer.isActive()) {
+                m_comSpeedUpdateTimer.start();
+                qDebug() << "COM speed timer started on connection";
+            }
+
             addNotification("Успешное подключение к " + m_selectedPort);
             emit connectedChanged(m_connected);
             return true;
@@ -1811,17 +1932,17 @@ bool TiltController::setupCOMPort()
         cleanupCOMPort();
         return false;
     }
-
-    // Запускаем таймер для обновления скоростей COM-порта
-    m_comSpeedUpdateTimer.start();
-
-    return true;
 }
 
 void TiltController::cleanupCOMPort()
 {
     m_safetyTimer.stop();
-    m_comSpeedUpdateTimer.stop(); // Останавливаем таймер COM-порта
+
+    // Останавливаем таймер COM-порта
+    if (m_comSpeedUpdateTimer.isActive()) {
+        m_comSpeedUpdateTimer.stop();
+        qDebug() << "COM speed timer stopped on cleanup";
+    }
 
     if (m_serialPort) {
         disconnect(m_serialPort, nullptr, this, nullptr);
@@ -1867,7 +1988,9 @@ void TiltController::setAngularSpeedUpdateFrequencyCOM(float frequency)
                 m_comSpeedUpdateTimer.stop();
             }
             m_comSpeedUpdateTimer.start();
-            clearCOMBuffers();
+
+            // Немедленно обновляем скорости при изменении частоты
+            QTimer::singleShot(50, this, &TiltController::updateCOMAngularSpeeds);
         }
 
         emit angularSpeedUpdateFrequencyCOMChanged(frequency);

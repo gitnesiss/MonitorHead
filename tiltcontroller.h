@@ -132,7 +132,6 @@ class TiltController : public QObject
     Q_PROPERTY(int bufferSize READ bufferSize NOTIFY bufferSizeChanged)
     Q_PROPERTY(bool patientDizziness READ patientDizziness NOTIFY patientDizzinessChanged)
     Q_PROPERTY(bool doctorDizziness READ doctorDizziness NOTIFY doctorDizzinessChanged)
-    Q_PROPERTY(float angularSpeedUpdateFrequency READ angularSpeedUpdateFrequency WRITE setAngularSpeedUpdateFrequency NOTIFY angularSpeedUpdateFrequencyChanged)
     Q_PROPERTY(float angularSpeedUpdateFrequencyCOM READ angularSpeedUpdateFrequencyCOM WRITE setAngularSpeedUpdateFrequencyCOM NOTIFY angularSpeedUpdateFrequencyCOMChanged)
     Q_PROPERTY(float angularSpeedUpdateFrequencyLog READ angularSpeedUpdateFrequencyLog WRITE setAngularSpeedUpdateFrequencyLog NOTIFY angularSpeedUpdateFrequencyLogChanged)
 
