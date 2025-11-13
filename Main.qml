@@ -23,22 +23,6 @@ ApplicationWindow {
     // Свойство для управления видимостью бокового меню
     property bool sideMenuOpen: false
 
-    // Убираем проблемные свойства фокуса и добавляем Shortcut
-    Shortcut {
-        sequence: "Space"
-        onActivated: handleSpaceKey()
-    }
-
-    // Добавляем shortcut для меню (Esc закрывает меню)
-    Shortcut {
-        sequence: "Esc"
-        onActivated: {
-            if (sideMenuOpen) {
-                sideMenuOpen = false
-            }
-        }
-    }
-
     // Свойство для управления подсказками
     property bool tooltipsEnabled: false
 
@@ -58,6 +42,37 @@ ApplicationWindow {
 
     // Таймер записи исследования
     property int researchTimerSeconds: 0
+
+    // Убираем проблемные свойства фокуса и добавляем Shortcut
+    Shortcut {
+        sequence: "Space"
+        onActivated: handleSpaceKey()
+    }
+
+    // Добавляем shortcut для меню (Esc закрывает меню)
+    Shortcut {
+        sequence: "Esc"
+        onActivated: {
+            if (sideMenuOpen) {
+                sideMenuOpen = false
+            }
+        }
+    }
+
+    // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ ===
+    FileDialog {
+        id: loadResearchDialog
+        title: "Выберите файл исследования"
+        currentFolder: "file:///" + applicationDirPath + "/research"
+        nameFilters: ["Текстовые файлы (*.txt)", "Все файлы (*)"]
+        onAccepted: {
+            console.log("Selected file:", selectedFile)
+            controller.loadLogFile(selectedFile)
+        }
+        onRejected: {
+            console.log("File selection canceled")
+        }
+    }
 
     // === БОКОВОЕ МЕНЮ ===
     Rectangle {
@@ -865,9 +880,6 @@ ApplicationWindow {
         }
     }
 
-
-
-
     // Затемнение основного контента при открытом меню
     Rectangle {
         id: overlay
@@ -897,125 +909,13 @@ ApplicationWindow {
         }
     }
 
-    // // Затемнение основного контента при открытом меню
-    // Rectangle {
-    //     id: overlay
-    //     anchors.fill: parent
-    //     color: "black"
-    //     opacity: sideMenuOpen ? 0.5 : 0
-    //     visible: opacity > 0
-    //     z: 999
-
-    //     Behavior on opacity {
-    //         NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
-    //     }
-
-    //     // MouseArea которая закрывает меню только при клике вне меню
-    //     MouseArea {
-    //         anchors.fill: parent
-    //         enabled: sideMenuOpen
-    //         onClicked: {
-    //             sideMenuOpen = false;
-    //         }
-    //     }
-    // }
-
-    function startResearchTimer() {
-        researchTimerSeconds = 0
-        researchTimer.start()
-        updateResearchTimerDisplay()
-    }
-
-    function stopResearchTimer() {
-        researchTimer.stop()
-        researchTimerSeconds = 0
-        updateResearchTimerDisplay()
-    }
-
-    function updateResearchTimerDisplay() {
-        var seconds = researchTimerSeconds % 60
-        var minutes = Math.floor(researchTimerSeconds / 60) % 60
-        var hours = Math.floor(researchTimerSeconds / 3600)
-
-        researchTimerText.text =
-            (hours < 10 ? "0" + hours : hours) + ":" +
-            (minutes < 10 ? "0" + minutes : minutes) + ":" +
-            (seconds < 10 ? "0" + seconds : seconds)
-    }
-
-    Timer {
-        id: researchTimer
-        interval: 1000
-        repeat: true
-        onTriggered: {
-            researchTimerSeconds++
-            updateResearchTimerDisplay()
-        }
-    }
-
-    // Функция для обработки клавиши пробела
-    function handleSpaceKey() {
-        // РЕЖИМ ВОСПРОИЗВЕДЕНИЯ: пробел работает как плей/пауза
-        if (controller.logMode && controller.logLoaded) {
-            if (controller.logPlaying) {
-                controller.pauseLog()
-                showNotification("Воспроизведение приостановлено (ПРОБЕЛ)", false)
-            } else {
-                controller.playLog()
-                showNotification("Воспроизведение продолжено (ПРОБЕЛ)", false)
-            }
-        }
-        // РЕЖИМ РЕАЛЬНОГО ВРЕМЕНИ: пробел работает как запись/остановка записи
-        else if (controller.connected && !controller.logMode) {
-            if (!recording) {
-                // Начинаем запись
-                if (researchField.text.length === 6) {
-                    controller.startResearchRecording(researchField.text)
-                    showNotification("Запись исследования начата (ПРОБЕЛ)", false)
-                } else {
-                    showNotification("Номер исследования должен состоять из 6 цифр", true)
-                }
-            } else {
-                // Останавливаем запись
-                controller.stopResearchRecording()
-                showNotification("Запись исследования остановлена (ПРОБЕЛ)", false)
-            }
-        }
-    }
-
-    // Функция для показа уведомлений
-    function showNotification(message, isError) {
-        if (notificationTimer.running) {
-            return
-        }
-        notificationText.text = message
-        notificationBackground.color = isError ? "#f44336" : "#4CAF50"
-        notificationLayout.height = 40
-        notificationTimer.restart()
-    }
-
-    // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ ===
-    FileDialog {
-        id: loadResearchDialog
-        title: "Выберите файл исследования"
-        currentFolder: "file:///" + applicationDirPath + "/research"
-        nameFilters: ["Текстовые файлы (*.txt)", "Все файлы (*)"]
-        onAccepted: {
-            console.log("Selected file:", selectedFile)
-            controller.loadLogFile(selectedFile)
-        }
-        onRejected: {
-            console.log("File selection canceled")
-        }
-    }
-
     // === ОСНОВНОЙ ИНТЕРФЕЙС ===
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 10
 
-        // === ВЕРХНЯЯ ПАНЕЛЬ: КНОПКА МЕНЮ + УВЕДОМЛЕНИЯ + НАСТРОЙКИ ПОРТА ===
+        // === ВЕРХНЯЯ ПАНЕЛЬ: КНОПКА МЕНЮ + УВЕДОМЛЕНИЯ ===
         RowLayout {
             Layout.fillWidth: true
             spacing: 15
@@ -1127,121 +1027,6 @@ ApplicationWindow {
                     }
                 }
             }
-
-            // === ПРАВАЯ ЧАСТЬ - НАСТРОЙКИ ПОРТА И СТАТУС ===
-            RowLayout {
-                spacing: 15
-
-                // Блок настроек COM-порта
-                Rectangle {
-                    Layout.preferredWidth: 350
-                    Layout.preferredHeight: 80
-                    color: "#2d2d2d"
-                    radius: 8
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 5
-
-                            Text {
-                                text: "COM порт"
-                                color: "#aaa"
-                                font.pixelSize: 12
-                            }
-
-                            ComboBox {
-                                id: comPortCombo
-                                Layout.fillWidth: true
-                                model: controller.availablePorts
-                                onActivated: controller.selectedPort = currentText
-                                background: Rectangle {
-                                    color: "#3c3c3c"
-                                    radius: 4
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            id: connectButton
-                            Layout.preferredWidth: 100
-                            Layout.preferredHeight: 30
-                            Layout.alignment: Qt.AlignBottom
-                            radius: 4
-
-                            property color normalColor: controller.connected ? "#e44a2a" : "#2a7be4"
-                            property color hoverColor: controller.connected ? "#f55a3a" : "#3a8bff"
-                            property color pressedColor: controller.connected ? "#c43a1a" : "#1a6bc4"
-
-                            color: {
-                                if (mouseArea.pressed) {
-                                    return pressedColor
-                                } else if (mouseArea.containsMouse) {
-                                    return hoverColor
-                                } else {
-                                    return normalColor
-                                }
-                            }
-
-                            Behavior on color {
-                                ColorAnimation { duration: 150 }
-                            }
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: controller.connected ? "Отключить" : "Подключить"
-                                color: "white"
-                                font.bold: true
-                            }
-
-                            MouseArea {
-                                id: mouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (controller.connected) {
-                                        controller.disconnectDevice()
-                                    } else {
-                                        controller.connectDevice()
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Статус подключения
-                Rectangle {
-                    Layout.preferredWidth: 150
-                    Layout.preferredHeight: 30
-                    color: "#333"
-                    radius: 15
-                    border.color: "#555"
-
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        Rectangle {
-                            width: 12
-                            height: 12
-                            radius: 6
-                            color: controller.connected ? "#4CAF50" : "#f44336"
-                        }
-
-                        Text {
-                            text: controller.connected ? "Подключено" : "Не подключено"
-                            color: controller.connected ? "#4CAF50" : "#f44336"
-                            font.pixelSize: 12
-                        }
-                    }
-                }
-            }
         }
 
         // === ПАНЕЛЬ УПРАВЛЕНИЯ ===
@@ -1251,25 +1036,25 @@ ApplicationWindow {
             color: "#2d2d2d"
             radius: 8
 
-            RowLayout {
+            // Используем Row вместо RowLayout для более точного позиционирования
+            Row {
                 anchors.fill: parent
                 anchors.margins: 10
                 spacing: 15
 
-                // Левая часть - исследование и кнопки
-                RowLayout {
+                // === ЛЕВАЯ ЧАСТЬ - ИССЛЕДОВАНИЕ И КНОПКИ ===
+                Row {
                     spacing: 15
-                    Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                    anchors.verticalCenter: parent.verticalCenter
 
-                    // Заменяем существующий блок исследования на:
+                    // Блок исследования
                     Column {
                         spacing: 5
-                        Layout.alignment: Qt.AlignVCenter
-                        width: 120 // Фиксированная ширина для центрирования
-
+                        width: 120
+                        anchors.verticalCenter: parent.verticalCenter
 
                         Text {
-                            text: "Исследование"  // Всегда одинаковая надпись в обоих режимах
+                            text: "Исследование"
                             color: "#aaa"
                             font.pixelSize: 14
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -1281,9 +1066,8 @@ ApplicationWindow {
                             placeholderText: "000000"
                             maximumLength: 6
                             validator: RegularExpressionValidator { regularExpression: /[0-9]{6}/ }
-                            // ОТОБРАЖАЕМ РАЗНЫЕ НОМЕРА В ЗАВИСИМОСТИ ОТ РЕЖИМА
                             text: controller.logMode ? controller.loadedResearchNumber : controller.researchNumber
-                            enabled: !controller.logMode // Разрешаем редактирование только в режиме COM-порта
+                            enabled: !controller.logMode
                             onTextChanged: {
                                 if (!controller.logMode && text.length === 6) {
                                     controller.researchNumber = text
@@ -1300,7 +1084,6 @@ ApplicationWindow {
                             horizontalAlignment: TextInput.AlignHCenter
                             anchors.horizontalCenter: parent.horizontalCenter
 
-                            // Подсказка при наведении
                             ToolTip.visible: tooltipsEnabled && hovered
                             ToolTip.text: controller.logMode ?
                                 "Номер загруженного исследования (только просмотр)" :
@@ -1314,9 +1097,9 @@ ApplicationWindow {
                             text: "00:00:00"
                             color: {
                                 if (controller.recording && controller.connected && !controller.logMode) {
-                                    return "#4CAF50"  // Зеленый при активной записи
+                                    return "#4CAF50"
                                 } else {
-                                    return "#888"   // Серый в остальных случаях
+                                    return "#888"
                                 }
                             }
                             font.pixelSize: 14
@@ -1327,10 +1110,11 @@ ApplicationWindow {
                     // Кнопка записи исследования
                     Rectangle {
                         id: researchButton
-                        width: 100
+                        width: 110
                         height: 50
                         radius: 6
                         enabled: controller.connected && !controller.logMode
+                        anchors.verticalCenter: parent.verticalCenter
 
                         property color normalColor: recording ? "#e44a2a" : (enabled ? "#2a7be4" : "#555")
                         property color hoverColor: recording ? "#f55a3a" : (enabled ? "#3a8bff" : "#666")
@@ -1355,7 +1139,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             text: recording ? "Остановить\nисследование" : "Записать\nисследование"
                             color: enabled ? "white" : "#888"
-                            font.pixelSize: 12
+                            font.pixelSize: 14
                             font.bold: enabled
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -1403,10 +1187,11 @@ ApplicationWindow {
                     // Кнопка калибровки
                     Rectangle {
                         id: calibrationButton
-                        width: 100
+                        width: 110
                         height: 50
                         radius: 6
                         enabled: controller.connected && !controller.logMode && !controller.recording
+                        anchors.verticalCenter: parent.verticalCenter
 
                         property color normalColor: enabled ? "#9c27b0" : "#555"
                         property color hoverColor: enabled ? "#ac37c0" : "#666"
@@ -1457,20 +1242,20 @@ ApplicationWindow {
 
                             onClicked: {
                                 if (enabled) {
-                                    // Действие для калибровки
                                     showNotification("Запущена калибровка устройства", false)
                                 }
                             }
                         }
                     }
 
-                    // Кнопка загрузки исследования (блокируется во время записи)
+                    // Кнопка загрузки исследования
                     Rectangle {
                         id: loadResearchButton
-                        width: 100
+                        width: 110
                         height: 50
                         radius: 6
-                        enabled: !recording // Блокируем во время записи
+                        enabled: !recording
+                        anchors.verticalCenter: parent.verticalCenter
 
                         property color normalColor: enabled ? "#4caf50" : "#555"
                         property color hoverColor: enabled ? "#5cbf62" : "#666"
@@ -1494,7 +1279,7 @@ ApplicationWindow {
                             anchors.centerIn: parent
                             text: "Загрузить\nисследование"
                             color: enabled ? "white" : "#888"
-                            font.pixelSize: 12
+                            font.pixelSize: 14
                             font.bold: enabled
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -1526,29 +1311,186 @@ ApplicationWindow {
                     }
                 }
 
-                Item { Layout.fillWidth: true } // Распорка
-
-                // Правая часть - информация о режиме
-                ColumnLayout {
-                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                // === ЦЕНТРАЛЬНАЯ ЧАСТЬ - ИНФОРМАЦИЯ О РЕЖИМЕ (АБСОЛЮТНО ПО ЦЕНТРУ) ===
+                Column {
+                    anchors.centerIn: parent
                     spacing: 5
 
                     Text {
                         text: controller.logMode ?
-                              "📁 Режим воспроизведения" :  // Было: "Режим лог-файла"
-                              (controller.connected ? "🔌 Режим реального времени" : "⏳ Ожидание подключения")  // Было: "Режим COM-порта"
+                              "📁 Режим воспроизведения" :
+                              (controller.connected ? "🔌 Режим реального времени" : "⏳ Ожидание подключения")
                         color: controller.logMode ? "#4caf50" : (controller.connected ? "#2196f3" : "#ff9800")
                         font.pixelSize: 14
                         font.bold: true
+                        anchors.horizontalCenter: parent.horizontalCenter
                     }
 
                     Text {
                         text: controller.logMode ? "Чтение данных из файла" : "Получение данных с датчика"
-                              // controller.logMode ? Formatters.formatStudyInfo(controller.studyInfo) : "Получение данных с датчика"
                         color: "#aaa"
                         font.pixelSize: 12
-                        elide: Text.ElideRight
-                        Layout.maximumWidth: 400
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+
+                // === ПРАВАЯ ЧАСТЬ - КОМПАКТНЫЙ БЛОК COM-ПОРТА ===
+                Rectangle {
+                    width: 280
+                    height: 70
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.right: parent.right
+                    color: "#282828"  //"#1e1e1e"
+                    radius: 8
+                    // border.color: "#222"
+                    // border.width: 1
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 5
+
+                        // Первая строка: заголовок и статус
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            // Заголовок "COM-порт"
+                            Text {
+                                text: "COM-порт"
+                                color: "#aaa"
+                                font.pixelSize: 12
+                                Layout.alignment: Qt.AlignLeft
+                            }
+
+                            Item { Layout.fillWidth: true } // Распорка
+
+                            // Статус подключения
+                            RowLayout {
+                                spacing: 6
+                                Layout.alignment: Qt.AlignRight
+
+                                // Текст статуса
+                                Text {
+                                    text: controller.connected ? "Подключено" : "Не подключено"
+                                    color: controller.connected ? "#4CAF50" : "#f44336"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+
+                                // Индикатор статуса
+                                Rectangle {
+                                    width: 10
+                                    height: 10
+                                    radius: 5
+                                    color: controller.connected ? "#4CAF50" : "#f44336"
+                                }
+                            }
+                        }
+
+                        // Вторая строка: комбобокс и кнопка
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            // Комбобокс выбора порта
+                            ComboBox {
+                                id: comPortCombo
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 30
+                                model: controller.availablePorts
+                                onActivated: controller.selectedPort = currentText
+
+                                background: Rectangle {
+                                    color: "#3c3c3c"
+                                    radius: 4
+                                    border.color: comPortCombo.activeFocus ? "#4caf50" : "#555"
+                                    border.width: 1
+                                }
+
+                                contentItem: Text {
+                                    text: comPortCombo.displayText
+                                    color: "white"
+                                    font.pixelSize: 12
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 8
+                                }
+
+                                popup: Popup {
+                                    y: comPortCombo.height
+                                    width: comPortCombo.width
+                                    implicitHeight: contentItem.implicitHeight
+                                    padding: 1
+
+                                    contentItem: ListView {
+                                        clip: true
+                                        implicitHeight: contentHeight
+                                        model: comPortCombo.popup.visible ? comPortCombo.delegateModel : null
+                                        currentIndex: comPortCombo.highlightedIndex
+
+                                        ScrollIndicator.vertical: ScrollIndicator { }
+                                    }
+
+                                    background: Rectangle {
+                                        color: "#3c3c3c"
+                                        border.color: "#555"
+                                        radius: 4
+                                    }
+                                }
+                            }
+
+                            // Кнопка подключения/отключения
+                            Rectangle {
+                                id: connectButton
+                                Layout.preferredWidth: 120
+                                Layout.preferredHeight: 30
+                                radius: 4
+
+                                property color normalColor: controller.connected ? "#e44a2a" : "#2a7be4"
+                                property color hoverColor: controller.connected ? "#f55a3a" : "#3a8bff"
+                                property color pressedColor: controller.connected ? "#c43a1a" : "#1a6bc4"
+
+                                color: {
+                                    if (mouseArea.pressed) {
+                                        return pressedColor
+                                    } else if (mouseArea.containsMouse) {
+                                        return hoverColor
+                                    } else {
+                                        return normalColor
+                                    }
+                                }
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: controller.connected ? "Отключить" : "Подключить"
+                                    color: "white"
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                }
+
+                                MouseArea {
+                                    id: mouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if (controller.connected) {
+                                            controller.disconnectDevice()
+                                        } else {
+                                            controller.connectDevice()
+                                        }
+                                    }
+
+                                    ToolTip.visible: tooltipsEnabled && containsMouse
+                                    ToolTip.text: controller.connected ?
+                                        "Отключиться от COM-порта" :
+                                        "Подключиться к выбранному COM-порту"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -2226,147 +2168,6 @@ ApplicationWindow {
                             }
                         }
                     }
-                    // RowLayout {
-                    //     anchors.centerIn: parent
-                    //     spacing: 10
-
-                    //     Button {
-                    //         text: "⏮️"
-                    //         Layout.preferredWidth: 50
-                    //         onClicked: {
-                    //             if (controller.logControlsEnabled && controller.logLoaded) {
-                    //                 controller.seekLog(0)
-                    //             }
-                    //         }
-                    //         enabled: controller.logControlsEnabled && controller.logLoaded
-                    //         ToolTip.text: "В начало"
-                    //         background: Rectangle {
-                    //             color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                    //             radius: 4
-                    //         }
-                    //     }
-
-                    //     Button {
-                    //         text: "⏪"
-                    //         Layout.preferredWidth: 50
-                    //         onClicked: {
-                    //             if (controller.logControlsEnabled && controller.logLoaded) {
-                    //                         var newTime = Math.max(0, controller.currentTime - 5000); // Назад на 5 секунд
-                    //                         controller.seekLog(newTime);
-                    //             }
-                    //         }
-                    //         enabled: controller.logControlsEnabled && controller.logLoaded
-                    //         ToolTip.text: "Назад на 5с"
-                    //         background: Rectangle {
-                    //             color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                    //             radius: 4
-                    //         }
-                    //     }
-
-
-
-
-                    //     Rectangle {
-                    //         id: playPauseBtn
-                    //         Layout.preferredWidth: 80
-                    //         Layout.preferredHeight: 40
-                    //         radius: 4
-                    //         color: {
-                    //             if (!controller.logControlsEnabled || !controller.logLoaded) {
-                    //                 return "#3a5c42"
-                    //             } else if (playPauseMouseArea.pressed) {
-                    //                 return "#3a5c42"
-                    //             } else if (playPauseMouseArea.containsMouse) {
-                    //                 return "#5cbf62"
-                    //             } else {
-                    //                 return "#4caf50"
-                    //             }
-                    //         }
-                    //         enabled: controller.logControlsEnabled && controller.logLoaded
-
-                    //         Text {
-                    //             anchors.centerIn: parent
-                    //             text: controller.logPlaying ? "⏸️" : "▶️"
-                    //             color: "white"
-                    //             font.pixelSize: 14
-                    //             horizontalAlignment: Text.AlignHCenter
-                    //             verticalAlignment: Text.AlignVCenter
-                    //         }
-
-                    //         MouseArea {
-                    //             id: playPauseMouseArea
-                    //             anchors.fill: parent
-                    //             hoverEnabled: true
-                    //             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    //             onClicked: {
-                    //                 if (parent.enabled) {
-                    //                     controller.logPlaying ? controller.pauseLog() : controller.playLog()
-                    //                 }
-                    //             }
-
-                    //             ToolTip.visible: tooltipsEnabled && containsMouse
-                    //             ToolTip.delay: 500
-                    //             ToolTip.text: {
-                    //                 if (!parent.enabled) {
-                    //                     return "Воспроизведение недоступно"
-                    //                 } else if (controller.logPlaying) {
-                    //                     return "Приостановить воспроизведение\n[ ПРОБЕЛ ]"
-                    //                 } else {
-                    //                     return "Начать воспроизведение\n[ ПРОБЕЛ ]"
-                    //                 }
-                    //             }
-                    //         }
-                    //     }
-
-                    //     Button {
-                    //         text: "⏩"
-                    //         Layout.preferredWidth: 50
-                    //         onClicked: {
-                    //             if (controller.logControlsEnabled && controller.logLoaded) {
-                    //                         var newTime = Math.min(controller.totalTime, controller.currentTime + 5000); // Вперед на 5 секунд
-                    //                         controller.seekLog(newTime);
-                    //             }
-                    //         }
-                    //         enabled: controller.logControlsEnabled && controller.logLoaded
-                    //         ToolTip.text: "Вперед на 5с"
-                    //         background: Rectangle {
-                    //             color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                    //             radius: 4
-                    //         }
-                    //     }
-
-                    //     Button {
-                    //         text: "⏭️"
-                    //         Layout.preferredWidth: 50
-                    //         onClicked: {
-                    //             if (controller.logControlsEnabled && controller.logLoaded) {
-                    //                 controller.seekLog(controller.totalTime)
-                    //             }
-                    //         }
-                    //         enabled: controller.logControlsEnabled && controller.logLoaded
-                    //         ToolTip.text: "В конец"
-                    //         background: Rectangle {
-                    //             color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                    //             radius: 4
-                    //         }
-                    //     }
-
-                    //     Button {
-                    //         text: "⏹️"
-                    //         Layout.preferredWidth: 50
-                    //         onClicked: {
-                    //             if (controller.logControlsEnabled) {
-                    //                 controller.stopLog()
-                    //             }
-                    //         }
-                    //         enabled: controller.logControlsEnabled
-                    //         ToolTip.text: "Стоп"
-                    //         background: Rectangle {
-                    //             color: parent.down ? "#7c3a3a" : (parent.enabled ? "#f44336" : "#7c3a3a")
-                    //             radius: 4
-                    //         }
-                    //     }
-                    // }
                 }
 
                 // Временная шкала с метками
@@ -2737,6 +2538,86 @@ ApplicationWindow {
         }
     }
 
+    // Обработка критических ошибок
+    function handleCriticalError(message) {
+        console.error("Critical error:", message)
+        showNotification("Критическая ошибка: " + message, true)
+    }
+
+    function startResearchTimer() {
+        researchTimerSeconds = 0
+        researchTimer.start()
+        updateResearchTimerDisplay()
+    }
+
+    function stopResearchTimer() {
+        researchTimer.stop()
+        researchTimerSeconds = 0
+        updateResearchTimerDisplay()
+    }
+
+    function updateResearchTimerDisplay() {
+        var seconds = researchTimerSeconds % 60
+        var minutes = Math.floor(researchTimerSeconds / 60) % 60
+        var hours = Math.floor(researchTimerSeconds / 3600)
+
+        researchTimerText.text =
+            (hours < 10 ? "0" + hours : hours) + ":" +
+            (minutes < 10 ? "0" + minutes : minutes) + ":" +
+            (seconds < 10 ? "0" + seconds : seconds)
+    }
+
+    // Функция для обработки клавиши пробела
+    function handleSpaceKey() {
+        // РЕЖИМ ВОСПРОИЗВЕДЕНИЯ: пробел работает как плей/пауза
+        if (controller.logMode && controller.logLoaded) {
+            if (controller.logPlaying) {
+                controller.pauseLog()
+                showNotification("Воспроизведение приостановлено (ПРОБЕЛ)", false)
+            } else {
+                controller.playLog()
+                showNotification("Воспроизведение продолжено (ПРОБЕЛ)", false)
+            }
+        }
+        // РЕЖИМ РЕАЛЬНОГО ВРЕМЕНИ: пробел работает как запись/остановка записи
+        else if (controller.connected && !controller.logMode) {
+            if (!recording) {
+                // Начинаем запись
+                if (researchField.text.length === 6) {
+                    controller.startResearchRecording(researchField.text)
+                    showNotification("Запись исследования начата (ПРОБЕЛ)", false)
+                } else {
+                    showNotification("Номер исследования должен состоять из 6 цифр", true)
+                }
+            } else {
+                // Останавливаем запись
+                controller.stopResearchRecording()
+                showNotification("Запись исследования остановлена (ПРОБЕЛ)", false)
+            }
+        }
+    }
+
+    // Функция для показа уведомлений
+    function showNotification(message, isError) {
+        if (notificationTimer.running) {
+            return
+        }
+        notificationText.text = message
+        notificationBackground.color = isError ? "#f44336" : "#4CAF50"
+        notificationLayout.height = 40
+        notificationTimer.restart()
+    }
+
+    // Тестовое уведомление при запуске
+    Component.onCompleted: {
+        timer.start()
+        console.log("Application started, headModel.hasData:", controller.headModel.hasData)
+        console.log("Initial roll value:", controller.headModel.roll)
+
+        // Инициализация номера исследования
+        controller.initializeResearchNumber()
+    }
+
     Timer {
         id: cleanupTimer
         interval: 100
@@ -2759,27 +2640,21 @@ ApplicationWindow {
         }
     }
 
-    // Обработка критических ошибок
-    function handleCriticalError(message) {
-        console.error("Critical error:", message)
-        showNotification("Критическая ошибка: " + message, true)
-    }
-
-    // Тестовое уведомление при запуске
-    Component.onCompleted: {
-        timer.start()
-        console.log("Application started, headModel.hasData:", controller.headModel.hasData)
-        console.log("Initial roll value:", controller.headModel.roll)
-
-        // Инициализация номера исследования
-        controller.initializeResearchNumber()
-    }
-
     Timer {
         id: timer
         interval: 1000
         onTriggered: {
             showNotification("Система готова к работе", false)
+        }
+    }
+
+    Timer {
+        id: researchTimer
+        interval: 1000
+        repeat: true
+        onTriggered: {
+            researchTimerSeconds++
+            updateResearchTimerDisplay()
         }
     }
 }
