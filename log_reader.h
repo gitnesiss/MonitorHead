@@ -45,7 +45,7 @@ private:
     QVector<LogDataEntry> getAngleDataInRange(qint64 startTime, qint64 endTime, const QString &angleType);
     float calculateSimpleSpeed(const QVector<LogDataEntry> &entries, const QString &angleType);
 
-    float m_smoothingWindow = 0.8f; // Окно сглаживания в секундах
+    float m_smoothingWindow = 0.5f; // Окно сглаживания в секундах
 
 signals:
     void smoothingWindowChanged(float window);

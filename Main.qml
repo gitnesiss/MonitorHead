@@ -1543,9 +1543,8 @@ ApplicationWindow {
                     }
 
                     Text {
-                        text: controller.logMode ?
-                              Formatters.formatStudyInfo(controller.studyInfo) :
-                              "Получение данных с датчика"
+                        text: controller.logMode ? "Чтение данных из файла" : "Получение данных с датчика"
+                              // controller.logMode ? Formatters.formatStudyInfo(controller.studyInfo) : "Получение данных с датчика"
                         color: "#aaa"
                         font.pixelSize: 12
                         elide: Text.ElideRight
@@ -1907,42 +1906,114 @@ ApplicationWindow {
                         anchors.centerIn: parent
                         spacing: 10
 
-                        Button {
-                            text: "⏮️"
+                        // Кнопка "В начало"
+                        Rectangle {
+                            id: toStartButton
                             Layout.preferredWidth: 50
-                            onClicked: {
-                                if (controller.logControlsEnabled && controller.logLoaded) {
-                                    controller.seekLog(0)
+                            Layout.preferredHeight: 40
+                            radius: 4
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+
+                            property color normalColor: enabled ? "#2196F3" : "#555"
+                            property color hoverColor: enabled ? "#42A5F5" : "#666"
+                            property color pressedColor: enabled ? "#1976D2" : "#444"
+
+                            color: {
+                                if (!enabled) return normalColor;
+                                if (toStartMouseArea.pressed) {
+                                    return pressedColor
+                                } else if (toStartMouseArea.containsMouse) {
+                                    return hoverColor
+                                } else {
+                                    return normalColor
                                 }
                             }
-                            enabled: controller.logControlsEnabled && controller.logLoaded
-                            ToolTip.text: "В начало"
-                            background: Rectangle {
-                                color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                                radius: 4
+
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏮️"
+                                color: enabled ? "white" : "#888"
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            MouseArea {
+                                id: toStartMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: {
+                                    if (enabled) {
+                                        controller.seekLog(0)
+                                    }
+                                }
+
+                                ToolTip.visible: tooltipsEnabled && containsMouse
+                                ToolTip.delay: 500
+                                ToolTip.text: "Перейти в начало записи"
                             }
                         }
 
-                        Button {
-                            text: "⏪"
+                        // Кнопка "Назад на 5с"
+                        Rectangle {
+                            id: rewindButton
                             Layout.preferredWidth: 50
-                            onClicked: {
-                                if (controller.logControlsEnabled && controller.logLoaded) {
-                                            var newTime = Math.max(0, controller.currentTime - 5000); // Назад на 5 секунд
-                                            controller.seekLog(newTime);
+                            Layout.preferredHeight: 40
+                            radius: 4
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+
+                            property color normalColor: enabled ? "#2196F3" : "#555"
+                            property color hoverColor: enabled ? "#42A5F5" : "#666"
+                            property color pressedColor: enabled ? "#1976D2" : "#444"
+
+                            color: {
+                                if (!enabled) return normalColor;
+                                if (rewindMouseArea.pressed) {
+                                    return pressedColor
+                                } else if (rewindMouseArea.containsMouse) {
+                                    return hoverColor
+                                } else {
+                                    return normalColor
                                 }
                             }
-                            enabled: controller.logControlsEnabled && controller.logLoaded
-                            ToolTip.text: "Назад на 5с"
-                            background: Rectangle {
-                                color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                                radius: 4
+
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏪"
+                                color: enabled ? "white" : "#888"
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            MouseArea {
+                                id: rewindMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: {
+                                    if (enabled) {
+                                        var newTime = Math.max(0, controller.currentTime - 5000);
+                                        controller.seekLog(newTime);
+                                    }
+                                }
+
+                                ToolTip.visible: tooltipsEnabled && containsMouse
+                                ToolTip.delay: 500
+                                ToolTip.text: "Перемотать назад на 5 секунд"
                             }
                         }
 
-
-
-
+                        // Кнопка Play/Pause (уже в правильном стиле) - оставляем как есть
                         Rectangle {
                             id: playPauseBtn
                             Layout.preferredWidth: 80
@@ -1995,55 +2066,307 @@ ApplicationWindow {
                             }
                         }
 
-                        Button {
-                            text: "⏩"
+                        // Кнопка "Вперед на 5с"
+                        Rectangle {
+                            id: forwardButton
                             Layout.preferredWidth: 50
-                            onClicked: {
-                                if (controller.logControlsEnabled && controller.logLoaded) {
-                                            var newTime = Math.min(controller.totalTime, controller.currentTime + 5000); // Вперед на 5 секунд
-                                            controller.seekLog(newTime);
+                            Layout.preferredHeight: 40
+                            radius: 4
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+
+                            property color normalColor: enabled ? "#2196F3" : "#555"
+                            property color hoverColor: enabled ? "#42A5F5" : "#666"
+                            property color pressedColor: enabled ? "#1976D2" : "#444"
+
+                            color: {
+                                if (!enabled) return normalColor;
+                                if (forwardMouseArea.pressed) {
+                                    return pressedColor
+                                } else if (forwardMouseArea.containsMouse) {
+                                    return hoverColor
+                                } else {
+                                    return normalColor
                                 }
                             }
-                            enabled: controller.logControlsEnabled && controller.logLoaded
-                            ToolTip.text: "Вперед на 5с"
-                            background: Rectangle {
-                                color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                                radius: 4
+
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏩"
+                                color: enabled ? "white" : "#888"
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            MouseArea {
+                                id: forwardMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: {
+                                    if (enabled) {
+                                        var newTime = Math.min(controller.totalTime, controller.currentTime + 5000);
+                                        controller.seekLog(newTime);
+                                    }
+                                }
+
+                                ToolTip.visible: tooltipsEnabled && containsMouse
+                                ToolTip.delay: 500
+                                ToolTip.text: "Перемотать вперед на 5 секунд"
                             }
                         }
 
-                        Button {
-                            text: "⏭️"
+                        // Кнопка "В конец"
+                        Rectangle {
+                            id: toEndButton
                             Layout.preferredWidth: 50
-                            onClicked: {
-                                if (controller.logControlsEnabled && controller.logLoaded) {
-                                    controller.seekLog(controller.totalTime)
+                            Layout.preferredHeight: 40
+                            radius: 4
+                            enabled: controller.logControlsEnabled && controller.logLoaded
+
+                            property color normalColor: enabled ? "#2196F3" : "#555"
+                            property color hoverColor: enabled ? "#42A5F5" : "#666"
+                            property color pressedColor: enabled ? "#1976D2" : "#444"
+
+                            color: {
+                                if (!enabled) return normalColor;
+                                if (toEndMouseArea.pressed) {
+                                    return pressedColor
+                                } else if (toEndMouseArea.containsMouse) {
+                                    return hoverColor
+                                } else {
+                                    return normalColor
                                 }
                             }
-                            enabled: controller.logControlsEnabled && controller.logLoaded
-                            ToolTip.text: "В конец"
-                            background: Rectangle {
-                                color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
-                                radius: 4
+
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏭️"
+                                color: enabled ? "white" : "#888"
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            MouseArea {
+                                id: toEndMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: {
+                                    if (enabled) {
+                                        controller.seekLog(controller.totalTime)
+                                    }
+                                }
+
+                                ToolTip.visible: tooltipsEnabled && containsMouse
+                                ToolTip.delay: 500
+                                ToolTip.text: "Перейти в конец записи"
                             }
                         }
 
-                        Button {
-                            text: "⏹️"
+                        // Кнопка "Стоп"
+                        Rectangle {
+                            id: stopButton
                             Layout.preferredWidth: 50
-                            onClicked: {
-                                if (controller.logControlsEnabled) {
-                                    controller.stopLog()
-                                }
-                            }
+                            Layout.preferredHeight: 40
+                            radius: 4
                             enabled: controller.logControlsEnabled
-                            ToolTip.text: "Стоп"
-                            background: Rectangle {
-                                color: parent.down ? "#7c3a3a" : (parent.enabled ? "#f44336" : "#7c3a3a")
-                                radius: 4
+
+                            property color normalColor: enabled ? "#f44336" : "#555"
+                            property color hoverColor: enabled ? "#ff5555" : "#666"
+                            property color pressedColor: enabled ? "#c43a1a" : "#444"
+
+                            color: {
+                                if (!enabled) return normalColor;
+                                if (stopMouseArea.pressed) {
+                                    return pressedColor
+                                } else if (stopMouseArea.containsMouse) {
+                                    return hoverColor
+                                } else {
+                                    return normalColor
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation { duration: 150 }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: "⏹️"
+                                color: enabled ? "white" : "#888"
+                                font.pixelSize: 14
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            MouseArea {
+                                id: stopMouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: {
+                                    if (enabled) {
+                                        controller.stopLog()
+                                    }
+                                }
+
+                                ToolTip.visible: tooltipsEnabled && containsMouse
+                                ToolTip.delay: 500
+                                ToolTip.text: "Остановить воспроизведение и вернуться в начало"
                             }
                         }
                     }
+                    // RowLayout {
+                    //     anchors.centerIn: parent
+                    //     spacing: 10
+
+                    //     Button {
+                    //         text: "⏮️"
+                    //         Layout.preferredWidth: 50
+                    //         onClicked: {
+                    //             if (controller.logControlsEnabled && controller.logLoaded) {
+                    //                 controller.seekLog(0)
+                    //             }
+                    //         }
+                    //         enabled: controller.logControlsEnabled && controller.logLoaded
+                    //         ToolTip.text: "В начало"
+                    //         background: Rectangle {
+                    //             color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
+                    //             radius: 4
+                    //         }
+                    //     }
+
+                    //     Button {
+                    //         text: "⏪"
+                    //         Layout.preferredWidth: 50
+                    //         onClicked: {
+                    //             if (controller.logControlsEnabled && controller.logLoaded) {
+                    //                         var newTime = Math.max(0, controller.currentTime - 5000); // Назад на 5 секунд
+                    //                         controller.seekLog(newTime);
+                    //             }
+                    //         }
+                    //         enabled: controller.logControlsEnabled && controller.logLoaded
+                    //         ToolTip.text: "Назад на 5с"
+                    //         background: Rectangle {
+                    //             color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
+                    //             radius: 4
+                    //         }
+                    //     }
+
+
+
+
+                    //     Rectangle {
+                    //         id: playPauseBtn
+                    //         Layout.preferredWidth: 80
+                    //         Layout.preferredHeight: 40
+                    //         radius: 4
+                    //         color: {
+                    //             if (!controller.logControlsEnabled || !controller.logLoaded) {
+                    //                 return "#3a5c42"
+                    //             } else if (playPauseMouseArea.pressed) {
+                    //                 return "#3a5c42"
+                    //             } else if (playPauseMouseArea.containsMouse) {
+                    //                 return "#5cbf62"
+                    //             } else {
+                    //                 return "#4caf50"
+                    //             }
+                    //         }
+                    //         enabled: controller.logControlsEnabled && controller.logLoaded
+
+                    //         Text {
+                    //             anchors.centerIn: parent
+                    //             text: controller.logPlaying ? "⏸️" : "▶️"
+                    //             color: "white"
+                    //             font.pixelSize: 14
+                    //             horizontalAlignment: Text.AlignHCenter
+                    //             verticalAlignment: Text.AlignVCenter
+                    //         }
+
+                    //         MouseArea {
+                    //             id: playPauseMouseArea
+                    //             anchors.fill: parent
+                    //             hoverEnabled: true
+                    //             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    //             onClicked: {
+                    //                 if (parent.enabled) {
+                    //                     controller.logPlaying ? controller.pauseLog() : controller.playLog()
+                    //                 }
+                    //             }
+
+                    //             ToolTip.visible: tooltipsEnabled && containsMouse
+                    //             ToolTip.delay: 500
+                    //             ToolTip.text: {
+                    //                 if (!parent.enabled) {
+                    //                     return "Воспроизведение недоступно"
+                    //                 } else if (controller.logPlaying) {
+                    //                     return "Приостановить воспроизведение\n[ ПРОБЕЛ ]"
+                    //                 } else {
+                    //                     return "Начать воспроизведение\n[ ПРОБЕЛ ]"
+                    //                 }
+                    //             }
+                    //         }
+                    //     }
+
+                    //     Button {
+                    //         text: "⏩"
+                    //         Layout.preferredWidth: 50
+                    //         onClicked: {
+                    //             if (controller.logControlsEnabled && controller.logLoaded) {
+                    //                         var newTime = Math.min(controller.totalTime, controller.currentTime + 5000); // Вперед на 5 секунд
+                    //                         controller.seekLog(newTime);
+                    //             }
+                    //         }
+                    //         enabled: controller.logControlsEnabled && controller.logLoaded
+                    //         ToolTip.text: "Вперед на 5с"
+                    //         background: Rectangle {
+                    //             color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
+                    //             radius: 4
+                    //         }
+                    //     }
+
+                    //     Button {
+                    //         text: "⏭️"
+                    //         Layout.preferredWidth: 50
+                    //         onClicked: {
+                    //             if (controller.logControlsEnabled && controller.logLoaded) {
+                    //                 controller.seekLog(controller.totalTime)
+                    //             }
+                    //         }
+                    //         enabled: controller.logControlsEnabled && controller.logLoaded
+                    //         ToolTip.text: "В конец"
+                    //         background: Rectangle {
+                    //             color: parent.down ? "#5a5a5a" : (parent.enabled ? "#3c3c3c" : "#2c2c2c")
+                    //             radius: 4
+                    //         }
+                    //     }
+
+                    //     Button {
+                    //         text: "⏹️"
+                    //         Layout.preferredWidth: 50
+                    //         onClicked: {
+                    //             if (controller.logControlsEnabled) {
+                    //                 controller.stopLog()
+                    //             }
+                    //         }
+                    //         enabled: controller.logControlsEnabled
+                    //         ToolTip.text: "Стоп"
+                    //         background: Rectangle {
+                    //             color: parent.down ? "#7c3a3a" : (parent.enabled ? "#f44336" : "#7c3a3a")
+                    //             radius: 4
+                    //         }
+                    //     }
+                    // }
                 }
 
                 // Временная шкала с метками

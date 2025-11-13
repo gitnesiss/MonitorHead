@@ -594,12 +594,6 @@ void TiltController::updateDataDisplay()
     if (updateCounter >= 1000) updateCounter = 0;
 }
 
-void TiltController::testAngularSpeedFrequency()
-{
-    qDebug() << "Current angular speed frequency:" << m_angularSpeedUpdateFrequency;
-    qDebug() << "LogReader frequency:" << m_logReader.getUpdateFrequency(); // если нужно добавить геттер
-}
-
 void TiltController::loadLogFile(const QString &filePath)
 {
     QString fileName = filePath;

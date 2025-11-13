@@ -202,7 +202,6 @@ public slots:
     void stopResearchRecording();
     void toggleResearchRecording();
     void initializeResearchNumber();
-    void testAngularSpeedFrequency(); // для тестирования
 
 private slots:
     void updateLogPlayback();
@@ -316,7 +315,7 @@ private:
     QVariantList m_dizzinessPatientData;
     QVariantList m_dizzinessDoctorData;
 
-    void updateFrequencyInfo();
+    // void updateFrequencyInfo();
 
     qint64 m_startTime; // Время начала работы для относительных временных меток
     qint64 m_lastDataTime; // Время последних полученных данных
