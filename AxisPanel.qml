@@ -99,7 +99,7 @@ Rectangle {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: axisPanel.viewToggled()
-                ToolTip.visible: containsMouse
+                ToolTip.visible: tooltipsEnabled && containsMouse
                 ToolTip.text: getTooltipText()
                 ToolTip.delay: 1000
                 hoverEnabled: true

@@ -20,11 +20,27 @@ ApplicationWindow {
     title: "Монитор положения головы"
     color: "#1e1e1e"
 
+    // Свойство для управления видимостью бокового меню
+    property bool sideMenuOpen: false
+
     // Убираем проблемные свойства фокуса и добавляем Shortcut
     Shortcut {
         sequence: "Space"
         onActivated: handleSpaceKey()
     }
+
+    // Добавляем shortcut для меню (Esc закрывает меню)
+    Shortcut {
+        sequence: "Esc"
+        onActivated: {
+            if (sideMenuOpen) {
+                sideMenuOpen = false
+            }
+        }
+    }
+
+    // Свойство для управления подсказками
+    property bool tooltipsEnabled: false
 
     property bool pitchIsLeftView: true
     property bool rollIsFrontView: true
@@ -38,10 +54,871 @@ ApplicationWindow {
     property string researchNumber: controller.researchNumber
     property bool recording: controller.recording
 
-    property color graphTextColor: "#CCCCCC"  // Более яркий цвет для текста
+    property color graphTextColor: "#CCCCCC"
 
     // Таймер записи исследования
     property int researchTimerSeconds: 0
+
+    // === БОКОВОЕ МЕНЮ ===
+    Rectangle {
+        id: sideMenu
+        width: 300
+        height: parent.height
+        x: sideMenuOpen ? 0 : -width
+        y: 0
+        color: "#2d2d2d"
+        z: 1000
+
+        Behavior on x {
+            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        }
+
+        // MouseArea для перехвата всех кликов внутри меню
+        MouseArea {
+            anchors.fill: parent
+            // Эта MouseArea перехватывает все клики внутри меню и предотвращает их распространение
+            onClicked: {
+                // Ничего не делаем, просто перехватываем клик
+            }
+            onPressed: {
+                // Ничего не делаем, просто перехватываем нажатие
+            }
+            onReleased: {
+                // Ничего не делаем, просто перехватываем отпускание
+            }
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 10
+
+            // Заголовок меню с кнопкой закрытия
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 15
+                Layout.bottomMargin: 20
+
+                // Кнопка закрытия меню (гамбургер)
+                Rectangle {
+                    id: closeMenuButton
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    color: closeMenuMouseArea.pressed ? "#5a5a5a" : (closeMenuMouseArea.containsMouse ? "#3a3a3a" : "transparent")
+                    radius: 4
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "☰"
+                        color: "white"
+                        font.pixelSize: 18
+                    }
+
+                    MouseArea {
+                        id: closeMenuMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: sideMenuOpen = false
+                    }
+
+                    ToolTip.visible: tooltipsEnabled && closeMenuMouseArea.containsMouse
+                    ToolTip.text: "Закрыть меню"
+                }
+
+                Text {
+                    text: "Меню"
+                    color: "white"
+                    font.pixelSize: 24
+                    font.bold: true
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                // Пустой элемент для симметрии (чтобы текст оставался по центру)
+                Rectangle {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    color: "transparent"
+                    visible: false // Сделаем невидимым, но он займет место для симметрии
+                }
+            }
+
+            // Раздел: Настройки отображения
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 5
+
+                Text {
+                    text: "Настройки отображения"
+                    color: "#4CAF50"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: "#555"
+                }
+
+                // Переключатель отключения подсказок
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: tooltipsToggleMouseArea.pressed ? "#3a3a3a" : (tooltipsToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 10
+
+                        Text {
+                            text: "Включить подсказки"
+                            color: "white"
+                            font.pixelSize: 14
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 40
+                            height: 20
+                            radius: 10
+                            color: mainWindow.tooltipsEnabled ? "#4CAF50" : "#666"
+
+                            Rectangle {
+                                x: mainWindow.tooltipsEnabled ? parent.width - width - 2 : 2
+                                y: 2
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: "white"
+
+                                Behavior on x {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: tooltipsToggleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: mainWindow.tooltipsEnabled = !mainWindow.tooltipsEnabled
+                    }
+                }
+
+                // Переключатель модели головы
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: headToggleMouseArea.pressed ? "#3a3a3a" : (headToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 10
+
+                        Text {
+                            text: "Показывать модель головы"
+                            color: "white"
+                            font.pixelSize: 14
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 40
+                            height: 20
+                            radius: 10
+                            color: innerHeadVisible ? "#4CAF50" : "#666"
+
+                            Rectangle {
+                                x: innerHeadVisible ? parent.width - width - 2 : 2
+                                y: 2
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: "white"
+                                Behavior on x {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: headToggleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: innerHeadVisible = !innerHeadVisible
+                    }
+                }
+
+                // Переключатель вида тангажа
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: pitchToggleMouseArea.pressed ? "#3a3a3a" : (pitchToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+
+                        Text {
+                            text: "Тангаж: вид слева"
+                            color: "white"
+                            font.pixelSize: 14
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 40
+                            height: 20
+                            radius: 10
+                            color: pitchIsLeftView ? "#4CAF50" : "#666"
+
+                            Rectangle {
+                                x: pitchIsLeftView ? parent.width - width - 2 : 2
+                                y: 2
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: "white"
+                                Behavior on x {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: pitchToggleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pitchIsLeftView = !pitchIsLeftView
+                    }
+                }
+
+                // Переключатель вида крена
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: rollToggleMouseArea.pressed ? "#3a3a3a" : (rollToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+
+                        Text {
+                            text: "Крен: вид спереди"
+                            color: "white"
+                            font.pixelSize: 14
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 40
+                            height: 20
+                            radius: 10
+                            color: rollIsFrontView ? "#4CAF50" : "#666"
+
+                            Rectangle {
+                                x: rollIsFrontView ? parent.width - width - 2 : 2
+                                y: 2
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: "white"
+                                Behavior on x {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: rollToggleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: rollIsFrontView = !rollIsFrontView
+                    }
+                }
+
+                // Переключатель рыскания
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: yawToggleMouseArea.pressed ? "#3a3a3a" : (yawToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+
+                        Text {
+                            text: "Рысканье: взгляд вверх"
+                            color: "white"
+                            font.pixelSize: 14
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 40
+                            height: 20
+                            radius: 10
+                            color: yawIsFlipped ? "#4CAF50" : "#666"
+
+                            Rectangle {
+                                x: yawIsFlipped ? parent.width - width - 2 : 2
+                                y: 2
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: "white"
+                                Behavior on x {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: yawToggleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: yawIsFlipped = !yawIsFlipped
+                    }
+                }
+            }
+
+            // Раздел: Настройки ⚙️
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 15
+
+                Text {
+                    text: "Настройки ⚙️"
+                    color: "#4CAF50"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: "#555"
+                }
+
+                // Настройки для режима реального времени (COM)
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        text: "Режим реального времени:"
+                        color: "#4CAF50"
+                        font.pixelSize: 14
+                        font.bold: true
+                    }
+
+                    // Строка для частоты обновления COM
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        Text {
+                            text: "Частота обновления угловой скорости"
+                            color: "#cccccc"
+                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: Math.round(menuComFrequencySlider.value) + " Гц"
+                            color: controller.connected && !controller.logMode ? "#2196F3" : "#888"
+                            font.pixelSize: 12
+                            font.bold: true
+                            Layout.preferredWidth: 50
+                            horizontalAlignment: Text.AlignRight
+                        }
+                    }
+
+                    // Контейнер для слайдера с увеличенной высотой
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+
+                        Slider {
+                            id: menuComFrequencySlider
+                            anchors.fill: parent
+                            from: 1
+                            to: 30
+                            stepSize: 1
+                            value: controller.angularSpeedUpdateFrequencyCOM
+                            enabled: controller.connected && !controller.logMode
+                            snapMode: Slider.SnapAlways
+
+                            onMoved: {
+                                controller.angularSpeedUpdateFrequencyCOM = Math.round(value)
+                            }
+
+                            background: Rectangle {
+                                color: "#3c3c3c"
+                                radius: 2
+                                height: 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+
+                                Rectangle {
+                                    width: menuComFrequencySlider.visualPosition * parent.width
+                                    height: parent.height
+                                    color: controller.connected && !controller.logMode ? "#2196F3" : "#666"
+                                    radius: 2
+                                }
+                            }
+
+                            handle: Rectangle {
+                                x: menuComFrequencySlider.visualPosition * (menuComFrequencySlider.availableWidth - width)
+                                y: menuComFrequencySlider.availableHeight / 2 - height / 2
+                                width: 20
+                                height: 20
+                                radius: 10
+                                color: menuComFrequencySlider.pressed ? "#1976d2" : (controller.connected && !controller.logMode ? "#2196F3" : "#666")
+                                border.color: "#ffffff"
+                                border.width: 2
+
+                                scale: menuComFrequencySlider.hovered ? 1.2 : 1.0
+                                Behavior on scale {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
+
+                            ToolTip.visible: tooltipsEnabled && hovered
+                            ToolTip.text: "Частота обновления данных с COM-порта: " + Math.round(value) + " Гц\n" +
+                                         "Доступно только при подключении к устройству"
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: "#555"
+                    Layout.topMargin: 5
+                    Layout.bottomMargin: 5
+                }
+
+                // Настройки для режима воспроизведения (лог)
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Text {
+                        text: "Режим воспроизведения:"
+                        color: "#4CAF50"
+                        font.pixelSize: 14
+                        font.bold: true
+                    }
+
+                    // Строка для сглаживания
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        Text {
+                            text: "Сглаживание"
+                            color: "#cccccc"
+                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: Math.round(menuSmoothingSlider.value * 10) / 10 + " сек"
+                            color: "#4CAF50"
+                            font.pixelSize: 12
+                            font.bold: true
+                            Layout.preferredWidth: 50
+                            horizontalAlignment: Text.AlignRight
+                        }
+                    }
+
+                    // Контейнер для слайдера сглаживания
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+
+                        Slider {
+                            id: menuSmoothingSlider
+                            anchors.fill: parent
+                            from: 0.1
+                            to: 2.0
+                            stepSize: 0.1
+                            value: controller.angularSpeedSmoothingLog
+                            snapMode: Slider.SnapAlways
+
+                            onMoved: {
+                                controller.angularSpeedSmoothingLog = Math.round(value * 10) / 10
+                            }
+
+                            background: Rectangle {
+                                color: "#3c3c3c"
+                                radius: 2
+                                height: 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+
+                                Rectangle {
+                                    width: menuSmoothingSlider.visualPosition * parent.width
+                                    height: parent.height
+                                    color: "#4CAF50"
+                                    radius: 2
+                                }
+                            }
+
+                            handle: Rectangle {
+                                x: menuSmoothingSlider.visualPosition * (menuSmoothingSlider.availableWidth - width)
+                                y: menuSmoothingSlider.availableHeight / 2 - height / 2
+                                width: 20
+                                height: 20
+                                radius: 10
+                                color: menuSmoothingSlider.pressed ? "#45a049" : "#4CAF50"
+                                border.color: "#ffffff"
+                                border.width: 2
+
+                                scale: menuSmoothingSlider.hovered ? 1.2 : 1.0
+                                Behavior on scale {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
+
+                            ToolTip.visible: tooltipsEnabled && hovered
+                            ToolTip.text: "Окно сглаживания: " + Math.round(value * 10) / 10 + " сек\n" +
+                                         "Регулирует плавность отображения угловой скорости.\n" +
+                                         "Больше значение = более плавные, но запаздывающие значения\n" +
+                                         "Меньше значение = более резкие, но быстрые реакции"
+                        }
+                    }
+
+                    // Строка для обновления
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+                        Layout.topMargin: 10
+
+                        Text {
+                            text: "Обновление"
+                            color: "#cccccc"
+                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: Math.round(menuUpdateRateSlider.value) + " Гц"
+                            color: "#2196F3"
+                            font.pixelSize: 12
+                            font.bold: true
+                            Layout.preferredWidth: 50
+                            horizontalAlignment: Text.AlignRight
+                        }
+                    }
+
+                    // Контейнер для слайдера обновления
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+
+                        Slider {
+                            id: menuUpdateRateSlider
+                            anchors.fill: parent
+                            from: 1
+                            to: 30
+                            stepSize: 1
+                            value: controller.angularSpeedDisplayRateLog
+                            snapMode: Slider.SnapAlways
+
+                            onMoved: {
+                                controller.angularSpeedDisplayRateLog = Math.round(value)
+                            }
+
+                            background: Rectangle {
+                                color: "#3c3c3c"
+                                radius: 2
+                                height: 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+
+                                Rectangle {
+                                    width: menuUpdateRateSlider.visualPosition * parent.width
+                                    height: parent.height
+                                    color: "#2196F3"
+                                    radius: 2
+                                }
+                            }
+
+                            handle: Rectangle {
+                                x: menuUpdateRateSlider.visualPosition * (menuUpdateRateSlider.availableWidth - width)
+                                y: menuUpdateRateSlider.availableHeight / 2 - height / 2
+                                width: 20
+                                height: 20
+                                radius: 10
+                                color: menuUpdateRateSlider.pressed ? "#1976d2" : "#2196F3"
+                                border.color: "#ffffff"
+                                border.width: 2
+
+                                scale: menuUpdateRateSlider.hovered ? 1.2 : 1.0
+                                Behavior on scale {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
+
+                            ToolTip.visible: tooltipsEnabled && hovered
+                            ToolTip.text: "Частота обновления отображения: " + Math.round(value) + " Гц\n" +
+                                         "Регулирует, как часто обновляются цифры угловой скорости на экране.\n" +
+                                         "Больше = плавнее анимация цифр, Меньше = меньше мелькания"
+                        }
+                    }
+                }
+            }
+
+            // Раздел: Система
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Text {
+                    text: "Система"
+                    color: "#4CAF50"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: "#555"
+                }
+
+                // Кнопка справки
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 50
+                    color: helpButtonMouseArea.pressed ? "#5a5a3a" : (helpButtonMouseArea.containsMouse ? "#7c7c5c" : "#FFC107")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 15
+                        spacing: 10
+
+                        Text {
+                            text: "❓"
+                            color: "white"
+                            font.pixelSize: 16
+                        }
+
+                        Text {
+                            text: "Справка"
+                            color: "white"
+                            font.pixelSize: 14
+                            font.bold: true
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    MouseArea {
+                        id: helpButtonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            console.log("Открыть справку")
+                            sideMenuOpen = false
+                        }
+                    }
+                }
+
+                // Кнопка о программе
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 50
+                    color: aboutButtonMouseArea.pressed ? "#3a5c5c" : (aboutButtonMouseArea.containsMouse ? "#5c8f8f" : "#009688")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 15
+                        spacing: 10
+
+                        Text {
+                            text: "ℹ️"
+                            color: "white"
+                            font.pixelSize: 16
+                        }
+
+                        Text {
+                            text: "О программе"
+                            color: "white"
+                            font.pixelSize: 14
+                            font.bold: true
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    MouseArea {
+                        id: aboutButtonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            console.log("Открыть о программе")
+                            sideMenuOpen = false
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.fillHeight: true }
+
+            // Нижняя часть меню
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 10
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: "#555"
+                }
+
+                Text {
+                    text: "Версия 1.0.0"
+                    color: "#888"
+                    font.pixelSize: 12
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                // Кнопка выхода
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 50
+                    color: exitButtonMouseArea.pressed ? "#7c3a3a" : (exitButtonMouseArea.containsMouse ? "#bf5c5c" : "#f44336")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 15
+                        spacing: 10
+
+                        Text {
+                            text: "🚪"
+                            color: "white"
+                            font.pixelSize: 16
+                        }
+
+                        Text {
+                            text: "Выход"
+                            color: "white"
+                            font.pixelSize: 14
+                            font.bold: true
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    MouseArea {
+                        id: exitButtonMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Qt.quit()
+                    }
+                }
+            }
+        }
+    }
+
+
+
+
+    // Затемнение основного контента при открытом меню
+    Rectangle {
+        id: overlay
+        anchors.fill: parent
+        color: "black"
+        opacity: sideMenuOpen ? 0.5 : 0
+        visible: opacity > 0
+        z: 999
+
+        Behavior on opacity {
+            NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+        }
+
+        // MouseArea которая закрывает меню только при клике вне меню
+        MouseArea {
+            id: overlayMouseArea
+            anchors.fill: parent
+            enabled: sideMenuOpen
+            onClicked: {
+                // Проверяем, был ли клик вне области меню
+                var clickPos = mapToItem(sideMenu, mouse.x, mouse.y);
+                if (clickPos.x < 0 || clickPos.x > sideMenu.width ||
+                    clickPos.y < 0 || clickPos.y > sideMenu.height) {
+                    sideMenuOpen = false;
+                }
+            }
+        }
+    }
+
+    // // Затемнение основного контента при открытом меню
+    // Rectangle {
+    //     id: overlay
+    //     anchors.fill: parent
+    //     color: "black"
+    //     opacity: sideMenuOpen ? 0.5 : 0
+    //     visible: opacity > 0
+    //     z: 999
+
+    //     Behavior on opacity {
+    //         NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+    //     }
+
+    //     // MouseArea которая закрывает меню только при клике вне меню
+    //     MouseArea {
+    //         anchors.fill: parent
+    //         enabled: sideMenuOpen
+    //         onClicked: {
+    //             sideMenuOpen = false;
+    //         }
+    //     }
+    // }
 
     function startResearchTimer() {
         researchTimerSeconds = 0
@@ -138,12 +1015,39 @@ ApplicationWindow {
         anchors.margins: 10
         spacing: 10
 
-        // === ВЕРХНЯЯ ПАНЕЛЬ: УВЕДОМЛЕНИЯ + НАСТРОЙКИ ПОРТА ===
+        // === ВЕРХНЯЯ ПАНЕЛЬ: КНОПКА МЕНЮ + УВЕДОМЛЕНИЯ + НАСТРОЙКИ ПОРТА ===
         RowLayout {
             Layout.fillWidth: true
             spacing: 15
 
-            // === ЛЕВАЯ ЧАСТЬ - УВЕДОМЛЕНИЯ ===
+            // === ЛЕВАЯ ЧАСТЬ - ТОЛЬКО КНОПКА МЕНЮ ===
+            Rectangle {
+                id: menuButton
+                Layout.preferredWidth: 40
+                Layout.preferredHeight: 40
+                color: menuMouseArea.pressed ? "#5a5a5a" : (menuMouseArea.containsMouse ? "#3a3a3a" : "transparent")
+                radius: 4
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "☰"
+                    color: "white"
+                    font.pixelSize: 18
+                }
+
+                MouseArea {
+                    id: menuMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: sideMenuOpen = !sideMenuOpen
+                }
+
+                ToolTip.visible: tooltipsEnabled && menuMouseArea.containsMouse
+                ToolTip.text: "Открыть меню"
+            }
+
+            // === ЦЕНТРАЛЬНАЯ ЧАСТЬ - УВЕДОМЛЕНИЯ ===
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: notificationLayout.height
@@ -269,7 +1173,6 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignBottom
                             radius: 4
 
-                            // Цвета для разных состояний
                             property color normalColor: controller.connected ? "#e44a2a" : "#2a7be4"
                             property color hoverColor: controller.connected ? "#f55a3a" : "#3a8bff"
                             property color pressedColor: controller.connected ? "#c43a1a" : "#1a6bc4"
@@ -284,12 +1187,10 @@ ApplicationWindow {
                                 }
                             }
 
-                            // Плавная анимация изменения цвета
                             Behavior on color {
                                 ColorAnimation { duration: 150 }
                             }
 
-                            // Текст кнопки
                             Text {
                                 anchors.centerIn: parent
                                 text: controller.connected ? "Отключить" : "Подключить"
@@ -297,7 +1198,6 @@ ApplicationWindow {
                                 font.bold: true
                             }
 
-                            // Обработка кликов
                             MouseArea {
                                 id: mouseArea
                                 anchors.fill: parent
@@ -401,7 +1301,7 @@ ApplicationWindow {
                             anchors.horizontalCenter: parent.horizontalCenter
 
                             // Подсказка при наведении
-                            ToolTip.visible: hovered
+                            ToolTip.visible: tooltipsEnabled && hovered
                             ToolTip.text: controller.logMode ?
                                 "Номер загруженного исследования (только просмотр)" :
                                 "Номер следующего исследования для записи"
@@ -466,7 +1366,7 @@ ApplicationWindow {
                             hoverEnabled: true
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
 
-                            ToolTip.visible: containsMouse
+                            ToolTip.visible: tooltipsEnabled && containsMouse
                             ToolTip.delay: 500
                             ToolTip.text: {
                                 if (!controller.connected) {
@@ -541,7 +1441,7 @@ ApplicationWindow {
                             hoverEnabled: true
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
 
-                            ToolTip.visible: containsMouse
+                            ToolTip.visible: tooltipsEnabled && containsMouse
                             ToolTip.delay: 500
                             ToolTip.text: {
                                 if (!controller.connected) {
@@ -605,7 +1505,7 @@ ApplicationWindow {
                             hoverEnabled: true
                             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
 
-                            ToolTip.visible: containsMouse
+                            ToolTip.visible: tooltipsEnabled && containsMouse
                             ToolTip.delay: 500
                             ToolTip.text: {
                                 if (!enabled) {
@@ -620,330 +1520,6 @@ ApplicationWindow {
                                     loadResearchDialog.open()
                                 } else {
                                     showNotification("Невозможно загрузить исследование во время записи", true)
-                                }
-                            }
-                        }
-                    }
-
-                    // НОВЫЙ БЛОК: УПРАВЛЕНИЕ ЧАСТОТОЙ ОБНОВЛЕНИЯ СКОРОСТИ ДЛЯ COM-ПОРТА (вертикальная компоновка)
-                    ColumnLayout {
-                        Layout.preferredWidth: 140
-                        Layout.preferredHeight: 60
-                        Layout.alignment: Qt.AlignVCenter
-                        visible: controller.connected && !controller.logMode
-                        spacing: 5
-
-                        // Надпись сверху
-                        Text {
-                            id: comFrequencyLabel
-                            text: "Частота обновления угловой скорости"
-                            color: controller.connected ? "#aaa" : "#666"
-                            font.pixelSize: 11
-                            Layout.alignment: Qt.AlignHCenter
-                        }
-
-                        // Комбобокс снизу
-                        ComboBox {
-                            id: comFrequencyCombo
-                            Layout.preferredWidth: 120
-                            Layout.preferredHeight: 30
-                            Layout.alignment: Qt.AlignHCenter
-                            model: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-                            currentIndex: controller.angularSpeedUpdateFrequencyCOM - 1
-                            enabled: controller.connected && !controller.logMode
-
-                            onActivated: {
-                                var selectedFrequency = model[currentIndex];
-                                controller.angularSpeedUpdateFrequencyCOM = selectedFrequency;
-                            }
-
-                            background: Rectangle {
-                                color: controller.connected && !controller.logMode ? "#3c3c3c" : "#2c2c2c"
-                                radius: 4
-                                border.color: comFrequencyCombo.activeFocus ? "#2196F3" : "#555"
-                                border.width: 1
-                            }
-
-                            contentItem: Text {
-                                text: comFrequencyCombo.displayText + " Гц"
-                                color: controller.connected && !controller.logMode ? "white" : "#888"
-                                font.pixelSize: 11
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-
-                            popup: Popup {
-                                y: comFrequencyCombo.height
-                                width: comFrequencyCombo.width
-                                implicitHeight: contentItem.implicitHeight
-                                padding: 1
-
-                                contentItem: ListView {
-                                    clip: true
-                                    implicitHeight: contentHeight
-                                    model: comFrequencyCombo.popup.visible ? comFrequencyCombo.delegateModel : null
-                                    currentIndex: comFrequencyCombo.highlightedIndex
-
-                                    ScrollIndicator.vertical: ScrollIndicator { }
-                                }
-
-                                background: Rectangle {
-                                    color: "#3c3c3c"
-                                    border.color: "#555"
-                                    radius: 4
-                                }
-                            }
-
-                            delegate: ItemDelegate {
-                                width: comFrequencyCombo.width
-                                height: 30
-                                highlighted: comFrequencyCombo.highlightedIndex === index
-
-                                contentItem: Text {
-                                    text: modelData + " Гц"
-                                    color: highlighted ? "#2196F3" : "white"
-                                    font.pixelSize: 11
-                                    verticalAlignment: Text.AlignVCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-
-                                background: Rectangle {
-                                    color: highlighted ? "#2c2c2c" : "transparent"
-                                }
-                            }
-                        }
-                    }
-
-                    // НАСТРОЙКИ ДЛЯ ЛОГ-ФАЙЛА (компактный двухколоночный вид)
-                    RowLayout {
-                        Layout.preferredWidth: 320  // Фиксированная ширина для компактности
-                        Layout.preferredHeight: 60
-                        Layout.alignment: Qt.AlignVCenter
-                        visible: controller.logLoaded && controller.logMode // ДОБАВЬТЕ controller.logMode
-                        spacing: 15
-
-                        // Первый столбец - Сглаживание
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignHCenter
-                            spacing: 5
-
-                            // Надпись "Сглаживание" - выровнена по центру
-                            Text {
-                                text: "Сглаживание"
-                                color: controller.logControlsEnabled ? "#aaa" : "#666"
-                                font.pixelSize: 11
-                                Layout.alignment: Qt.AlignHCenter
-                            }
-
-                            // Комбобокс сглаживания
-                            ComboBox {
-                                id: smoothingCombo
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 30
-                                model: {
-                                    var values = [];
-                                    // Первый диапазон: 0.1с до 1.5с с шагом 0.1с
-                                    for (var i = 1; i <= 15; i++) {
-                                        values.push((i * 0.1).toFixed(1) + "с");
-                                    }
-                                    // Второй диапазон: 2с до 10с с шагом 1с
-                                    for (var j = 2; j <= 10; j++) {
-                                        values.push(j + "с");
-                                    }
-                                    return values;
-                                }
-
-                                // Устанавливаем текущее значение из контроллера
-                                Component.onCompleted: {
-                                    var currentValue = controller.angularSpeedSmoothingLog.toFixed(1) + "с";
-                                    var index = find(currentValue);
-                                    if (index !== -1) {
-                                        currentIndex = index;
-                                    } else {
-                                        // Если точного значения нет, находим ближайшее
-                                        for (var i = 0; i < model.length; i++) {
-                                            var val = parseFloat(model[i]);
-                                            if (val >= controller.angularSpeedSmoothingLog) {
-                                                currentIndex = i;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-
-                                onActivated: {
-                                    var textValue = model[currentIndex];
-                                    var numericValue = parseFloat(textValue);
-                                    controller.angularSpeedSmoothingLog = numericValue;
-                                }
-
-                                ToolTip.text: {
-                                    var currentValue = parseFloat(model[currentIndex]);
-                                    return "Окно сглаживания: " + currentValue + " сек\n" +
-                                           "Регулирует плавность отображения угловой скорости.\n" +
-                                           "Больше значение = более плавные, но запаздывающие значения\n" +
-                                           "Меньше значение = более резкие, но быстрые реакции"
-                                }
-                                ToolTip.visible: hovered
-                                ToolTip.delay: 500
-
-                                background: Rectangle {
-                                    color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
-                                    radius: 4
-                                    border.color: smoothingCombo.activeFocus ? "#4CAF50" : "#555"
-                                    border.width: 1
-                                }
-
-                                contentItem: Text {
-                                    text: smoothingCombo.displayText
-                                    color: controller.logControlsEnabled ? "white" : "#888"
-                                    font.pixelSize: 11
-                                    verticalAlignment: Text.AlignVCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-
-                                popup: Popup {
-                                    y: smoothingCombo.height
-                                    width: smoothingCombo.width
-                                    implicitHeight: contentItem.implicitHeight
-                                    padding: 1
-
-                                    contentItem: ListView {
-                                        clip: true
-                                        implicitHeight: contentHeight
-                                        model: smoothingCombo.popup.visible ? smoothingCombo.delegateModel : null
-                                        currentIndex: smoothingCombo.highlightedIndex
-                                        ScrollIndicator.vertical: ScrollIndicator { }
-                                    }
-
-                                    background: Rectangle {
-                                        color: "#3c3c3c"
-                                        border.color: "#555"
-                                        radius: 4
-                                    }
-                                }
-
-                                delegate: ItemDelegate {
-                                    width: smoothingCombo.width
-                                    height: 30
-                                    highlighted: smoothingCombo.highlightedIndex === index
-
-                                    contentItem: Text {
-                                        text: modelData
-                                        color: highlighted ? "#4CAF50" : "white"
-                                        font.pixelSize: 11
-                                        verticalAlignment: Text.AlignVCenter
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
-
-                                    background: Rectangle {
-                                        color: highlighted ? "#2c2c2c" : "transparent"
-                                    }
-                                }
-                            }
-                        }
-
-                        // Второй столбец - Обновление
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignHCenter
-                            spacing: 5
-
-                            // Надпись "Обновление" - выровнена по центру
-                            Text {
-                                text: "Обновление"
-                                color: controller.logControlsEnabled ? "#aaa" : "#666"
-                                font.pixelSize: 11
-                                Layout.alignment: Qt.AlignHCenter
-                            }
-
-                            // Комбобокс обновления
-                            ComboBox {
-                                id: updateRateCombo
-                                Layout.preferredWidth: 140
-                                Layout.preferredHeight: 30
-                                model: {
-                                    var rates = [];
-                                    for (var i = 1; i <= 30; i++) {
-                                        rates.push(i + " Гц");
-                                    }
-                                    return rates;
-                                }
-
-                                // Устанавливаем текущее значение из контроллера
-                                Component.onCompleted: {
-                                    var currentValue = Math.round(controller.angularSpeedDisplayRateLog) + " Гц";
-                                    currentIndex = find(currentValue);
-                                }
-
-                                onActivated: {
-                                    var textValue = model[currentIndex];
-                                    var numericValue = parseInt(textValue);
-                                    controller.angularSpeedDisplayRateLog = numericValue;
-                                }
-
-                                ToolTip.text: {
-                                    var currentValue = parseInt(model[currentIndex]);
-                                    return "Частота обновления отображения: " + currentValue + " Гц\n" +
-                                           "Регулирует, как часто обновляются цифры угловой скорости на экране.\n" +
-                                           "Больше = плавнее анимация цифр, Меньше = меньше мелькания"
-                                }
-                                ToolTip.visible: hovered
-                                ToolTip.delay: 500
-
-                                background: Rectangle {
-                                    color: controller.logControlsEnabled ? "#3c3c3c" : "#2c2c2c"
-                                    radius: 4
-                                    border.color: updateRateCombo.activeFocus ? "#2196F3" : "#555"
-                                    border.width: 1
-                                }
-
-                                contentItem: Text {
-                                    text: updateRateCombo.displayText
-                                    color: controller.logControlsEnabled ? "white" : "#888"
-                                    font.pixelSize: 11
-                                    verticalAlignment: Text.AlignVCenter
-                                    horizontalAlignment: Text.AlignHCenter
-                                }
-
-                                popup: Popup {
-                                    y: updateRateCombo.height
-                                    width: updateRateCombo.width
-                                    implicitHeight: contentItem.implicitHeight
-                                    padding: 1
-
-                                    contentItem: ListView {
-                                        clip: true
-                                        implicitHeight: contentHeight
-                                        model: updateRateCombo.popup.visible ? updateRateCombo.delegateModel : null
-                                        currentIndex: updateRateCombo.highlightedIndex
-                                        ScrollIndicator.vertical: ScrollIndicator { }
-                                    }
-
-                                    background: Rectangle {
-                                        color: "#3c3c3c"
-                                        border.color: "#555"
-                                        radius: 4
-                                    }
-                                }
-
-                                delegate: ItemDelegate {
-                                    width: updateRateCombo.width
-                                    height: 30
-                                    highlighted: updateRateCombo.highlightedIndex === index
-
-                                    contentItem: Text {
-                                        text: modelData
-                                        color: highlighted ? "#2196F3" : "white"
-                                        font.pixelSize: 11
-                                        verticalAlignment: Text.AlignVCenter
-                                        horizontalAlignment: Text.AlignHCenter
-                                    }
-
-                                    background: Rectangle {
-                                        color: highlighted ? "#2c2c2c" : "transparent"
-                                    }
                                 }
                             }
                         }
@@ -1127,7 +1703,7 @@ ApplicationWindow {
                                 text: innerHeadVisible ? "Скрыть голову" : "Показать голову"
                                 onClicked: innerHeadVisible = !innerHeadVisible
                                 ToolTip.text: innerHeadVisible ? "Скрыть модель головы" : "Показать модель головы"
-                                ToolTip.visible: containsMouse
+                                ToolTip.visible: tooltipsEnabled && containsMouse
                                 background: Rectangle {
                                     color: parent.down ? "#5a3c3c" : (innerHeadVisible ? "#7c3a3a" : "#3a5c3a")
                                     radius: 4
@@ -1159,7 +1735,7 @@ ApplicationWindow {
                                     text: "🎯"
                                     onClicked: advanced3DHead.setCameraView("isometric")
                                     ToolTip.text: "Изометрический вид"
-                                    ToolTip.visible: containsMouse
+                                    ToolTip.visible: tooltipsEnabled && containsMouse
                                     background: Rectangle {
                                         color: parent.down ? "#5a5a5a" : "#3c3c3c"
                                         radius: 4
@@ -1179,7 +1755,7 @@ ApplicationWindow {
                                         onClicked: advanced3DHead.toggleFrontBack()
                                         ToolTip.text: advanced3DHead.currentView === "front" ?
                                             "Переключить на вид сзади" : "Переключить на вид спереди"
-                                        ToolTip.visible: containsMouse
+                                        ToolTip.visible: tooltipsEnabled && containsMouse
                                         background: Rectangle {
                                             color: parent.down ? "#5a5a5a" : "#3c3c3c"
                                             radius: 4
@@ -1195,7 +1771,7 @@ ApplicationWindow {
                                         onClicked: advanced3DHead.toggleLeftRight()
                                         ToolTip.text: advanced3DHead.currentView === "left" ?
                                             "Переключить на вид справа" : "Переключить на вид слева"
-                                        ToolTip.visible: containsMouse
+                                        ToolTip.visible: tooltipsEnabled && containsMouse
                                         background: Rectangle {
                                             color: parent.down ? "#5a5a5a" : "#3c3c3c"
                                             radius: 4
@@ -1211,7 +1787,7 @@ ApplicationWindow {
                                         onClicked: advanced3DHead.toggleTopBottom()
                                         ToolTip.text: advanced3DHead.currentView === "top" ?
                                             "Переключить на вид снизу" : "Переключить на вид сверху"
-                                        ToolTip.visible: containsMouse
+                                        ToolTip.visible: tooltipsEnabled && containsMouse
                                         background: Rectangle {
                                             color: parent.down ? "#5a5a5a" : "#3c3c3c"
                                             radius: 4
@@ -1405,7 +1981,7 @@ ApplicationWindow {
                                     }
                                 }
 
-                                ToolTip.visible: containsMouse
+                                ToolTip.visible: tooltipsEnabled && containsMouse
                                 ToolTip.delay: 500
                                 ToolTip.text: {
                                     if (!parent.enabled) {
@@ -1707,21 +2283,11 @@ ApplicationWindow {
         target: controller
 
         function onAngularSpeedSmoothingLogChanged(smoothing) {
-            // Обновляем комбобокс сглаживания при изменении значения из C++
-            var valueToFind = smoothing.toFixed(1) + "с";
-            var index = smoothingCombo.find(valueToFind);
-            if (index !== -1 && smoothingCombo.currentIndex !== index) {
-                smoothingCombo.currentIndex = index;
-            }
+            menuSmoothingSlider.value = smoothing;
         }
 
         function onAngularSpeedDisplayRateLogChanged(rate) {
-            // Обновляем комбобокс частоты обновления при изменении значения из C++
-            var valueToFind = Math.round(rate) + " Гц";
-            var index = updateRateCombo.find(valueToFind);
-            if (index !== -1 && updateRateCombo.currentIndex !== index) {
-                updateRateCombo.currentIndex = index;
-            }
+            menuUpdateRateSlider.value = rate;
         }
 
         function onRecordingChanged(isRecording) {
@@ -1766,8 +2332,7 @@ ApplicationWindow {
     Connections {
         target: controller
         function onAngularSpeedUpdateFrequencyCOMChanged(frequency) {
-            // Обновляем COM комбобокс при изменении значения из C++
-            comFrequencyCombo.currentIndex = frequency - 1;
+            menuComFrequencySlider.value = frequency;
         }
 
         function onAngularSpeedUpdateFrequencyLogChanged(frequency) {
@@ -1895,3 +2460,4 @@ ApplicationWindow {
         }
     }
 }
+

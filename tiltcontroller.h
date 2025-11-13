@@ -390,7 +390,7 @@ private:
 
     QString extractResearchNumber(const QStringList &studyLines);
 
-    float m_angularSpeedSmoothingLog = 0.8f;  // Окно сглаживания в секундах (0.5-2.0)
+    float m_angularSpeedSmoothingLog = 0.5f;  // Окно сглаживания в секундах (0.5-2.0)
     float m_angularSpeedUpdateRateLog = 10.0f; // Частота обновления в Гц (1-30)
 
     float m_angularSpeedDisplayRateLog = 10.0f; // Частота отображения в Гц (1-30)
