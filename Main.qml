@@ -105,14 +105,14 @@ ApplicationWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.margins: 20
-            spacing: 10
+            anchors.margins: 10
+            spacing: 5
 
             // Заголовок меню с кнопкой закрытия
             RowLayout {
                 Layout.fillWidth: true
-                spacing: 15
-                Layout.bottomMargin: 20
+                spacing: 10
+                Layout.bottomMargin: 10
 
                 // Кнопка закрытия меню (гамбургер)
                 Rectangle {
@@ -155,7 +155,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     color: "transparent"
-                    visible: false // Сделаем невидимым, но он займет место для симметрии
+                    visible: true // Сделаем видимым с прозрачным цветом, чтобы сместить надпись МЕНЮ в центр
                 }
             }
 
@@ -180,14 +180,14 @@ ApplicationWindow {
                 // Переключатель отключения подсказок
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
+                    height: 30
                     color: tooltipsToggleMouseArea.pressed ? "#3a3a3a" : (tooltipsToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
                     radius: 4
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
+                        anchors.margins: 5
+                        spacing: 5
 
                         Text {
                             text: "Включить подсказки"
@@ -233,14 +233,14 @@ ApplicationWindow {
                 // Переключатель модели головы
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
+                    height: 30
                     color: headToggleMouseArea.pressed ? "#3a3a3a" : (headToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
                     radius: 4
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 10
-                        spacing: 10
+                        anchors.margins: 5
+                        spacing: 5
 
                         Text {
                             text: "Показывать модель головы"
@@ -284,13 +284,13 @@ ApplicationWindow {
                 // Переключатель вида тангажа
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
+                    height: 30
                     color: pitchToggleMouseArea.pressed ? "#3a3a3a" : (pitchToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
                     radius: 4
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 10
+                        anchors.margins: 5
 
                         Text {
                             text: "Тангаж: вид слева"
@@ -334,13 +334,13 @@ ApplicationWindow {
                 // Переключатель вида крена
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
+                    height: 30
                     color: rollToggleMouseArea.pressed ? "#3a3a3a" : (rollToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
                     radius: 4
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 10
+                        anchors.margins: 5
 
                         Text {
                             text: "Крен: вид спереди"
@@ -384,13 +384,13 @@ ApplicationWindow {
                 // Переключатель рыскания
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 40
+                    height: 30
                     color: yawToggleMouseArea.pressed ? "#3a3a3a" : (yawToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
                     radius: 4
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.margins: 10
+                        anchors.margins: 5
 
                         Text {
                             text: "Рысканье: взгляд вверх"
@@ -435,7 +435,7 @@ ApplicationWindow {
             // Раздел: Настройки ⚙️
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 15
+                spacing: 5
 
                 Text {
                     text: "Настройки ⚙️"
@@ -450,94 +450,102 @@ ApplicationWindow {
                     color: "#555"
                 }
 
-                // Настройки для режима реального времени (COM)
-                ColumnLayout {
+                Rectangle {
                     Layout.fillWidth: true
-                    spacing: 8
+                    height: 70
+                    color: tooltipsToggleMouseArea.pressed ? "#3a3a3a" : (tooltipsToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
 
-                    Text {
-                        text: "Режим реального времени:"
-                        color: "#4CAF50"
-                        font.pixelSize: 14
-                        font.bold: true
-                    }
-
-                    // Строка для частоты обновления COM
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 10
+                    // Настройки для режима реального времени (COM)
+                    ColumnLayout {
+                        anchors.fill: parent  // ← ДОБАВИТЬ ЭТУ СТРОКУ
+                        anchors.margins: 5    // ← ДОБАВИТЬ ОТСТУПЫ
+                        spacing: 5
 
                         Text {
-                            text: "Частота обновления угловой скорости"
-                            color: "#cccccc"
-                            font.pixelSize: 12
-                            Layout.fillWidth: true
-                        }
-
-                        Text {
-                            text: Math.round(menuComFrequencySlider.value) + " Гц"
-                            color: controller.connected && !controller.logMode ? "#2196F3" : "#888"
-                            font.pixelSize: 12
+                            text: "Режим реального времени:"
+                            color: "#4CAF50"
+                            font.pixelSize: 14
                             font.bold: true
-                            Layout.preferredWidth: 50
-                            horizontalAlignment: Text.AlignRight
                         }
-                    }
 
-                    // Контейнер для слайдера с увеличенной высотой
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
+                        // Строка для частоты обновления COM
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 5
 
-                        Slider {
-                            id: menuComFrequencySlider
-                            anchors.fill: parent
-                            from: 1
-                            to: 30
-                            stepSize: 1
-                            value: controller.angularSpeedUpdateFrequencyCOM
-                            enabled: controller.connected && !controller.logMode
-                            snapMode: Slider.SnapAlways
-
-                            onMoved: {
-                                controller.angularSpeedUpdateFrequencyCOM = Math.round(value)
+                            Text {
+                                text: "Частота обновления угловой скорости"
+                                color: "#cccccc"
+                                font.pixelSize: 12
+                                Layout.fillWidth: true
                             }
 
-                            background: Rectangle {
-                                color: "#3c3c3c"
-                                radius: 2
-                                height: 6
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.left: parent.left
-                                anchors.right: parent.right
+                            Text {
+                                text: Math.round(menuComFrequencySlider.value) + " Гц"
+                                color: controller.connected && !controller.logMode ? "#2196F3" : "#888"
+                                font.pixelSize: 12
+                                font.bold: true
+                                Layout.preferredWidth: 50
+                                horizontalAlignment: Text.AlignRight
+                            }
+                        }
 
-                                Rectangle {
-                                    width: menuComFrequencySlider.visualPosition * parent.width
-                                    height: parent.height
-                                    color: controller.connected && !controller.logMode ? "#2196F3" : "#666"
+                        // Контейнер для слайдера с увеличенной высотой
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 30
+
+                            Slider {
+                                id: menuComFrequencySlider
+                                anchors.fill: parent
+                                from: 1
+                                to: 30
+                                stepSize: 1
+                                value: controller.angularSpeedUpdateFrequencyCOM
+                                enabled: controller.connected && !controller.logMode
+                                snapMode: Slider.SnapAlways
+
+                                onMoved: {
+                                    controller.angularSpeedUpdateFrequencyCOM = Math.round(value)
+                                }
+
+                                background: Rectangle {
+                                    color: "#3c3c3c"
                                     radius: 2
+                                    height: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+
+                                    Rectangle {
+                                        width: menuComFrequencySlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: controller.connected && !controller.logMode ? "#2196F3" : "#666"
+                                        radius: 2
+                                    }
                                 }
-                            }
 
-                            handle: Rectangle {
-                                x: menuComFrequencySlider.visualPosition * (menuComFrequencySlider.availableWidth - width)
-                                y: menuComFrequencySlider.availableHeight / 2 - height / 2
-                                width: 20
-                                height: 20
-                                radius: 10
-                                color: menuComFrequencySlider.pressed ? "#1976d2" : (controller.connected && !controller.logMode ? "#2196F3" : "#666")
-                                border.color: "#ffffff"
-                                border.width: 2
+                                handle: Rectangle {
+                                    x: menuComFrequencySlider.visualPosition * (menuComFrequencySlider.availableWidth - width)
+                                    y: menuComFrequencySlider.availableHeight / 2 - height / 2
+                                    width: 20
+                                    height: 20
+                                    radius: 10
+                                    color: menuComFrequencySlider.pressed ? "#1976d2" : (controller.connected && !controller.logMode ? "#2196F3" : "#666")
+                                    border.color: "#ffffff"
+                                    border.width: 2
 
-                                scale: menuComFrequencySlider.hovered ? 1.2 : 1.0
-                                Behavior on scale {
-                                    NumberAnimation { duration: 150 }
+                                    scale: menuComFrequencySlider.hovered ? 1.2 : 1.0
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 150 }
+                                    }
                                 }
-                            }
 
-                            ToolTip.visible: tooltipsEnabled && hovered
-                            ToolTip.text: "Частота обновления данных с COM-порта: " + Math.round(value) + " Гц\n" +
-                                         "Доступно только при подключении к устройству"
+                                ToolTip.visible: tooltipsEnabled && hovered
+                                ToolTip.text: "Частота обновления данных с COM-порта: " + Math.round(value) + " Гц\n" +
+                                             "Доступно только при подключении к устройству"
+                            }
                         }
                     }
                 }
@@ -550,175 +558,182 @@ ApplicationWindow {
                     Layout.bottomMargin: 5
                 }
 
-                // Настройки для режима воспроизведения (лог)
-                ColumnLayout {
+                Rectangle {
                     Layout.fillWidth: true
-                    spacing: 8
+                    height: 140
+                    color: tooltipsToggleMouseArea.pressed ? "#3a3a3a" : (tooltipsToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
 
-                    Text {
-                        text: "Режим воспроизведения:"
-                        color: "#4CAF50"
-                        font.pixelSize: 14
-                        font.bold: true
-                    }
-
-                    // Строка для сглаживания
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 10
+                    // Настройки для режима воспроизведения (лог)
+                    ColumnLayout {
+                        anchors.fill: parent  // ← ДОБАВИТЬ ЭТУ СТРОКУ
+                        anchors.margins: 5    // ← ДОБАВИТЬ ОТСТУПЫ
+                        spacing: 2
 
                         Text {
-                            text: "Сглаживание"
-                            color: "#cccccc"
-                            font.pixelSize: 12
-                            Layout.fillWidth: true
-                        }
-
-                        Text {
-                            text: Math.round(menuSmoothingSlider.value * 10) / 10 + " сек"
+                            text: "Режим воспроизведения:"
                             color: "#4CAF50"
-                            font.pixelSize: 12
+                            font.pixelSize: 14
                             font.bold: true
-                            Layout.preferredWidth: 50
-                            horizontalAlignment: Text.AlignRight
                         }
-                    }
 
-                    // Контейнер для слайдера сглаживания
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-
-                        Slider {
-                            id: menuSmoothingSlider
-                            anchors.fill: parent
-                            from: 0.1
-                            to: 2.0
-                            stepSize: 0.1
-                            value: controller.angularSpeedSmoothingLog
-                            snapMode: Slider.SnapAlways
-
-                            onMoved: {
-                                controller.angularSpeedSmoothingLog = Math.round(value * 10) / 10
-                            }
-
-                            background: Rectangle {
-                                color: "#3c3c3c"
-                                radius: 2
-                                height: 6
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-
-                                Rectangle {
-                                    width: menuSmoothingSlider.visualPosition * parent.width
-                                    height: parent.height
-                                    color: "#4CAF50"
-                                    radius: 2
-                                }
-                            }
-
-                            handle: Rectangle {
-                                x: menuSmoothingSlider.visualPosition * (menuSmoothingSlider.availableWidth - width)
-                                y: menuSmoothingSlider.availableHeight / 2 - height / 2
-                                width: 20
-                                height: 20
-                                radius: 10
-                                color: menuSmoothingSlider.pressed ? "#45a049" : "#4CAF50"
-                                border.color: "#ffffff"
-                                border.width: 2
-
-                                scale: menuSmoothingSlider.hovered ? 1.2 : 1.0
-                                Behavior on scale {
-                                    NumberAnimation { duration: 150 }
-                                }
-                            }
-
-                            ToolTip.visible: tooltipsEnabled && hovered
-                            ToolTip.text: "Окно сглаживания: " + Math.round(value * 10) / 10 + " сек\n" +
-                                         "Регулирует плавность отображения угловой скорости.\n" +
-                                         "Больше значение = более плавные, но запаздывающие значения\n" +
-                                         "Меньше значение = более резкие, но быстрые реакции"
-                        }
-                    }
-
-                    // Строка для обновления
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 10
-                        Layout.topMargin: 10
-
-                        Text {
-                            text: "Обновление"
-                            color: "#cccccc"
-                            font.pixelSize: 12
+                        // Строка для сглаживания
+                        RowLayout {
                             Layout.fillWidth: true
-                        }
+                            spacing: 5
 
-                        Text {
-                            text: Math.round(menuUpdateRateSlider.value) + " Гц"
-                            color: "#2196F3"
-                            font.pixelSize: 12
-                            font.bold: true
-                            Layout.preferredWidth: 50
-                            horizontalAlignment: Text.AlignRight
-                        }
-                    }
-
-                    // Контейнер для слайдера обновления
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 40
-
-                        Slider {
-                            id: menuUpdateRateSlider
-                            anchors.fill: parent
-                            from: 1
-                            to: 30
-                            stepSize: 1
-                            value: controller.angularSpeedDisplayRateLog
-                            snapMode: Slider.SnapAlways
-
-                            onMoved: {
-                                controller.angularSpeedDisplayRateLog = Math.round(value)
+                            Text {
+                                text: "Сглаживание"
+                                color: "#cccccc"
+                                font.pixelSize: 12
+                                Layout.fillWidth: true
                             }
 
-                            background: Rectangle {
-                                color: "#3c3c3c"
-                                radius: 2
-                                height: 6
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.left: parent.left
-                                anchors.right: parent.right
+                            Text {
+                                text: Math.round(menuSmoothingSlider.value * 10) / 10 + " сек"
+                                color: "#4CAF50"
+                                font.pixelSize: 12
+                                font.bold: true
+                                Layout.preferredWidth: 50
+                                horizontalAlignment: Text.AlignRight
+                            }
+                        }
 
-                                Rectangle {
-                                    width: menuUpdateRateSlider.visualPosition * parent.width
-                                    height: parent.height
-                                    color: "#2196F3"
+                        // Контейнер для слайдера сглаживания
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 24
+
+                            Slider {
+                                id: menuSmoothingSlider
+                                anchors.fill: parent
+                                from: 0.1
+                                to: 2.0
+                                stepSize: 0.1
+                                value: controller.angularSpeedSmoothingLog
+                                snapMode: Slider.SnapAlways
+
+                                onMoved: {
+                                    controller.angularSpeedSmoothingLog = Math.round(value * 10) / 10
+                                }
+
+                                background: Rectangle {
+                                    color: "#3c3c3c"
                                     radius: 2
+                                    height: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+
+                                    Rectangle {
+                                        width: menuSmoothingSlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: "#4CAF50"
+                                        radius: 2
+                                    }
                                 }
+
+                                handle: Rectangle {
+                                    x: menuSmoothingSlider.visualPosition * (menuSmoothingSlider.availableWidth - width)
+                                    y: menuSmoothingSlider.availableHeight / 2 - height / 2
+                                    width: 20
+                                    height: 20
+                                    radius: 10
+                                    color: menuSmoothingSlider.pressed ? "#45a049" : "#4CAF50"
+                                    border.color: "#ffffff"
+                                    border.width: 2
+
+                                    scale: menuSmoothingSlider.hovered ? 1.2 : 1.0
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 150 }
+                                    }
+                                }
+
+                                ToolTip.visible: tooltipsEnabled && hovered
+                                ToolTip.text: "Окно сглаживания: " + Math.round(value * 10) / 10 + " сек\n" +
+                                             "Регулирует плавность отображения угловой скорости.\n" +
+                                             "Больше значение = более плавные, но запаздывающие значения\n" +
+                                             "Меньше значение = более резкие, но быстрые реакции"
+                            }
+                        }
+
+                        // Строка для обновления
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 5
+
+                            Text {
+                                text: "Обновление"
+                                color: "#cccccc"
+                                font.pixelSize: 12
+                                Layout.fillWidth: true
                             }
 
-                            handle: Rectangle {
-                                x: menuUpdateRateSlider.visualPosition * (menuUpdateRateSlider.availableWidth - width)
-                                y: menuUpdateRateSlider.availableHeight / 2 - height / 2
-                                width: 20
-                                height: 20
-                                radius: 10
-                                color: menuUpdateRateSlider.pressed ? "#1976d2" : "#2196F3"
-                                border.color: "#ffffff"
-                                border.width: 2
-
-                                scale: menuUpdateRateSlider.hovered ? 1.2 : 1.0
-                                Behavior on scale {
-                                    NumberAnimation { duration: 150 }
-                                }
+                            Text {
+                                text: Math.round(menuUpdateRateSlider.value) + " Гц"
+                                color: "#2196F3"
+                                font.pixelSize: 12
+                                font.bold: true
+                                Layout.preferredWidth: 50
+                                horizontalAlignment: Text.AlignRight
                             }
+                        }
 
-                            ToolTip.visible: tooltipsEnabled && hovered
-                            ToolTip.text: "Частота обновления отображения: " + Math.round(value) + " Гц\n" +
-                                         "Регулирует, как часто обновляются цифры угловой скорости на экране.\n" +
-                                         "Больше = плавнее анимация цифр, Меньше = меньше мелькания"
+                        // Контейнер для слайдера обновления
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 24
+
+                            Slider {
+                                id: menuUpdateRateSlider
+                                anchors.fill: parent
+                                from: 1
+                                to: 30
+                                stepSize: 1
+                                value: controller.angularSpeedDisplayRateLog
+                                snapMode: Slider.SnapAlways
+
+                                onMoved: {
+                                    controller.angularSpeedDisplayRateLog = Math.round(value)
+                                }
+
+                                background: Rectangle {
+                                    color: "#3c3c3c"
+                                    radius: 2
+                                    height: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+
+                                    Rectangle {
+                                        width: menuUpdateRateSlider.visualPosition * parent.width
+                                        height: parent.height
+                                        color: "#2196F3"
+                                        radius: 2
+                                    }
+                                }
+
+                                handle: Rectangle {
+                                    x: menuUpdateRateSlider.visualPosition * (menuUpdateRateSlider.availableWidth - width)
+                                    y: menuUpdateRateSlider.availableHeight / 2 - height / 2
+                                    width: 20
+                                    height: 20
+                                    radius: 10
+                                    color: menuUpdateRateSlider.pressed ? "#1976d2" : "#2196F3"
+                                    border.color: "#ffffff"
+                                    border.width: 2
+
+                                    scale: menuUpdateRateSlider.hovered ? 1.2 : 1.0
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 150 }
+                                    }
+                                }
+
+                                ToolTip.visible: tooltipsEnabled && hovered
+                                ToolTip.text: "Частота обновления отображения: " + Math.round(value) + " Гц\n" +
+                                             "Регулирует, как часто обновляются цифры угловой скорости на экране.\n" +
+                                             "Больше = плавнее анимация цифр, Меньше = меньше мелькания"
+                            }
                         }
                     }
                 }
@@ -727,7 +742,7 @@ ApplicationWindow {
             // Раздел: Система
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 10
+                spacing: 5
 
                 Text {
                     text: "Система"
@@ -742,80 +757,71 @@ ApplicationWindow {
                     color: "#555"
                 }
 
-                // Кнопка справки
-                Rectangle {
+                RowLayout {
                     Layout.fillWidth: true
-                    height: 50
-                    color: helpButtonMouseArea.pressed ? "#5a5a3a" : (helpButtonMouseArea.containsMouse ? "#7c7c5c" : "#FFC107")
-                    radius: 4
+                    spacing: 10
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 15
-                        spacing: 10
+                    // Кнопка справки
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 40
+                        color: helpButtonMouseArea.pressed ? "#5a5a3a" : (helpButtonMouseArea.containsMouse ? "#7c7c5c" : "#FFC107")
+                        radius: 4
 
-                        Text {
-                            text: "❓"
-                            color: "white"
-                            font.pixelSize: 16
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            Text {
+                                text: "Справка"
+                                color: "white"
+                                font.pixelSize: 14
+                                font.bold: true
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
                         }
 
-                        Text {
-                            text: "Справка"
-                            color: "white"
-                            font.pixelSize: 14
-                            font.bold: true
-                            Layout.fillWidth: true
-                        }
-                    }
-
-                    MouseArea {
-                        id: helpButtonMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            console.log("Открыть справку")
-                            sideMenuOpen = false
-                        }
-                    }
-                }
-
-                // Кнопка о программе
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 50
-                    color: aboutButtonMouseArea.pressed ? "#3a5c5c" : (aboutButtonMouseArea.containsMouse ? "#5c8f8f" : "#009688")
-                    radius: 4
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 15
-                        spacing: 10
-
-                        Text {
-                            text: "ℹ️"
-                            color: "white"
-                            font.pixelSize: 16
-                        }
-
-                        Text {
-                            text: "О программе"
-                            color: "white"
-                            font.pixelSize: 14
-                            font.bold: true
-                            Layout.fillWidth: true
+                        MouseArea {
+                            id: helpButtonMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                console.log("Открыть справку")
+                                sideMenuOpen = false
+                            }
                         }
                     }
 
-                    MouseArea {
-                        id: aboutButtonMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            console.log("Открыть о программе")
-                            sideMenuOpen = false
+                    // Кнопка о программе
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 40
+                        color: aboutButtonMouseArea.pressed ? "#3a5c5c" : (aboutButtonMouseArea.containsMouse ? "#5c8f8f" : "#009688")
+                        radius: 4
+
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 5
+
+                            Text {
+                                text: "О программе"
+                                color: "white"
+                                font.pixelSize: 14
+                                font.bold: true
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+
+                        MouseArea {
+                            id: aboutButtonMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                console.log("Открыть о программе")
+                                sideMenuOpen = false
+                            }
                         }
                     }
                 }
@@ -844,27 +850,20 @@ ApplicationWindow {
                 // Кнопка выхода
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 50
+                    height: 40
                     color: exitButtonMouseArea.pressed ? "#7c3a3a" : (exitButtonMouseArea.containsMouse ? "#bf5c5c" : "#f44336")
                     radius: 4
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 15
-                        spacing: 10
-
-                        Text {
-                            text: "🚪"
-                            color: "white"
-                            font.pixelSize: 16
-                        }
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 5
 
                         Text {
                             text: "Выход"
                             color: "white"
                             font.pixelSize: 14
                             font.bold: true
-                            Layout.fillWidth: true
+                            anchors.verticalCenter: parent.verticalCenter
                         }
                     }
 
@@ -914,6 +913,7 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.margins: 10
         spacing: 10
+        enabled: !sideMenuOpen
 
         // === ВЕРХНЯЯ ПАНЕЛЬ: КНОПКА МЕНЮ + УВЕДОМЛЕНИЯ ===
         RowLayout {
@@ -2599,7 +2599,7 @@ ApplicationWindow {
 
     // Функция для показа уведомлений
     function showNotification(message, isError) {
-        if (notificationTimer.running) {
+        if (notificationTimer.running || sideMenuOpen) {
             return
         }
         notificationText.text = message
