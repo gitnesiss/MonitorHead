@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Справка - Монитор положения головы</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c5530;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2c5530;
+            margin-top: 25px;
+        }
+        h3 {
+            color: #4CAF50;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            font-size: 0.9em;
+            margin-right: 5px;
+        }
+        .hotkey {
+            background: #ff9800;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .color-pitch { color: #BB86FC; font-weight: bold; }
+        .color-roll { color: #03DAC6; font-weight: bold; }
+        .color-yaw { color: #CF6679; font-weight: bold; }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Монитор положения головы - Справка</h1>
+
+        <div class="section">
+            <h2>Основное назначение</h2>
+            <p>Программа предназначена для отслеживания и визуализации ориентации головы в реальном времени с использованием датчиков, а также для записи и воспроизведения исследований.</p>
+        </div>
+
+        <div class="section">
+            <h2>Режимы работы</h2>
+            
+            <h3><span class="badge"></span> Режим реального времени</h3>
+            <ul>
+                <li>Получение данных о положении головы с COM-порта</li>
+                <li>Отображение углов тангажа, крена и рыскания</li>
+                <li>Отображение угловых скоростей по тангажу, крену и рысканью</li>
+                <li>Запись исследований с уникальным номером</li>
+                <li>Визуализация в 2D и 3D</li>
+            </ul>
+
+            <h3><span class="badge"></span> Режим воспроизведения</h3>
+            <ul>
+                <li>Загрузка записанных исследований из файлов</li>
+                <li>Отображение углов тангажа, крена и рыскания</li>
+                <li>Отображение угловых скоростей по тангажу, крену и рысканью</li>
+                <li>Управление с помощью кнопок или  временной шкалы</li>
+                <li>Визуализация в 2D и 3D</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Управление</h2>
+            
+            <h3>Основные элементы управления</h3>
+            <ul>
+                <li><strong>COM-порт</strong>: выбор порта и подключение к устройству</li>
+                <li><strong>Исследование</strong>: ввод 6-значного номера и управление записью</li>
+                <li><strong>Калибровка</strong>: настройка датчиков устройства</li>
+                <li><strong>Загрузка</strong>: открытие файлов для анализа</li>
+            </ul>
+
+            <h3>Горячие клавиши</h3>
+            <ul>
+                <li><span class="hotkey">ПРОБЕЛ</span> - в режиме реального времени: начать/остановить запись исследования</li>
+                <li><span class="hotkey">ПРОБЕЛ</span> - в режиме воспроизведения: начать/приостановить воспроизведение</li>
+                <li><span class="hotkey">ESC</span> - закрыть меню</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Визуализация</h2>
+            
+            <h3>2D панели</h3>
+            <ul>
+                <li><span class="color-pitch">Тангаж (Pitch)</span> - кивание головой (фиолетовый)</li>
+                <li><span class="color-roll">Крен (Roll)</span> - наклоны головы в стороны (бирюзовый)</li>
+                <li><span class="color-yaw">Рысканье (Yaw)</span> - повороты головы (коралловый)</li>
+                <li>Возможность переключения видов для каждой оси</li>
+            </ul>
+
+            <h3>3D визуализация</h3>
+            <ul>
+                <li>Интерактивная 3D модель головы</li>
+                <li>Управление камерой (ЛКМ - вращение, колесо - zoom)</li>
+                <li>Предустановленные виды (изометрия, спереди, сзади, слева, справа, сверху, снизу)</li>
+                <li>Показать/скрыть модель головы</li>
+            </ul>
+
+            <h3>Графики</h3>
+            <ul>
+                <li>Отображение истории изменений углов за последние 30 секунд</li>
+                <li>Подсветка интервалов головокружения</li>
+                <li>Сетка со значениями углов и времени</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Настройки</h2>
+            <h3>Визуальные</h3>
+            <ul>
+                <li>Управление видимостью подсказок</li>
+                <li>Переключатели видов 2D изображений</li>
+            </ul>
+            <h3>Режим реального времени</h3>
+            <ul>
+                <li>Частота обновления угловой скорости</li>
+            </ul>
+            <h3>Режим воспроизведения</h3>
+            <ul>
+                <li>Сглаживание данных угловой скорости</li>
+                <li>Частота обновления угловой скорости</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin-top: 30px; color: #666; font-size: 0.9em;">
+            Версия 1.0.0
+        </div>
+    </div>
+</body>
+</html>

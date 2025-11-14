@@ -1,4 +1,5 @@
 import QtQuick
+import QtCore
 import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -19,6 +20,20 @@ ApplicationWindow {
     visible: true
     title: "Монитор положения головы"
     color: "#1e1e1e"
+
+    // Минималистичная черно-серая цветовая схема для кнопок
+    property color buttonNormal: "#404040"
+    property color buttonHover: "#505050"
+    property color buttonPressed: "#303030"
+    property color buttonDisabled: "#2a2a2a"
+
+    property color buttonText: "#ffffff"
+    property color buttonTextDisabled: "#888888"
+
+    // Акцентные цвета (минимальные)
+    property color accentSuccess: "#4CAF50"
+    property color accentDanger: "#f44336"
+    property color accentWarning: "#FF9800"
 
     // Свойство для управления видимостью бокового меню
     property bool sideMenuOpen: false
@@ -42,6 +57,48 @@ ApplicationWindow {
 
     // Таймер записи исследования
     property int researchTimerSeconds: 0
+
+    // Функция для получения цветов кнопки в зависимости от состояния
+    function getButtonColors(isEnabled, mouseArea, type) {
+        if (!isEnabled) {
+            return {
+                normal: buttonDisabled,
+                hover: buttonDisabled,
+                pressed: buttonDisabled
+            }
+        }
+
+        var colors = {}
+        switch(type) {
+            case "success":
+                colors.normal = buttonSuccess
+                colors.hover = buttonSuccessHover
+                colors.pressed = buttonSuccessPressed
+                break
+            case "danger":
+                colors.normal = buttonDanger
+                colors.hover = buttonDangerHover
+                colors.pressed = buttonDangerPressed
+                break
+            case "warning":
+                colors.normal = buttonWarning
+                colors.hover = buttonWarningHover
+                colors.pressed = buttonWarningPressed
+                break
+            default: // primary
+                colors.normal = buttonNormal
+                colors.hover = buttonHover
+                colors.pressed = buttonPressed
+        }
+
+        if (mouseArea.pressed) {
+            return { normal: colors.pressed, hover: colors.pressed, pressed: colors.pressed }
+        } else if (mouseArea.containsMouse) {
+            return { normal: colors.hover, hover: colors.hover, pressed: colors.pressed }
+        } else {
+            return { normal: colors.normal, hover: colors.hover, pressed: colors.pressed }
+        }
+    }
 
     // Убираем проблемные свойства фокуса и добавляем Shortcut
     Shortcut {
@@ -438,7 +495,7 @@ ApplicationWindow {
                 spacing: 5
 
                 Text {
-                    text: "Настройки ⚙️"
+                    text: "Настройки️"
                     color: "#4CAF50"
                     font.pixelSize: 16
                     font.bold: true
@@ -458,8 +515,8 @@ ApplicationWindow {
 
                     // Настройки для режима реального времени (COM)
                     ColumnLayout {
-                        anchors.fill: parent  // ← ДОБАВИТЬ ЭТУ СТРОКУ
-                        anchors.margins: 5    // ← ДОБАВИТЬ ОТСТУПЫ
+                        anchors.fill: parent
+                        anchors.margins: 5
                         spacing: 5
 
                         Text {
@@ -566,8 +623,8 @@ ApplicationWindow {
 
                     // Настройки для режима воспроизведения (лог)
                     ColumnLayout {
-                        anchors.fill: parent  // ← ДОБАВИТЬ ЭТУ СТРОКУ
-                        anchors.margins: 5    // ← ДОБАВИТЬ ОТСТУПЫ
+                        anchors.fill: parent
+                        anchors.margins: 5
                         spacing: 2
 
                         Text {
@@ -583,7 +640,7 @@ ApplicationWindow {
                             spacing: 5
 
                             Text {
-                                text: "Сглаживание"
+                                text: "Окно сглаживания по времени"
                                 color: "#cccccc"
                                 font.pixelSize: 12
                                 Layout.fillWidth: true
@@ -663,7 +720,7 @@ ApplicationWindow {
                             spacing: 5
 
                             Text {
-                                text: "Обновление"
+                                text: "Частота обновления угловой скорости"
                                 color: "#cccccc"
                                 font.pixelSize: 12
                                 Layout.fillWidth: true
@@ -765,7 +822,8 @@ ApplicationWindow {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 40
-                        color: helpButtonMouseArea.pressed ? "#5a5a3a" : (helpButtonMouseArea.containsMouse ? "#7c7c5c" : "#FFC107")
+                        color: getButtonColors(true, helpButtonMouseArea, "primary").normal
+                        // color: helpButtonMouseArea.pressed ? "#5a5a3a" : (helpButtonMouseArea.containsMouse ? "#7c7c5c" : "#FFC107")
                         radius: 4
 
                         Row {
@@ -787,8 +845,8 @@ ApplicationWindow {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                console.log("Открыть справку")
-                                sideMenuOpen = false
+                                openHelpInBrowser();
+                                sideMenuOpen = false;
                             }
                         }
                     }
@@ -797,7 +855,8 @@ ApplicationWindow {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 40
-                        color: aboutButtonMouseArea.pressed ? "#3a5c5c" : (aboutButtonMouseArea.containsMouse ? "#5c8f8f" : "#009688")
+                        color: getButtonColors(true, aboutButtonMouseArea, "primary").normal
+                        // color: aboutButtonMouseArea.pressed ? "#3a5c5c" : (aboutButtonMouseArea.containsMouse ? "#5c8f8f" : "#009688")
                         radius: 4
 
                         Row {
@@ -819,7 +878,7 @@ ApplicationWindow {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                console.log("Открыть о программе")
+                                showAboutDialog()
                                 sideMenuOpen = false
                             }
                         }
@@ -908,6 +967,148 @@ ApplicationWindow {
         }
     }
 
+    // ДИАЛОГ "О ПРОГРАММЕ"
+    Popup {
+        id: aboutDialog
+        width: 450
+        height: 260
+        modal: true
+        focus: true
+        anchors.centerIn: parent
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        background: Rectangle {
+            color: "#2d2d2d"
+            radius: 8
+            border.color: "#444"
+            border.width: 2
+
+            // Заголовок диалога
+            Rectangle {
+                id: aboutHeader
+                width: parent.width
+                height: 50
+                color: "#3d3d3d"
+                radius: 8
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "О программе"
+                    color: "#4CAF50"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                // Кнопка закрытия
+                Rectangle {
+                    width: 30
+                    height: 30
+                    radius: 15
+                    color: closeAboutMouseArea.pressed ? "#7c3a3a" : (closeAboutMouseArea.containsMouse ? "#bf5c5c" : "transparent")
+                    anchors {
+                        right: parent.right
+                        top: parent.top
+                        margins: 10
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: "✕"
+                        color: "white"
+                        font.pixelSize: 14
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        id: closeAboutMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: aboutDialog.close()
+                    }
+                }
+            }
+        }
+
+        contentItem: ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 2
+            spacing: 15
+
+            ColumnLayout {
+                Layout.topMargin: 55
+                Layout.fillWidth: true
+                spacing: 10
+
+                Text {
+                    text: "Монитор положения головы"
+                    color: "#4CAF50"
+                    font.pixelSize: 20
+                    font.bold: true
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Text {
+                    text: "Версия 1.0.0"
+                    color: "#aaa"
+                    font.pixelSize: 14
+                    Layout.alignment: Qt.AlignHCenter
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: "#555"
+                }
+
+                Text {
+                    text: "Программа для мониторинга и анализа ориентации головы"
+                    color: "white"
+                    font.pixelSize: 14
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                Text {
+                    text: "Разработано для медицинских исследований\nи диагностики вестибулярных нарушений"
+                    color: "#aaa"
+                    font.pixelSize: 12
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
+
+            // Кнопка OK внизу
+            Rectangle {
+                Layout.preferredWidth: 100
+                Layout.preferredHeight: 40
+                Layout.alignment: Qt.AlignHCenter
+                Layout.bottomMargin: 10
+                radius: 4
+                color: okAboutMouseArea.pressed ? "#45a049" : (okAboutMouseArea.containsMouse ? "#5cbf62" : "#4CAF50")
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "OK"
+                    color: "white"
+                    font.pixelSize: 14
+                    font.bold: true
+                }
+
+                MouseArea {
+                    id: okAboutMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: aboutDialog.close()
+                }
+            }
+        }
+    }
+
+
     // === ОСНОВНОЙ ИНТЕРФЕЙС ===
     ColumnLayout {
         anchors.fill: parent
@@ -947,6 +1148,11 @@ ApplicationWindow {
                 ToolTip.text: "Открыть меню"
             }
 
+
+
+
+
+
             // === ЦЕНТРАЛЬНАЯ ЧАСТЬ - УВЕДОМЛЕНИЯ ===
             Rectangle {
                 Layout.fillWidth: true
@@ -969,12 +1175,13 @@ ApplicationWindow {
                     Rectangle {
                         id: notificationBackground
                         anchors.fill: parent
-                        color: "#4CAF50"
+                        color: "#666"
                         radius: 6
 
                         RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 10
+                            anchors.leftMargin: 15
+                            anchors.rightMargin: 10
                             spacing: 10
 
                             Text {
@@ -982,6 +1189,7 @@ ApplicationWindow {
                                 text: "💡"
                                 font.pixelSize: 16
                                 color: "white"
+                                Layout.alignment: Qt.AlignVCenter
                             }
 
                             Text {
@@ -991,12 +1199,14 @@ ApplicationWindow {
                                 font.pixelSize: 14
                                 Layout.fillWidth: true
                                 wrapMode: Text.Wrap
+                                Layout.alignment: Qt.AlignVCenter
                             }
 
                             Button {
                                 text: "✕"
                                 Layout.preferredWidth: 30
                                 Layout.preferredHeight: 30
+                                Layout.alignment: Qt.AlignVCenter
                                 onClicked: {
                                     notificationLayout.height = 0
                                     notificationTimer.stop()
@@ -1020,7 +1230,7 @@ ApplicationWindow {
 
                     Timer {
                         id: notificationTimer
-                        interval: 5000
+                        interval: 10000
                         onTriggered: {
                             notificationLayout.height = 0
                         }
@@ -1318,8 +1528,8 @@ ApplicationWindow {
 
                     Text {
                         text: controller.logMode ?
-                              "📁 Режим воспроизведения" :
-                              (controller.connected ? "🔌 Режим реального времени" : "⏳ Ожидание подключения")
+                              "Режим воспроизведения" :
+                              (controller.connected ? "Режим реального времени" : "⏳ Ожидание подключения")
                         color: controller.logMode ? "#4caf50" : (controller.connected ? "#2196f3" : "#ff9800")
                         font.pixelSize: 14
                         font.bold: true
@@ -2452,26 +2662,6 @@ ApplicationWindow {
         }
     }
 
-    // Обработчики для обновления комбобоксов частот
-    Connections {
-        target: controller
-        function onAngularSpeedUpdateFrequencyCOMChanged(frequency) {
-            menuComFrequencySlider.value = frequency;
-        }
-
-        function onAngularSpeedUpdateFrequencyLogChanged(frequency) {
-            // Обновляем Log комбобокс при изменении значения из C++
-            if (frequency <= 0.8) logFrequencyCombo.currentIndex = 0;
-            else if (frequency <= 0.9) logFrequencyCombo.currentIndex = 1;
-            else if (frequency <= 1.0) logFrequencyCombo.currentIndex = 2;
-            else if (frequency <= 1.1) logFrequencyCombo.currentIndex = 3;
-            else if (frequency <= 1.2) logFrequencyCombo.currentIndex = 4;
-            else if (frequency <= 1.3) logFrequencyCombo.currentIndex = 5;
-            else if (frequency <= 1.4) logFrequencyCombo.currentIndex = 6;
-            else logFrequencyCombo.currentIndex = 7;
-        }
-    }
-
     // Защита от сбоев COM-порта
     Connections {
         target: controller
@@ -2606,6 +2796,20 @@ ApplicationWindow {
         notificationBackground.color = isError ? "#f44336" : "#4CAF50"
         notificationLayout.height = 40
         notificationTimer.restart()
+    }
+
+    // ФУНКЦИИ ДЛЯ ПОКАЗА ДИАЛОГОВ
+    // function showHelpDialog() {
+    //     helpDialog.open()
+    // }
+
+    function showAboutDialog() {
+        aboutDialog.open()
+    }
+
+    function openHelpInBrowser() {
+        var helpFilePath = "file:///" + applicationDirPath + "/info/help.html";
+        Qt.openUrlExternally(helpFilePath);
     }
 
     // Тестовое уведомление при запуске
