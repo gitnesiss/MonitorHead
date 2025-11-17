@@ -1108,7 +1108,6 @@ ApplicationWindow {
         }
     }
 
-
     // === ОСНОВНОЙ ИНТЕРФЕЙС ===
     ColumnLayout {
         anchors.fill: parent
@@ -1147,11 +1146,6 @@ ApplicationWindow {
                 ToolTip.visible: tooltipsEnabled && menuMouseArea.containsMouse
                 ToolTip.text: "Открыть меню"
             }
-
-
-
-
-
 
             // === ЦЕНТРАЛЬНАЯ ЧАСТЬ - УВЕДОМЛЕНИЯ ===
             Rectangle {
@@ -1446,13 +1440,17 @@ ApplicationWindow {
                                 } else if (controller.recording) {
                                     return "Калибровка недоступна во время записи"
                                 } else {
-                                    return "Выполнить калибровку устройства"
+                                    return "Выполнить калибровку устройства\n" +
+                                           "Текущие смещения:\n" +
+                                           "Pitch: " + controller.calibrationPitch.toFixed(1) + "°\n" +
+                                           "Roll: " + controller.calibrationRoll.toFixed(1) + "°\n" +
+                                           "Yaw: " + controller.calibrationYaw.toFixed(1) + "°"
                                 }
                             }
 
                             onClicked: {
                                 if (enabled) {
-                                    showNotification("Запущена калибровка устройства", false)
+                                    controller.calibrateDevice()
                                 }
                             }
                         }
@@ -1529,7 +1527,7 @@ ApplicationWindow {
                     Text {
                         text: controller.logMode ?
                               "Режим воспроизведения" :
-                              (controller.connected ? "Режим реального времени" : "⏳ Ожидание подключения")
+                              (controller.connected ? "Режим реального времени" : "Ожидание подключения")
                         color: controller.logMode ? "#4caf50" : (controller.connected ? "#2196f3" : "#ff9800")
                         font.pixelSize: 14
                         font.bold: true
@@ -2798,11 +2796,6 @@ ApplicationWindow {
         notificationTimer.restart()
     }
 
-    // ФУНКЦИИ ДЛЯ ПОКАЗА ДИАЛОГОВ
-    // function showHelpDialog() {
-    //     helpDialog.open()
-    // }
-
     function showAboutDialog() {
         aboutDialog.open()
     }
@@ -2862,4 +2855,3 @@ ApplicationWindow {
         }
     }
 }
-

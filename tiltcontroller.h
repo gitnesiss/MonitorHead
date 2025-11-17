@@ -136,6 +136,11 @@ class TiltController : public QObject
     Q_PROPERTY(float angularSpeedUpdateRateLog READ angularSpeedUpdateRateLog WRITE setAngularSpeedUpdateRateLog NOTIFY angularSpeedUpdateRateLogChanged)
     Q_PROPERTY(float angularSpeedDisplayRateLog READ angularSpeedDisplayRateLog WRITE setAngularSpeedDisplayRateLog NOTIFY angularSpeedDisplayRateLogChanged)
 
+    Q_PROPERTY(float calibrationPitch READ calibrationPitch NOTIFY calibrationChanged)
+    Q_PROPERTY(float calibrationRoll READ calibrationRoll NOTIFY calibrationChanged)
+    Q_PROPERTY(float calibrationYaw READ calibrationYaw NOTIFY calibrationChanged)
+    Q_PROPERTY(bool calibrationActive READ calibrationActive NOTIFY calibrationChanged)
+
 public:
     explicit TiltController(QObject *parent = nullptr);
     ~TiltController();
@@ -186,6 +191,11 @@ public:
     float angularSpeedDisplayRateLog() const { return m_angularSpeedDisplayRateLog; }
     void setAngularSpeedDisplayRateLog(float rate);
 
+    float calibrationPitch() const { return m_calibrationPitch; }
+    float calibrationRoll() const { return m_calibrationRoll; }
+    float calibrationYaw() const { return m_calibrationYaw; }
+    bool calibrationActive() const { return m_calibrationActive; }
+
 public slots:
     void connectDevice();
     void disconnectDevice();
@@ -202,6 +212,7 @@ public slots:
     void stopResearchRecording();
     void toggleResearchRecording();
     void initializeResearchNumber();
+    void calibrateDevice();
 
 private slots:
     void updateLogPlayback();
@@ -393,6 +404,12 @@ private:
     float m_angularSpeedDisplayRateLog = 10.0f; // Частота отображения в Гц (1-30)
     qint64 m_lastAngularSpeedUpdate = 0; // Время последнего обновления скоростей
 
+    // Калибровочные смещения
+    float m_calibrationPitch = 0.0f;
+    float m_calibrationRoll = 0.0f;
+    float m_calibrationYaw = 0.0f;
+    bool m_calibrationActive = false;
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -420,6 +437,8 @@ signals:
     void angularSpeedSmoothingLogChanged(float smoothing);
     void angularSpeedUpdateRateLogChanged(float rate);
     void angularSpeedDisplayRateLogChanged(float rate);
+
+    void calibrationChanged();
 };
 
 #endif // TILTCONTROLLER_H

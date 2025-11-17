@@ -8,7 +8,6 @@
 #include <QRegularExpression>
 #include <algorithm>
 
-
 TiltController::TiltController(QObject *parent) : QObject(parent)
     , m_logReader(this)  // инициализация log reader
     , m_angularSpeedUpdateFrequencyCOM(4.0f)
@@ -217,65 +216,6 @@ void TiltController::disconnectDevice()
     safeDisconnect();
 }
 
-void TiltController::safeDisconnect()
-{
-    if (m_isCleaningUp) return;
-
-    m_isCleaningUp = true;
-
-    // Останавливаем запись исследования если она активна
-    if (m_recording) {
-        stopResearchRecording();
-    }
-
-    cleanupCOMPort();
-    m_connected = false;
-
-    // ПОЛНЫЙ СБРОС ДАННЫХ ПРИ ОТКЛЮЧЕНИИ
-    m_dataBuffer.clear();
-    m_prevFrame = DataFrame();
-
-    // Сбрасываем буферы для расчета скоростей COM-порта
-    clearCOMBuffers();
-    m_currentComSpeedPitch = 0.0f;
-    m_currentComSpeedRoll = 0.0f;
-    m_currentComSpeedYaw = 0.0f;
-
-    // Сбрасываем модель головы
-    m_headModel.resetData();
-
-    // Очищаем графики
-    m_pitchGraphData.clear();
-    m_rollGraphData.clear();
-    m_yawGraphData.clear();
-    m_dizzinessPatientData.clear();
-    m_dizzinessDoctorData.clear();
-
-    // Сбрасываем головокружение
-    if (m_patientDizziness) {
-        m_patientDizziness = false;
-        emit patientDizzinessChanged(m_patientDizziness);
-    }
-
-    if (m_doctorDizziness) {
-        m_doctorDizziness = false;
-        emit doctorDizzinessChanged(m_doctorDizziness);
-    }
-
-    // Сбрасываем номер загруженного исследования при отключении (только в режиме COM-порта)
-    if (!m_logMode && !m_loadedResearchNumber.isEmpty()) {
-        m_loadedResearchNumber.clear();
-        emit loadedResearchNumberChanged(m_loadedResearchNumber);
-    }
-
-    // Форсируем обновление графиков
-    emit graphDataChanged();
-
-    addNotification("Отключено от COM-порта. Данные сброшены.");
-    emit connectedChanged(m_connected);
-    m_isCleaningUp = false;
-}
-
 void TiltController::readCOMPortData()
 {
     if (!m_serialPort || !m_serialPort->isOpen() || m_isCleaningUp) {
@@ -293,95 +233,6 @@ void TiltController::readCOMPortData()
 
     } catch (const std::exception& e) {
         safeDisconnect();
-    }
-}
-
-// ОПТИМИЗАЦИЯ: Улучшаем обработку временных меток в processCOMPortData
-void TiltController::processCOMPortData(const QByteArray &data)
-{
-    m_incompleteData.append(data);
-
-    // Ограничиваем размер буфера неполных данных
-    if (m_incompleteData.size() > 2048) {
-        m_incompleteData = m_incompleteData.right(1024); // Оставляем последние данные
-    }
-
-    int processedLines = 0;
-    const int MAX_LINES_PER_CYCLE = 100; // Защита от зацикливания
-
-    while (processedLines < MAX_LINES_PER_CYCLE) {
-        int newlinePos = m_incompleteData.indexOf('\n');
-        if (newlinePos == -1) {
-            break;
-        }
-
-        QByteArray completeLine = m_incompleteData.left(newlinePos).trimmed();
-        m_incompleteData = m_incompleteData.mid(newlinePos + 1);
-        processedLines++;
-
-        if (completeLine.isEmpty()) {
-            continue;
-        }
-
-        QString dataString = QString::fromUtf8(completeLine);
-
-        // ОПТИМИЗАЦИЯ: Более эффективная очистка строки
-        QString cleanedString = dataString;
-        cleanedString.remove(QRegularExpression("[^0-9;.-]"));
-
-        if (!cleanedString.contains(';') || cleanedString.count(';') < 5) {
-            continue;
-        }
-
-        QStringList parts = cleanedString.split(';');
-
-        if (parts.size() >= 6) {
-            bool ok1, ok2, ok3, ok4, ok5, ok6;
-
-            // ОПТИМИЗАЦИЯ: Используем относительное время вместо абсолютного
-            qint64 timestamp;
-            if (m_useRelativeTime) {
-                timestamp = QDateTime::currentMSecsSinceEpoch() - m_startTime;
-            } else {
-                timestamp = parts[0].toLongLong(&ok1);
-                if (!ok1) {
-                    timestamp = QDateTime::currentMSecsSinceEpoch() - m_startTime;
-                }
-            }
-
-            float pitch = parts[1].replace(',', '.').toFloat(&ok2);
-            float roll = parts[2].replace(',', '.').toFloat(&ok3);
-            float yaw = parts[3].replace(',', '.').toFloat(&ok4);
-            bool patientDizziness = (parts[4].toInt(&ok5) == 1);
-            bool doctorDizziness = (parts[5].toInt(&ok6) == 1);
-
-            if (ok2 && ok3 && ok4 && ok5 && ok6) {
-                // ОПТИМИЗАЦИЯ: Проверяем корректность данных
-                if (qIsNaN(pitch) || qIsNaN(roll) || qIsNaN(yaw) ||
-                    qIsInf(pitch) || qIsInf(roll) || qIsInf(yaw)) {
-                    continue;
-                }
-
-                // ОПТИМИЗАЦИЯ: Фильтруем выбросы
-                if (pitch < -180 || pitch > 180 || roll < -180 || roll > 180 || yaw < -180 || yaw > 180) {
-                    qDebug() << "Data out of range:" << pitch << roll << yaw;
-                    continue;
-                }
-
-                DataFrame frame;
-                frame.timestamp = timestamp;
-                frame.pitch = pitch;
-                frame.roll = roll;
-                frame.yaw = yaw;
-                frame.patientDizziness = patientDizziness;
-                frame.doctorDizziness = doctorDizziness;
-
-                m_dataBuffer.add(frame);
-                processDataFrame(frame);
-
-                m_lastDataTime = QDateTime::currentMSecsSinceEpoch();
-            }
-        }
     }
 }
 
@@ -1897,4 +1748,210 @@ void TiltController::setAngularSpeedDisplayRateLog(float rate)
 
         emit angularSpeedDisplayRateLogChanged(rate);
     }
+}
+
+// ОПТИМИЗАЦИЯ: Улучшаем обработку временных меток в processCOMPortData
+void TiltController::processCOMPortData(const QByteArray &data)
+{
+    m_incompleteData.append(data);
+
+    // Ограничиваем размер буфера неполных данных
+    if (m_incompleteData.size() > 2048) {
+        m_incompleteData = m_incompleteData.right(1024); // Оставляем последние данные
+    }
+
+    int processedLines = 0;
+    const int MAX_LINES_PER_CYCLE = 100; // Защита от зацикливания
+
+    while (processedLines < MAX_LINES_PER_CYCLE) {
+        int newlinePos = m_incompleteData.indexOf('\n');
+        if (newlinePos == -1) {
+            break;
+        }
+
+        QByteArray completeLine = m_incompleteData.left(newlinePos).trimmed();
+        m_incompleteData = m_incompleteData.mid(newlinePos + 1);
+        processedLines++;
+
+        if (completeLine.isEmpty()) {
+            continue;
+        }
+
+        QString dataString = QString::fromUtf8(completeLine);
+
+        // ОПТИМИЗАЦИЯ: Более эффективная очистка строки
+        QString cleanedString = dataString;
+        cleanedString.remove(QRegularExpression("[^0-9;.-]"));
+
+        if (!cleanedString.contains(';') || cleanedString.count(';') < 5) {
+            continue;
+        }
+
+        QStringList parts = cleanedString.split(';');
+
+
+        if (parts.size() >= 6) {
+            bool ok1, ok2, ok3, ok4, ok5, ok6;
+
+            qint64 timestamp;
+            if (m_useRelativeTime) {
+                timestamp = QDateTime::currentMSecsSinceEpoch() - m_startTime;
+            } else {
+                timestamp = parts[0].toLongLong(&ok1);
+                if (!ok1) {
+                    timestamp = QDateTime::currentMSecsSinceEpoch() - m_startTime;
+                }
+            }
+
+            // ПРИМЕНЯЕМ КАЛИБРОВКУ К СЫРЫМ ДАННЫМ
+            float rawPitch = parts[1].replace(',', '.').toFloat(&ok2);
+            float rawRoll = parts[2].replace(',', '.').toFloat(&ok3);
+            float rawYaw = parts[3].replace(',', '.').toFloat(&ok4);
+
+            float calibratedPitch = rawPitch - m_calibrationPitch;
+            float calibratedRoll = rawRoll - m_calibrationRoll;
+            float calibratedYaw = rawYaw - m_calibrationYaw;
+
+            bool patientDizziness = (parts[4].toInt(&ok5) == 1);
+            bool doctorDizziness = (parts[5].toInt(&ok6) == 1);
+
+            if (ok2 && ok3 && ok4 && ok5 && ok6) {
+                // Проверяем корректность калиброванных данных
+                if (qIsNaN(calibratedPitch) || qIsNaN(calibratedRoll) || qIsNaN(calibratedYaw) ||
+                    qIsInf(calibratedPitch) || qIsInf(calibratedRoll) || qIsInf(calibratedYaw)) {
+                    continue;
+                }
+
+                // Фильтруем выбросы после калибровки
+                if (calibratedPitch < -180 || calibratedPitch > 180 ||
+                    calibratedRoll < -180 || calibratedRoll > 180 ||
+                    calibratedYaw < -180 || calibratedYaw > 180) {
+                    qDebug() << "Calibrated data out of range:" << calibratedPitch << calibratedRoll << calibratedYaw;
+                    continue;
+                }
+
+                DataFrame frame;
+                frame.timestamp = timestamp;
+                frame.pitch = calibratedPitch;    // ЗАПИСЫВАЕМ КАЛИБРОВАННЫЕ ДАННЫЕ
+                frame.roll = calibratedRoll;
+                frame.yaw = calibratedYaw;
+                frame.patientDizziness = patientDizziness;
+                frame.doctorDizziness = doctorDizziness;
+
+                m_dataBuffer.add(frame);
+                processDataFrame(frame);
+
+                m_lastDataTime = QDateTime::currentMSecsSinceEpoch();
+            }
+        }
+    }
+}
+
+void TiltController::calibrateDevice()
+{
+    if (!m_connected || m_logMode) {
+        addNotification("Калибровка доступна только в режиме реального времени при подключенном устройстве");
+        return;
+    }
+
+    if (m_recording) {
+        addNotification("Невозможно выполнить калибровку во время записи исследования");
+        return;
+    }
+
+    // Берем последние данные из буфера для калибровки
+    if (m_dataBuffer.size() > 0) {
+        DataFrame lastFrame = m_dataBuffer.last();
+
+        // Устанавливаем текущие углы как смещения для калибровки
+        m_calibrationPitch = lastFrame.pitch + m_calibrationPitch; // Учитываем предыдущую калибровку
+        m_calibrationRoll = lastFrame.roll + m_calibrationRoll;
+        m_calibrationYaw = lastFrame.yaw + m_calibrationYaw;
+
+        m_calibrationActive = true;
+
+        addNotification(QString("Калибровка применена: Pitch=%1°, Roll=%2°, Yaw=%3°")
+                            .arg(m_calibrationPitch, 0, 'f', 1)
+                            .arg(m_calibrationRoll, 0, 'f', 1)
+                            .arg(m_calibrationYaw, 0, 'f', 1));
+
+        // ОЧИЩАЕМ БУФЕР ДЛЯ ИЗБЕЖАНИЯ СМЕШИВАНИЯ ДАННЫХ
+        // m_dataBuffer.clear();
+        // clearCOMBuffers();
+        clearCOMBuffers();
+
+        // Сбрасываем предыдущий кадр для перерасчета скоростей
+        m_prevFrame = DataFrame();
+
+    } else {
+        addNotification("Нет данных для калибровки");
+    }
+
+    emit calibrationChanged();
+}
+
+void TiltController::safeDisconnect()
+{
+    if (m_isCleaningUp) return;
+
+    m_isCleaningUp = true;
+
+    // Останавливаем запись исследования если она активна
+    if (m_recording) {
+        stopResearchRecording();
+    }
+
+    cleanupCOMPort();
+    m_connected = false;
+
+    // ПОЛНЫЙ СБРОС ДАННЫХ ПРИ ОТКЛЮЧЕНИИ
+    m_dataBuffer.clear();
+    m_prevFrame = DataFrame();
+
+    // Сбрасываем буферы для расчета скоростей COM-порта
+    clearCOMBuffers();
+    m_currentComSpeedPitch = 0.0f;
+    m_currentComSpeedRoll = 0.0f;
+    m_currentComSpeedYaw = 0.0f;
+
+    // Сбрасываем модель головы
+    m_headModel.resetData();
+
+    // Очищаем графики
+    m_pitchGraphData.clear();
+    m_rollGraphData.clear();
+    m_yawGraphData.clear();
+    m_dizzinessPatientData.clear();
+    m_dizzinessDoctorData.clear();
+
+    // Сбрасываем головокружение
+    if (m_patientDizziness) {
+        m_patientDizziness = false;
+        emit patientDizzinessChanged(m_patientDizziness);
+    }
+
+    if (m_doctorDizziness) {
+        m_doctorDizziness = false;
+        emit doctorDizzinessChanged(m_doctorDizziness);
+    }
+
+    // Сбрасываем номер загруженного исследования при отключении (только в режиме COM-порта)
+    if (!m_logMode && !m_loadedResearchNumber.isEmpty()) {
+        m_loadedResearchNumber.clear();
+        emit loadedResearchNumberChanged(m_loadedResearchNumber);
+    }
+
+    // СБРАСЫВАЕМ КАЛИБРОВКУ ПРИ ОТКЛЮЧЕНИИ
+    m_calibrationPitch = 0.0f;
+    m_calibrationRoll = 0.0f;
+    m_calibrationYaw = 0.0f;
+    m_calibrationActive = false;
+    emit calibrationChanged();  // При отключении сбрасываем калибровку
+
+    // Форсируем обновление графиков
+    emit graphDataChanged();
+
+    addNotification("Отключено от COM-порта. Данные сброшены.");
+    emit connectedChanged(m_connected);
+    m_isCleaningUp = false;
 }
