@@ -14,6 +14,7 @@
 #include <QtCore/QTextStream>
 #include "headmodel.h"
 #include "log_reader.h"
+#include "wificontroller.h"
 
 // Структура для хранения одного кадра данных
 struct DataFrame {
@@ -141,6 +142,12 @@ class TiltController : public QObject
     Q_PROPERTY(float calibrationYaw READ calibrationYaw NOTIFY calibrationChanged)
     Q_PROPERTY(bool calibrationActive READ calibrationActive NOTIFY calibrationChanged)
 
+    Q_PROPERTY(QString connectionType READ connectionType WRITE setConnectionType NOTIFY connectionTypeChanged)
+    Q_PROPERTY(bool wifiConnected READ wifiConnected NOTIFY wifiConnectedChanged)
+    Q_PROPERTY(QString wifiIP READ wifiIP WRITE setWifiIP NOTIFY wifiIPChanged)
+    Q_PROPERTY(int wifiPort READ wifiPort WRITE setWifiPort NOTIFY wifiPortChanged)
+    Q_PROPERTY(QString wifiStatus READ wifiStatus NOTIFY wifiStatusChanged)
+
 public:
     explicit TiltController(QObject *parent = nullptr);
     ~TiltController();
@@ -196,9 +203,19 @@ public:
     float calibrationYaw() const { return m_calibrationYaw; }
     bool calibrationActive() const { return m_calibrationActive; }
 
+    QString connectionType() const { return m_connectionType; }
+    void setConnectionType(const QString &type);
+
+    bool wifiConnected() const { return m_wifiController->connected(); }
+    QString wifiIP() const { return m_wifiController->ip(); }
+    void setWifiIP(const QString &ip) { m_wifiController->setIp(ip); }
+    int wifiPort() const { return m_wifiController->port(); }
+    void setWifiPort(int port) { m_wifiController->setPort(port); }
+    QString wifiStatus() const { return m_wifiController->status(); }
+
 public slots:
-    void connectDevice();
-    void disconnectDevice();
+    // void connectDevice();
+    // void disconnectDevice();
     void loadLogFile(const QString &filePath);
     void playLog();
     void pauseLog();
@@ -214,6 +231,11 @@ public slots:
     void initializeResearchNumber();
     void calibrateDevice();
 
+    void connectDevice();
+    void disconnectDevice();
+    void connectWifi();
+    void disconnectWifi();
+
 private slots:
     void updateLogPlayback();
     void readCOMPortData();
@@ -221,6 +243,9 @@ private slots:
     void updateDataDisplay();
     void setAngularSpeedUpdateFrequencyCOM(float frequency);
     void setAngularSpeedUpdateFrequencyLog(float frequency);
+
+    void onWifiDataReceived(const QByteArray &data);
+    void onWifiErrorOccurred(const QString &error);
 
 private:
     void updateHeadModel(float pitch, float roll, float yaw, float speedPitch, float speedRoll, float speedYaw, bool dizziness);
@@ -410,6 +435,12 @@ private:
     float m_calibrationYaw = 0.0f;
     bool m_calibrationActive = false;
 
+    // Wi-Fi контроллер
+    WifiController *m_wifiController;
+    QString m_connectionType = "COM";
+
+    void processWifiData(const QByteArray &data);
+
 signals:
     void connectedChanged(bool connected);
     void currentTimeChanged(int time);
@@ -439,6 +470,12 @@ signals:
     void angularSpeedDisplayRateLogChanged(float rate);
 
     void calibrationChanged();
+
+    void connectionTypeChanged(const QString &type);
+    void wifiConnectedChanged(bool connected);
+    void wifiIPChanged(const QString &ip);
+    void wifiPortChanged(int port);
+    void wifiStatusChanged(const QString &status);
 };
 
 #endif // TILTCONTROLLER_H

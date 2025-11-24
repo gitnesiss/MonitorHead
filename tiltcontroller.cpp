@@ -17,7 +17,7 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_logTimer.setInterval(16);
     connect(&m_logTimer, &QTimer::timeout, this, &TiltController::updateLogPlayback);
 
-    m_autoConnectTimer.setInterval(5000);
+    m_autoConnectTimer.setInterval(3000);
     connect(&m_autoConnectTimer, &QTimer::timeout, this, &TiltController::autoConnect);
 
     m_safetyTimer.setInterval(2000);
@@ -36,6 +36,15 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     refreshPorts();
     m_autoConnectTimer.start();
     addNotification("Программа запущена. Попытка автоматического подключения к COM-порту...");
+
+    // Инициализация Wi-Fi контроллера
+    m_wifiController = new WifiController(this);
+    connect(m_wifiController, &WifiController::dataReceived, this, &TiltController::onWifiDataReceived);
+    connect(m_wifiController, &WifiController::errorOccurred, this, &TiltController::onWifiErrorOccurred);
+    connect(m_wifiController, &WifiController::connectedChanged, this, &TiltController::wifiConnectedChanged);
+    connect(m_wifiController, &WifiController::ipChanged, this, &TiltController::wifiIPChanged);
+    connect(m_wifiController, &WifiController::portChanged, this, &TiltController::wifiPortChanged);
+    connect(m_wifiController, &WifiController::statusChanged, this, &TiltController::wifiStatusChanged);
 
     // Количество показываемых секунд на графике
     m_graphDuration = 30;
@@ -198,22 +207,36 @@ void TiltController::writeResearchHeader()
 
 void TiltController::connectDevice()
 {
-    if (m_connected) {
-        disconnectDevice();
-        return;
-    }
+    if (m_connectionType == "COM") {
+        if (m_connected) {
+            disconnectDevice();
+            return;
+        }
 
-    if (m_selectedPort.isEmpty()) {
-        addNotification("Ошибка: COM-порт не выбран");
-        return;
-    }
+        if (m_selectedPort.isEmpty()) {
+            addNotification("Ошибка: COM-порт не выбран");
+            return;
+        }
 
-    setupCOMPort();
+        // Останавливаем автоподключение при ручном подключении
+        m_autoConnectTimer.stop();
+        setupCOMPort();
+    } else if (m_connectionType == "WiFi") {
+        connectWifi();
+    }
 }
 
 void TiltController::disconnectDevice()
 {
-    safeDisconnect();
+    if (m_connectionType == "COM") {
+        safeDisconnect();
+        // После отключения по COM - перезапускаем автоподключение
+        if (!m_logMode) {
+            m_autoConnectTimer.start();
+        }
+    } else if (m_connectionType == "WiFi") {
+        disconnectWifi();
+    }
 }
 
 void TiltController::readCOMPortData()
@@ -272,14 +295,18 @@ void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 
 void TiltController::autoConnect()
 {
-    if (m_connected || m_logMode) return;
+    // Не автоподключаемся если уже подключены или в режиме лога
+    if ((m_connected || wifiConnected()) || m_logMode) return;  // Исправлено: wifiConnected() вместо m_wifiConnected
 
-    refreshPorts();
+    // АВТОПОДКЛЮЧЕНИЕ РАБОТАЕТ ТОЛЬКО ДЛЯ COM-ПОРТА
+    if (m_connectionType == "COM") {
+        refreshPorts();
 
-    if (!m_availablePorts.isEmpty()) {
-        QString portToTry = m_availablePorts.first();
-        setSelectedPort(portToTry);
-        setupCOMPort();
+        if (!m_availablePorts.isEmpty()) {
+            QString portToTry = m_availablePorts.first();
+            setSelectedPort(portToTry);
+            setupCOMPort();
+        }
     }
 }
 
@@ -321,6 +348,7 @@ void TiltController::switchToCOMPortMode()
         // Форсируем обновление графиков
         emit graphDataChanged();
 
+        // ЗАПУСКАЕМ АВТОПОДКЛЮЧЕНИЕ ПРИ ПЕРЕКЛЮЧЕНИИ В РЕЖИМ COM-ПОРТА
         m_autoConnectTimer.start();
         addNotification("Переключено в режим реального времени. Данные сброшены.");
     }
@@ -1954,4 +1982,65 @@ void TiltController::safeDisconnect()
     addNotification("Отключено от COM-порта. Данные сброшены.");
     emit connectedChanged(m_connected);
     m_isCleaningUp = false;
+}
+
+void TiltController::setConnectionType(const QString &type)
+{
+    if (m_connectionType != type && (type == "COM" || type == "WiFi")) {
+        // Отключаем текущее соединение перед сменой типа
+        if (m_connected) {
+            safeDisconnect();
+        }
+        if (m_wifiController->connected()) {
+            m_wifiController->disconnectFromDevice();
+        }
+
+        m_connectionType = type;
+        emit connectionTypeChanged(m_connectionType);
+
+        // УПРАВЛЕНИЕ АВТОПОДКЛЮЧЕНИЕМ В ЗАВИСИМОСТИ ОТ ТИПА
+        if (type == "COM") {
+            // При переключении на COM - запускаем автоподключение
+            if (!m_connected && !m_logMode) {
+                m_autoConnectTimer.start();
+            }
+            addNotification("Переключено на COM-порт. Автоподключение активно.");
+        } else {
+            // При переключении на Wi-Fi - останавливаем автоподключение
+            m_autoConnectTimer.stop();
+            addNotification("Переключено на Wi-Fi. Автоподключение отключено.");
+        }
+    }
+}
+
+void TiltController::connectWifi()
+{
+    if (m_wifiController->connected()) {
+        disconnectWifi();
+        return;
+    }
+
+    m_wifiController->connectToDevice();
+}
+
+void TiltController::disconnectWifi()
+{
+    m_wifiController->disconnectFromDevice();
+}
+
+void TiltController::onWifiDataReceived(const QByteArray &data)
+{
+    if (m_connectionType == "WiFi") {
+        processWifiData(data);
+    }
+}
+
+void TiltController::onWifiErrorOccurred(const QString &error)
+{
+    addNotification("Wi-Fi ошибка: " + error);
+}
+
+void TiltController::processWifiData(const QByteArray &data)
+{
+    processCOMPortData(data);
 }

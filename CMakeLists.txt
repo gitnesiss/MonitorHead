@@ -19,6 +19,7 @@ qt_add_executable(appMonitorHead
     main.cpp
     headmodel.cpp
     tiltcontroller.cpp
+    wificontroller.cpp
 )
 
 # Создаем папку research если не существует
@@ -60,12 +61,15 @@ qt_add_qml_module(appMonitorHead
         tiltcontroller.h
         log_reader.h
         log_reader.cpp
+        wificontroller.cpp
+        wificontroller.h
     QML_FILES
         Main.qml
         GraphCanvas.qml
         Advanced3DHead.qml
         AxisPanel.qml
         Formatters.js
+        SOURCES wificontroller.h wificontroller.cpp
 )
 
 target_link_libraries(appMonitorHead
