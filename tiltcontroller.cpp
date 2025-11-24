@@ -6,6 +6,8 @@
 #include <QDateTime>
 #include <QCoreApplication>
 #include <QRegularExpression>
+#include <QTcpSocket>
+#include <QHostAddress>
 #include <algorithm>
 
 TiltController::TiltController(QObject *parent) : QObject(parent)
@@ -13,11 +15,15 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     , m_angularSpeedUpdateFrequencyCOM(4.0f)
     , m_angularSpeedUpdateFrequencyLog(1.2f)
     , m_angularSpeedDisplayRateLog(10.0f)
+    , m_connectionType("COM")  // Инициализируем явно
+    , m_wifiAddress("192.168.4.1")
+    , m_wifiPort(8080)
+    , m_wifiConnected(false)
 {
     m_logTimer.setInterval(16);
     connect(&m_logTimer, &QTimer::timeout, this, &TiltController::updateLogPlayback);
 
-    m_autoConnectTimer.setInterval(3000);
+    m_autoConnectTimer.setInterval(5000);
     connect(&m_autoConnectTimer, &QTimer::timeout, this, &TiltController::autoConnect);
 
     m_safetyTimer.setInterval(2000);
@@ -36,15 +42,6 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     refreshPorts();
     m_autoConnectTimer.start();
     addNotification("Программа запущена. Попытка автоматического подключения к COM-порту...");
-
-    // Инициализация Wi-Fi контроллера
-    m_wifiController = new WifiController(this);
-    connect(m_wifiController, &WifiController::dataReceived, this, &TiltController::onWifiDataReceived);
-    connect(m_wifiController, &WifiController::errorOccurred, this, &TiltController::onWifiErrorOccurred);
-    connect(m_wifiController, &WifiController::connectedChanged, this, &TiltController::wifiConnectedChanged);
-    connect(m_wifiController, &WifiController::ipChanged, this, &TiltController::wifiIPChanged);
-    connect(m_wifiController, &WifiController::portChanged, this, &TiltController::wifiPortChanged);
-    connect(m_wifiController, &WifiController::statusChanged, this, &TiltController::wifiStatusChanged);
 
     // Количество показываемых секунд на графике
     m_graphDuration = 30;
@@ -98,6 +95,12 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     connect(&m_comSpeedUpdateTimer, &QTimer::timeout, this, &TiltController::updateCOMAngularSpeeds);
 
     m_lastAngularSpeedUpdate = 0;
+
+    // Инициализация TCP сокета для WiFi
+    m_tcpSocket = new QTcpSocket(this);
+    connect(m_tcpSocket, &QTcpSocket::readyRead, this, &TiltController::readWiFiData);
+    connect(m_tcpSocket, &QTcpSocket::errorOccurred, this, &TiltController::handleWiFiError);
+    connect(m_tcpSocket, &QTcpSocket::stateChanged, this, &TiltController::handleWiFiStateChanged);
 }
 
 TiltController::~TiltController()
@@ -207,36 +210,34 @@ void TiltController::writeResearchHeader()
 
 void TiltController::connectDevice()
 {
-    if (m_connectionType == "COM") {
-        if (m_connected) {
-            disconnectDevice();
-            return;
-        }
+    // ЕСЛИ МЫ В РЕЖИМЕ ЛОГ-ФАЙЛА, ПРЕДВАРИТЕЛЬНО ПЕРЕКЛЮЧАЕМСЯ В РЕЖИМ РЕАЛЬНОГО ВРЕМЕНИ
+    if (m_logMode) {
+        switchToRealtimeMode();
+    }
 
+    if (m_connected) {
+        disconnectDevice();
+        return;
+    }
+
+    if (m_connectionType == "COM") {
         if (m_selectedPort.isEmpty()) {
             addNotification("Ошибка: COM-порт не выбран");
             return;
         }
-
-        // Останавливаем автоподключение при ручном подключении
-        m_autoConnectTimer.stop();
         setupCOMPort();
     } else if (m_connectionType == "WiFi") {
-        connectWifi();
+        if (m_wifiAddress.isEmpty()) {
+            addNotification("Ошибка: WiFi адрес не указан");
+            return;
+        }
+        setupWiFiConnection();
     }
 }
 
 void TiltController::disconnectDevice()
 {
-    if (m_connectionType == "COM") {
-        safeDisconnect();
-        // После отключения по COM - перезапускаем автоподключение
-        if (!m_logMode) {
-            m_autoConnectTimer.start();
-        }
-    } else if (m_connectionType == "WiFi") {
-        disconnectWifi();
-    }
+    safeDisconnect();
 }
 
 void TiltController::readCOMPortData()
@@ -295,18 +296,15 @@ void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 
 void TiltController::autoConnect()
 {
-    // Не автоподключаемся если уже подключены или в режиме лога
-    if ((m_connected || wifiConnected()) || m_logMode) return;  // Исправлено: wifiConnected() вместо m_wifiConnected
 
-    // АВТОПОДКЛЮЧЕНИЕ РАБОТАЕТ ТОЛЬКО ДЛЯ COM-ПОРТА
-    if (m_connectionType == "COM") {
-        refreshPorts();
+    if (m_connected || m_logMode || m_connectionType != "COM") return;
 
-        if (!m_availablePorts.isEmpty()) {
-            QString portToTry = m_availablePorts.first();
-            setSelectedPort(portToTry);
-            setupCOMPort();
-        }
+    refreshPorts();
+
+    if (!m_availablePorts.isEmpty()) {
+        QString portToTry = m_availablePorts.first();
+        setSelectedPort(portToTry);
+        setupCOMPort();
     }
 }
 
@@ -348,7 +346,6 @@ void TiltController::switchToCOMPortMode()
         // Форсируем обновление графиков
         emit graphDataChanged();
 
-        // ЗАПУСКАЕМ АВТОПОДКЛЮЧЕНИЕ ПРИ ПЕРЕКЛЮЧЕНИИ В РЕЖИМ COM-ПОРТА
         m_autoConnectTimer.start();
         addNotification("Переключено в режим реального времени. Данные сброшены.");
     }
@@ -475,6 +472,13 @@ void TiltController::updateDataDisplay()
 
 void TiltController::loadLogFile(const QString &filePath)
 {
+    if (m_connected) {
+        safeDisconnect();
+    }
+
+    // ОСТАНАВЛИВАЕМ АВТОПОДКЛЮЧЕНИЕ ДЛЯ COM-ПОРТА
+    m_autoConnectTimer.stop();
+
     QString fileName = filePath;
 
     // Обрабатываем разные форматы путей
@@ -1904,8 +1908,6 @@ void TiltController::calibrateDevice()
                             .arg(m_calibrationYaw, 0, 'f', 1));
 
         // ОЧИЩАЕМ БУФЕР ДЛЯ ИЗБЕЖАНИЯ СМЕШИВАНИЯ ДАННЫХ
-        // m_dataBuffer.clear();
-        // clearCOMBuffers();
         clearCOMBuffers();
 
         // Сбрасываем предыдущий кадр для перерасчета скоростей
@@ -1929,14 +1931,20 @@ void TiltController::safeDisconnect()
         stopResearchRecording();
     }
 
-    cleanupCOMPort();
+    // Отключаем в зависимости от типа соединения
+    if (m_connectionType == "COM") {
+        cleanupCOMPort();
+    } else if (m_connectionType == "WiFi") {
+        cleanupWiFiConnection();
+    }
+
     m_connected = false;
 
-    // ПОЛНЫЙ СБРОС ДАННЫХ ПРИ ОТКЛЮЧЕНИИ
+    // ПОЛНЫЙ СБРОС ДАННЫХ ПРИ ОТКЛЮЧЕНИИ (общий для обоих типов)
     m_dataBuffer.clear();
     m_prevFrame = DataFrame();
 
-    // Сбрасываем буферы для расчета скоростей COM-порта
+    // Сбрасываем буферы для расчета скоростей
     clearCOMBuffers();
     m_currentComSpeedPitch = 0.0f;
     m_currentComSpeedRoll = 0.0f;
@@ -1963,7 +1971,7 @@ void TiltController::safeDisconnect()
         emit doctorDizzinessChanged(m_doctorDizziness);
     }
 
-    // Сбрасываем номер загруженного исследования при отключении (только в режиме COM-порта)
+    // Сбрасываем номер загруженного исследования при отключении
     if (!m_logMode && !m_loadedResearchNumber.isEmpty()) {
         m_loadedResearchNumber.clear();
         emit loadedResearchNumberChanged(m_loadedResearchNumber);
@@ -1974,12 +1982,15 @@ void TiltController::safeDisconnect()
     m_calibrationRoll = 0.0f;
     m_calibrationYaw = 0.0f;
     m_calibrationActive = false;
-    emit calibrationChanged();  // При отключении сбрасываем калибровку
+    emit calibrationChanged();
 
     // Форсируем обновление графиков
     emit graphDataChanged();
 
-    addNotification("Отключено от COM-порта. Данные сброшены.");
+    // ИСПРАВЛЕННАЯ СТРОКА - используем QString::arg()
+    QString message = QString("Отключено от %1. Данные сброшены.").arg(m_connectionType == "COM" ? "COM-порта" : "WiFi");
+    addNotification(message);
+
     emit connectedChanged(m_connected);
     m_isCleaningUp = false;
 }
@@ -1987,60 +1998,194 @@ void TiltController::safeDisconnect()
 void TiltController::setConnectionType(const QString &type)
 {
     if (m_connectionType != type && (type == "COM" || type == "WiFi")) {
-        // Отключаем текущее соединение перед сменой типа
+        // Отключаем текущее соединение при смене типа
         if (m_connected) {
             safeDisconnect();
-        }
-        if (m_wifiController->connected()) {
-            m_wifiController->disconnectFromDevice();
         }
 
         m_connectionType = type;
         emit connectionTypeChanged(m_connectionType);
 
-        // УПРАВЛЕНИЕ АВТОПОДКЛЮЧЕНИЕМ В ЗАВИСИМОСТИ ОТ ТИПА
-        if (type == "COM") {
-            // При переключении на COM - запускаем автоподключение
-            if (!m_connected && !m_logMode) {
-                m_autoConnectTimer.start();
-            }
-            addNotification("Переключено на COM-порт. Автоподключение активно.");
-        } else {
-            // При переключении на Wi-Fi - останавливаем автоподключение
-            m_autoConnectTimer.stop();
-            addNotification("Переключено на Wi-Fi. Автоподключение отключено.");
+        // ЕСЛИ МЫ В РЕЖИМЕ ЛОГ-ФАЙЛА, ПЕРЕКЛЮЧАЕМСЯ В РЕЖИМ РЕАЛЬНОГО ВРЕМЕНИ
+        if (m_logMode) {
+            switchToRealtimeMode();
         }
+
+        addNotification(QString("Тип подключения изменен на: %1").arg(type));
     }
 }
 
-void TiltController::connectWifi()
+void TiltController::setWifiAddress(const QString &address)
 {
-    if (m_wifiController->connected()) {
-        disconnectWifi();
+    if (m_wifiAddress != address) {
+        m_wifiAddress = address;
+        emit wifiAddressChanged(m_wifiAddress);
+    }
+}
+
+void TiltController::setWifiPort(int port)
+{
+    if (m_wifiPort != port && port > 0 && port <= 65535) {
+        m_wifiPort = port;
+        emit wifiPortChanged(m_wifiPort);
+    }
+}
+
+void TiltController::setupWiFiConnection()
+{
+    // ЕСЛИ МЫ В РЕЖИМЕ ЛОГ-ФАЙЛА, ПРЕДВАРИТЕЛЬНО ПЕРЕКЛЮЧАЕМСЯ В РЕЖИМ РЕАЛЬНОГО ВРЕМЕНИ
+    if (m_logMode) {
+        switchToRealtimeMode();
+    }
+
+    if (m_tcpSocket->state() == QAbstractSocket::ConnectedState) {
+        m_tcpSocket->disconnectFromHost();
+    }
+
+    cleanupWiFiConnection();
+
+    // ПОЛНЫЙ СБРОС ДАННЫХ ПЕРЕД ПОДКЛЮЧЕНИЕМ
+    resetAllData();
+
+    m_tcpSocket->connectToHost(m_wifiAddress, m_wifiPort);
+
+    // Таймаут подключения - 5 секунд
+    if (!m_tcpSocket->waitForConnected(5000)) {
+        addNotification("Ошибка подключения к WiFi: " + m_tcpSocket->errorString());
+        cleanupWiFiConnection();
         return;
     }
 
-    m_wifiController->connectToDevice();
+    m_wifiConnected = true;
+    m_connected = true;
+
+    // Запускаем таймер для обновления скоростей
+    if (!m_comSpeedUpdateTimer.isActive()) {
+        m_comSpeedUpdateTimer.start();
+    }
+
+    addNotification(QString("Успешное подключение к WiFi: %1:%2").arg(m_wifiAddress).arg(m_wifiPort));
+    emit connectedChanged(m_connected);
+    emit wifiConnectedChanged(m_wifiConnected);
 }
 
-void TiltController::disconnectWifi()
+void TiltController::cleanupWiFiConnection()
 {
-    m_wifiController->disconnectFromDevice();
+    if (m_tcpSocket) {
+        if (m_tcpSocket->state() == QAbstractSocket::ConnectedState) {
+            m_tcpSocket->disconnectFromHost();
+        }
+        m_tcpSocket->close();
+    }
+
+    m_wifiConnected = false;
+    m_connected = false;
+
+    emit connectedChanged(m_connected);
+    emit wifiConnectedChanged(m_wifiConnected);
 }
 
-void TiltController::onWifiDataReceived(const QByteArray &data)
+void TiltController::readWiFiData()
 {
-    if (m_connectionType == "WiFi") {
-        processWifiData(data);
+    if (!m_tcpSocket || m_tcpSocket->state() != QAbstractSocket::ConnectedState) {
+        return;
+    }
+
+    QByteArray data = m_tcpSocket->readAll();
+
+    if (data.isEmpty()) {
+        return;
+    }
+
+    // Обрабатываем данные так же, как и с COM-порта
+    processCOMPortData(data);
+}
+
+void TiltController::handleWiFiError(QAbstractSocket::SocketError error)
+{
+    Q_UNUSED(error)
+
+    if (m_wifiConnected) {
+        addNotification("Ошибка WiFi соединения: " + m_tcpSocket->errorString());
+        cleanupWiFiConnection();
+
+        // Полный сброс данных как при отключении COM-порта
+        safeDisconnect();
     }
 }
 
-void TiltController::onWifiErrorOccurred(const QString &error)
+void TiltController::handleWiFiStateChanged(QAbstractSocket::SocketState state)
 {
-    addNotification("Wi-Fi ошибка: " + error);
+    if (state == QAbstractSocket::UnconnectedState && m_wifiConnected) {
+        addNotification("WiFi соединение разорвано");
+        cleanupWiFiConnection();
+        safeDisconnect();
+    }
 }
 
-void TiltController::processWifiData(const QByteArray &data)
+// Добавляем метод для полного сброса данных
+void TiltController::resetAllData()
 {
-    processCOMPortData(data);
+    // Полный сброс всех данных
+    m_dataBuffer.clear();
+    m_prevFrame = DataFrame();
+
+    // Сбрасываем буферы для расчета скоростей
+    clearCOMBuffers();
+    m_currentComSpeedPitch = 0.0f;
+    m_currentComSpeedRoll = 0.0f;
+    m_currentComSpeedYaw = 0.0f;
+
+    // Сбрасываем модель головы
+    m_headModel.resetData();
+
+    // Очищаем графики
+    m_pitchGraphData.clear();
+    m_rollGraphData.clear();
+    m_yawGraphData.clear();
+    m_dizzinessPatientData.clear();
+    m_dizzinessDoctorData.clear();
+
+    // Сбрасываем головокружение
+    if (m_patientDizziness) {
+        m_patientDizziness = false;
+        emit patientDizzinessChanged(m_patientDizziness);
+    }
+
+    if (m_doctorDizziness) {
+        m_doctorDizziness = false;
+        emit doctorDizzinessChanged(m_doctorDizziness);
+    }
+
+    // Сбрасываем временные метки
+    m_startTime = QDateTime::currentMSecsSinceEpoch();
+    m_lastDataTime = 0;
+
+    // Форсируем обновление графиков
+    emit graphDataChanged();
+}
+
+// Добавляем метод для переключения в режим реального времени
+void TiltController::switchToRealtimeMode()
+{
+    if (m_logMode) {
+        stopLog();
+        m_logMode = false;
+        emit logModeChanged(m_logMode);
+        emit logControlsEnabledChanged(logControlsEnabled());
+
+        // Полный сброс данных
+        resetAllData();
+
+        // СБРАСЫВАЕМ НОМЕР ЗАГРУЖЕННОГО ИССЛЕДОВАНИЯ
+        m_loadedResearchNumber.clear();
+        emit loadedResearchNumberChanged(m_loadedResearchNumber);
+
+        // Запускаем автоподключение только для COM-порта
+        if (m_connectionType == "COM") {
+            m_autoConnectTimer.start();
+        }
+
+        addNotification("Переключено в режим реального времени. Данные сброшены.");
+    }
 }

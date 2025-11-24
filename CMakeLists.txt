@@ -11,6 +11,7 @@ find_package(Qt6 REQUIRED COMPONENTS
     Quick
     SerialPort
     Quick3D
+    Network
 )
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -19,7 +20,6 @@ qt_add_executable(appMonitorHead
     main.cpp
     headmodel.cpp
     tiltcontroller.cpp
-    wificontroller.cpp
 )
 
 # Создаем папку research если не существует
@@ -61,15 +61,12 @@ qt_add_qml_module(appMonitorHead
         tiltcontroller.h
         log_reader.h
         log_reader.cpp
-        wificontroller.cpp
-        wificontroller.h
     QML_FILES
         Main.qml
         GraphCanvas.qml
         Advanced3DHead.qml
         AxisPanel.qml
         Formatters.js
-        SOURCES wificontroller.h wificontroller.cpp
 )
 
 target_link_libraries(appMonitorHead
@@ -80,6 +77,7 @@ target_link_libraries(appMonitorHead
     Qt6::Quick
     Qt6::SerialPort
     Qt6::Quick3D
+    Qt6::Network
 )
 
 set_target_properties(appMonitorHead PROPERTIES

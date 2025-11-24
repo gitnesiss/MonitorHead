@@ -12,9 +12,10 @@
 #include <QtCore/QDir>
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
+#include <QTcpSocket>
+#include <QHostAddress>
 #include "headmodel.h"
 #include "log_reader.h"
-#include "wificontroller.h"
 
 // Структура для хранения одного кадра данных
 struct DataFrame {
@@ -143,10 +144,9 @@ class TiltController : public QObject
     Q_PROPERTY(bool calibrationActive READ calibrationActive NOTIFY calibrationChanged)
 
     Q_PROPERTY(QString connectionType READ connectionType WRITE setConnectionType NOTIFY connectionTypeChanged)
-    Q_PROPERTY(bool wifiConnected READ wifiConnected NOTIFY wifiConnectedChanged)
-    Q_PROPERTY(QString wifiIP READ wifiIP WRITE setWifiIP NOTIFY wifiIPChanged)
+    Q_PROPERTY(QString wifiAddress READ wifiAddress WRITE setWifiAddress NOTIFY wifiAddressChanged)
     Q_PROPERTY(int wifiPort READ wifiPort WRITE setWifiPort NOTIFY wifiPortChanged)
-    Q_PROPERTY(QString wifiStatus READ wifiStatus NOTIFY wifiStatusChanged)
+    Q_PROPERTY(bool wifiConnected READ wifiConnected NOTIFY wifiConnectedChanged)
 
 public:
     explicit TiltController(QObject *parent = nullptr);
@@ -204,18 +204,13 @@ public:
     bool calibrationActive() const { return m_calibrationActive; }
 
     QString connectionType() const { return m_connectionType; }
-    void setConnectionType(const QString &type);
-
-    bool wifiConnected() const { return m_wifiController->connected(); }
-    QString wifiIP() const { return m_wifiController->ip(); }
-    void setWifiIP(const QString &ip) { m_wifiController->setIp(ip); }
-    int wifiPort() const { return m_wifiController->port(); }
-    void setWifiPort(int port) { m_wifiController->setPort(port); }
-    QString wifiStatus() const { return m_wifiController->status(); }
+    QString wifiAddress() const { return m_wifiAddress; }
+    int wifiPort() const { return m_wifiPort; }
+    bool wifiConnected() const { return m_wifiConnected; }
 
 public slots:
-    // void connectDevice();
-    // void disconnectDevice();
+    void connectDevice();
+    void disconnectDevice();
     void loadLogFile(const QString &filePath);
     void playLog();
     void pauseLog();
@@ -230,11 +225,10 @@ public slots:
     void toggleResearchRecording();
     void initializeResearchNumber();
     void calibrateDevice();
-
-    void connectDevice();
-    void disconnectDevice();
-    void connectWifi();
-    void disconnectWifi();
+    void setConnectionType(const QString &type);
+    void setWifiAddress(const QString &address);
+    void setWifiPort(int port);
+    void switchToRealtimeMode();
 
 private slots:
     void updateLogPlayback();
@@ -243,9 +237,6 @@ private slots:
     void updateDataDisplay();
     void setAngularSpeedUpdateFrequencyCOM(float frequency);
     void setAngularSpeedUpdateFrequencyLog(float frequency);
-
-    void onWifiDataReceived(const QByteArray &data);
-    void onWifiErrorOccurred(const QString &error);
 
 private:
     void updateHeadModel(float pitch, float roll, float yaw, float speedPitch, float speedRoll, float speedYaw, bool dizziness);
@@ -435,11 +426,21 @@ private:
     float m_calibrationYaw = 0.0f;
     bool m_calibrationActive = false;
 
-    // Wi-Fi контроллер
-    WifiController *m_wifiController;
-    QString m_connectionType = "COM";
+    // WiFi соединение
+    QTcpSocket *m_tcpSocket = nullptr;
+    QString m_wifiAddress = "192.168.4.1";
+    int m_wifiPort = 8080;
+    bool m_wifiConnected = false;
+    QString m_connectionType = "COM"; // "COM" или "WiFi"
 
-    void processWifiData(const QByteArray &data);
+    // Сигналы для WiFi
+    void setupWiFiConnection();
+    void cleanupWiFiConnection();
+    void readWiFiData();
+    void handleWiFiError(QAbstractSocket::SocketError error);
+    void handleWiFiStateChanged(QAbstractSocket::SocketState state);
+
+    void resetAllData();
 
 signals:
     void connectedChanged(bool connected);
@@ -472,10 +473,9 @@ signals:
     void calibrationChanged();
 
     void connectionTypeChanged(const QString &type);
-    void wifiConnectedChanged(bool connected);
-    void wifiIPChanged(const QString &ip);
+    void wifiAddressChanged(const QString &address);
     void wifiPortChanged(int port);
-    void wifiStatusChanged(const QString &status);
+    void wifiConnectedChanged(bool connected);
 };
 
 #endif // TILTCONTROLLER_H

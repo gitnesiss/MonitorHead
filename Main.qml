@@ -58,12 +58,6 @@ ApplicationWindow {
     // Таймер записи исследования
     property int researchTimerSeconds: 0
 
-    property string connectionType: controller.connectionType
-    property string wifiIP: controller.wifiIP
-    property int wifiPort: controller.wifiPort
-    property bool wifiConnected: controller.wifiConnected
-    property string wifiStatus: controller.wifiStatus
-
     // Функция для получения цветов кнопки в зависимости от состояния
     function getButtonColors(isEnabled, mouseArea, type) {
         if (!isEnabled) {
@@ -1498,6 +1492,7 @@ ApplicationWindow {
                             horizontalAlignment: Text.AlignHCenter
                         }
 
+                        // В кнопке загрузки исследования добавляем проверку
                         MouseArea {
                             id: loadResearchMouseArea
                             anchors.fill: parent
@@ -1516,7 +1511,11 @@ ApplicationWindow {
 
                             onClicked: {
                                 if (enabled) {
-                                    loadResearchDialog.open()
+                                    // ПРЕЖДЕ ЧЕМ ЗАГРУЖАТЬ ФАЙЛ, ОТКЛЮЧАЕМСЯ ОТ УСТРОЙСТВА
+                                    if (controller.connected) {
+                                        controller.disconnectDevice();
+                                    }
+                                    loadResearchDialog.open();
                                 } else {
                                     showNotification("Невозможно загрузить исследование во время записи", true)
                                 }
@@ -1548,390 +1547,350 @@ ApplicationWindow {
                     }
                 }
 
-                // === ПРАВАЯ ЧАСТЬ - КОМПАКТНЫЙ БЛОК COM-ПОРТА ===
+                // === ПРАВАЯ ЧАСТЬ - БЛОК ПОДКЛЮЧЕНИЯ (2 КОЛОНКИ) ===
                 Rectangle {
                     width: 380
-                    height: 140
+                    height: 80
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.right: parent.right
                     color: "#282828"
                     radius: 8
 
-                    ColumnLayout {
+                    RowLayout {
                         anchors.fill: parent
                         anchors.margins: 8
-                        spacing: 5
+                        spacing: 10
 
-                        // Заголовок и статус
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Text {
-                                text: "Подключение"
-                                color: "#aaa"
-                                font.pixelSize: 12
-                            }
-                            Item { Layout.fillWidth: true }
-                            Text {
-                                text: {
-                                    if (connectionType === "COM" && controller.connected)
-                                        return "COM подключен"
-                                    else if (connectionType === "WiFi" && wifiConnected)
-                                        return "Wi-Fi подключен"
-                                    else
-                                        return "Не подключено"
-                                }
-                                color: {
-                                    if ((connectionType === "COM" && controller.connected) ||
-                                        (connectionType === "WiFi" && wifiConnected))
-                                        return "#4CAF50"
-                                    else
-                                        return "#f44336"
-                                }
-                                font.pixelSize: 11
-                                font.bold: true
-                            }
-                            Rectangle {
-                                width: 10
-                                height: 10
-                                radius: 5
-                                color: {
-                                    if ((connectionType === "COM" && controller.connected) ||
-                                        (connectionType === "WiFi" && wifiConnected))
-                                        return "#4CAF50"
-                                    else
-                                        return "#f44336"
-                                }
-                            }
-                        }
-
-                        // Переключатель типа подключения
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-                            Text {
-                                text: "Тип:"
-                                color: "#aaa"
-                                font.pixelSize: 11
-                            }
-                            ComboBox {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 25
-                                model: ["COM", "WiFi"]
-                                currentIndex: connectionType === "WiFi" ? 1 : 0
-                                onActivated: controller.connectionType = currentText
-                                background: Rectangle {
-                                    color: "#3c3c3c"
-                                    radius: 4
-                                    border.color: parent.activeFocus ? "#4caf50" : "#555"
-                                    border.width: 1
-                                }
-                                contentItem: Text {
-                                    text: parent.displayText
-                                    color: "white"
-                                    font.pixelSize: 11
-                                    verticalAlignment: Text.AlignVCenter
-                                    leftPadding: 8
-                                }
-                            }
-                        }
-
-                        // COM-порт элементы
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-                            visible: connectionType === "COM"
-                            ComboBox {
-                                id: comPortCombo
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 25
-                                model: controller.availablePorts
-                                onActivated: controller.selectedPort = currentText
-                                background: Rectangle {
-                                    color: "#3c3c3c"
-                                    radius: 4
-                                    border.color: comPortCombo.activeFocus ? "#4caf50" : "#555"
-                                    border.width: 1
-                                }
-                                contentItem: Text {
-                                    text: comPortCombo.displayText
-                                    color: "white"
-                                    font.pixelSize: 11
-                                    verticalAlignment: Text.AlignVCenter
-                                    leftPadding: 8
-                                }
-                            }
-                            Button {
-                                Layout.preferredWidth: 80
-                                Layout.preferredHeight: 25
-                                text: "Обновить"
-                                onClicked: controller.refreshPorts()
-                                background: Rectangle {
-                                    color: parent.down ? "#5a5a5a" : (parent.hovered ? "#4a4a4a" : "#3c3c3c")
-                                    radius: 4
-                                    border.color: "#555"
-                                    border.width: 1
-                                }
-                                contentItem: Text {
-                                    text: parent.text
-                                    color: "white"
-                                    font.pixelSize: 11
-                                    font.bold: true
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                        }
-
-                        // Wi-Fi элементы
+                        // ЛЕВАЯ КОЛОНКА - Источник (фиксированная ширина)
                         ColumnLayout {
-                            Layout.fillWidth: true
+                            Layout.preferredWidth: 80
+                            Layout.minimumWidth: 80
+                            Layout.maximumWidth: 80
+                            Layout.alignment: Qt.AlignVCenter
                             spacing: 5
-                            visible: connectionType === "WiFi"
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 5
-                                TextField {
-                                    id: wifiIPField
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 25
-                                    placeholderText: "IP адрес"
-                                    text: wifiIP
-                                    onEditingFinished: controller.wifiIP = text
-                                    background: Rectangle {
-                                        color: "#3c3c3c"
-                                        radius: 4
-                                        border.color: wifiIPField.activeFocus ? "#4caf50" : "#555"
-                                        border.width: 1
-                                    }
-                                    color: "white"
-                                    font.pixelSize: 11
-                                    horizontalAlignment: TextInput.AlignHCenter
-                                }
-                                TextField {
-                                    id: wifiPortField
-                                    Layout.preferredWidth: 60
-                                    Layout.preferredHeight: 25
-                                    placeholderText: "Порт"
-                                    text: wifiPort
-                                    validator: IntValidator { bottom: 1; top: 65535 }
-                                    onEditingFinished: controller.wifiPort = parseInt(text)
-                                    background: Rectangle {
-                                        color: "#3c3c3c"
-                                        radius: 4
-                                        border.color: wifiPortField.activeFocus ? "#4caf50" : "#555"
-                                        border.width: 1
-                                    }
-                                    color: "white"
-                                    font.pixelSize: 11
-                                    horizontalAlignment: TextInput.AlignHCenter
-                                }
-                            }
+
                             Text {
-                                text: wifiStatus
+                                text: "Источник"
                                 color: "#aaa"
-                                font.pixelSize: 10
+                                font.pixelSize: 11
+                                font.bold: true
+                                Layout.alignment: Qt.AlignLeft
+                            }
+
+                            ComboBox {
+                                id: connectionTypeCombo
                                 Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignHCenter
+                                Layout.preferredHeight: 25
+                                model: ["COM-порт", "WiFi"]
+                                currentIndex: controller.connectionType === "COM" ? 0 : 1
+                                onActivated: controller.connectionType = currentIndex === 0 ? "COM" : "WiFi"
+
+                                Layout.minimumWidth: 80
+                                Layout.maximumWidth: 80
+                                Layout.preferredWidth: 80
+
+                                background: Rectangle {
+                                    color: "#3c3c3c"
+                                    radius: 4
+                                    border.color: connectionTypeCombo.activeFocus ? "#4caf50" : "#555"
+                                    border.width: 1
+                                }
+
+                                contentItem: Text {
+                                    text: connectionTypeCombo.displayText
+                                    color: "white"
+                                    font.pixelSize: 11
+                                    verticalAlignment: Text.AlignVCenter
+                                    leftPadding: 8
+                                    elide: Text.ElideRight
+                                }
+
+                                popup: Popup {
+                                    y: connectionTypeCombo.height
+                                    width: Math.max(connectionTypeCombo.width, 80)
+                                    implicitHeight: contentItem.implicitHeight
+                                    padding: 1
+
+                                    contentItem: ListView {
+                                        clip: true
+                                        implicitHeight: contentHeight
+                                        model: connectionTypeCombo.popup.visible ? connectionTypeCombo.delegateModel : null
+                                        currentIndex: connectionTypeCombo.highlightedIndex
+                                        ScrollIndicator.vertical: ScrollIndicator { }
+                                    }
+
+                                    background: Rectangle {
+                                        color: "#3c3c3c"
+                                        border.color: "#555"
+                                        radius: 4
+                                    }
+                                }
                             }
                         }
 
-                        // Кнопка подключения/отключения
-                        Button {
+                        // ПРАВАЯ КОЛОНКА - Объединенные настройки и управление
+                        Rectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 30
-                            text: {
-                                if (connectionType === "COM" && controller.connected)
-                                    return "Отключить COM"
-                                else if (connectionType === "WiFi" && wifiConnected)
-                                    return "Отключить Wi-Fi"
-                                else if (connectionType === "COM")
-                                    return "Подключить COM"
-                                else
-                                    return "Подключить Wi-Fi"
-                            }
-                            onClicked: controller.connectDevice()
-                            background: Rectangle {
-                                color: {
-                                    if ((connectionType === "COM" && controller.connected) ||
-                                        (connectionType === "WiFi" && wifiConnected))
-                                        return parent.down ? "#c43a1a" : (parent.hovered ? "#f55a3a" : "#e44a2a")
-                                    else
-                                        return parent.down ? "#1a6bc4" : (parent.hovered ? "#3a8bff" : "#2a7be4")
+                            Layout.fillHeight: true
+                            color: "#202020"  // Более темный фон
+                            radius: 6
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 5
+                                spacing: 10
+
+                                // НАСТРОЙКИ ПОДКЛЮЧЕНИЯ (растягивается)
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 5
+
+                                    // COM-порт настройки
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 2
+                                        visible: connectionTypeCombo.currentIndex === 0
+
+                                        Text {
+                                            text: "COM-порт"
+                                            color: "#aaa"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                            Layout.alignment: Qt.AlignLeft
+                                        }
+
+                                        ComboBox {
+                                            id: comPortCombo
+                                            Layout.fillWidth: true
+                                            Layout.preferredHeight: 25
+                                            model: controller.availablePorts
+                                            onActivated: controller.selectedPort = currentText
+
+                                            background: Rectangle {
+                                                color: "#202020"
+                                                radius: 4
+                                                border.color: comPortCombo.activeFocus ? "#4caf50" : "#555"
+                                                border.width: 1
+                                            }
+
+                                            contentItem: Text {
+                                                text: comPortCombo.displayText
+                                                color: "white"
+                                                font.pixelSize: 12
+                                                verticalAlignment: Text.AlignVCenter
+                                                leftPadding: 8
+                                            }
+
+                                            popup: Popup {
+                                                y: comPortCombo.height
+                                                width: Math.max(comPortCombo.width, 150)
+                                                implicitHeight: contentItem.implicitHeight
+                                                padding: 1
+
+                                                contentItem: ListView {
+                                                    clip: true
+                                                    implicitHeight: contentHeight
+                                                    model: comPortCombo.popup.visible ? comPortCombo.delegateModel : null
+                                                    currentIndex: comPortCombo.highlightedIndex
+                                                    ScrollIndicator.vertical: ScrollIndicator { }
+                                                }
+
+                                                background: Rectangle {
+                                                    color: "#3c3c3c"
+                                                    border.color: "#555"
+                                                    radius: 4
+                                                }
+                                            }
+
+                                            ToolTip.visible: tooltipsEnabled && hovered
+                                            ToolTip.text: "Выберите COM-порт для подключения"
+                                        }
+                                    }
+
+                                    // WiFi настройки
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 5
+                                        visible: connectionTypeCombo.currentIndex === 1
+
+                                        // Строка IP-адреса
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+                                            Layout.alignment: Qt.AlignVCenter
+
+                                            Text {
+                                                text: "IP-адрес"
+                                                color: "#aaa"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                                Layout.preferredWidth: 60
+                                                Layout.alignment: Qt.AlignVCenter
+                                            }
+
+                                            TextField {
+                                                id: wifiAddressField
+                                                Layout.fillWidth: true
+                                                Layout.preferredHeight: 25
+                                                text: controller.wifiAddress
+                                                placeholderText: "192.168.4.1"
+                                                onEditingFinished: controller.wifiAddress = text
+                                                Layout.alignment: Qt.AlignVCenter
+
+                                                background: Rectangle {
+                                                    color: "#202020"
+                                                    radius: 4
+                                                    border.color: wifiAddressField.activeFocus ? "#4caf50" : "#555"
+                                                    border.width: 1
+                                                }
+                                                color: "white"
+                                                font.pixelSize: 12
+                                                horizontalAlignment: TextInput.AlignLeft
+                                                leftPadding: 8
+
+                                                validator: RegularExpressionValidator {
+                                                    regularExpression: /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+                                                }
+
+                                                ToolTip.visible: tooltipsEnabled && hovered
+                                                ToolTip.text: "IP адрес WiFi устройства (например: 192.168.4.1)"
+                                            }
+                                        }
+
+                                        // Строка порта
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+                                            Layout.alignment: Qt.AlignVCenter
+
+                                            Text {
+                                                text: "Порт"
+                                                color: "#aaa"
+                                                font.pixelSize: 12
+                                                font.bold: true
+                                                Layout.preferredWidth: 60
+                                                Layout.alignment: Qt.AlignVCenter
+                                            }
+
+                                            TextField {
+                                                id: wifiPortField
+                                                Layout.fillWidth: true
+                                                Layout.preferredHeight: 25
+                                                text: controller.wifiPort
+                                                placeholderText: "8080"
+                                                validator: IntValidator { bottom: 1; top: 65535 }
+                                                onEditingFinished: controller.wifiPort = parseInt(text)
+                                                Layout.alignment: Qt.AlignVCenter
+
+                                                background: Rectangle {
+                                                    color: "#202020"
+                                                    radius: 4
+                                                    border.color: wifiPortField.activeFocus ? "#4caf50" : "#555"
+                                                    border.width: 1
+                                                }
+                                                color: "white"
+                                                font.pixelSize: 12
+                                                horizontalAlignment: TextInput.AlignLeft
+                                                leftPadding: 8
+
+                                                ToolTip.visible: tooltipsEnabled && hovered
+                                                ToolTip.text: "Порт WiFi устройства (обычно 8080)"
+                                            }
+                                        }
+                                    }
                                 }
-                                radius: 4
-                            }
-                            contentItem: Text {
-                                text: parent.text
-                                color: "white"
-                                font.pixelSize: 12
-                                font.bold: true
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
+
+                                // УПРАВЛЕНИЕ ПОДКЛЮЧЕНИЕМ (фиксированная ширина)
+                                ColumnLayout {
+                                    Layout.preferredWidth: 100
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 5
+
+                                    // Статус подключения
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+
+                                        Text {
+                                            text: controller.connected ? "Подключен" : "Отключен"
+                                            color: controller.connected ? "#4CAF50" : "#f44336"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                            Layout.alignment: Qt.AlignVCenter
+                                        }
+
+                                        // Индикатор статуса
+                                        Rectangle {
+                                            width: 8
+                                            height: 8
+                                            radius: 4
+                                            color: controller.connected ? "#4CAF50" : "#f44336"
+                                            Layout.alignment: Qt.AlignVCenter
+                                        }
+                                    }
+
+                                    // Кнопка подключения/отключения
+                                    Rectangle {
+                                        id: connectButton
+                                        Layout.preferredWidth: 100
+                                        Layout.preferredHeight: 25
+                                        radius: 4
+                                        Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+
+                                        property color normalColor: controller.connected ? "#e44a2a" : "#2a7be4"
+                                        property color hoverColor: controller.connected ? "#f55a3a" : "#3a8bff"
+                                        property color pressedColor: controller.connected ? "#c43a1a" : "#1a6bc4"
+
+                                        color: {
+                                            if (mouseArea.pressed) {
+                                                return pressedColor
+                                            } else if (mouseArea.containsMouse) {
+                                                return hoverColor
+                                            } else {
+                                                return normalColor
+                                            }
+                                        }
+
+                                        Behavior on color {
+                                            ColorAnimation { duration: 150 }
+                                        }
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: controller.connected ? "Отключить" : "Подключить"
+                                            color: "white"
+                                            font.pixelSize: 12
+                                            font.bold: true
+                                        }
+
+                                        MouseArea {
+                                            id: mouseArea
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+                                                if (controller.connected) {
+                                                    controller.disconnectDevice()
+                                                } else {
+                                                    controller.connectDevice()
+                                                }
+                                            }
+
+                                            ToolTip.visible: tooltipsEnabled && containsMouse
+                                            ToolTip.text: controller.connected ?
+                                                "Отключиться от устройства" :
+                                                "Подключиться к устройству"
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-
-
-                // Rectangle {
-                //     width: 280
-                //     height: 70
-                //     anchors.verticalCenter: parent.verticalCenter
-                //     anchors.right: parent.right
-                //     color: "#282828"  //"#1e1e1e"
-                //     radius: 8
-                //     // border.color: "#222"
-                //     // border.width: 1
-
-                //     ColumnLayout {
-                //         anchors.fill: parent
-                //         anchors.margins: 8
-                //         spacing: 5
-
-                //         // Первая строка: заголовок и статус
-                //         RowLayout {
-                //             Layout.fillWidth: true
-
-                //             // Заголовок "COM-порт"
-                //             Text {
-                //                 text: "COM-порт"
-                //                 color: "#aaa"
-                //                 font.pixelSize: 12
-                //                 Layout.alignment: Qt.AlignLeft
-                //             }
-
-                //             Item { Layout.fillWidth: true } // Распорка
-
-                //             // Статус подключения
-                //             RowLayout {
-                //                 spacing: 6
-                //                 Layout.alignment: Qt.AlignRight
-
-                //                 // Текст статуса
-                //                 Text {
-                //                     text: controller.connected ? "Подключено" : "Не подключено"
-                //                     color: controller.connected ? "#4CAF50" : "#f44336"
-                //                     font.pixelSize: 11
-                //                     font.bold: true
-                //                 }
-
-                //                 // Индикатор статуса
-                //                 Rectangle {
-                //                     width: 10
-                //                     height: 10
-                //                     radius: 5
-                //                     color: controller.connected ? "#4CAF50" : "#f44336"
-                //                 }
-                //             }
-                //         }
-
-                //         // Вторая строка: комбобокс и кнопка
-                //         RowLayout {
-                //             Layout.fillWidth: true
-                //             spacing: 8
-
-                //             // Комбобокс выбора порта
-                //             ComboBox {
-                //                 id: comPortCombo
-                //                 Layout.fillWidth: true
-                //                 Layout.preferredHeight: 30
-                //                 model: controller.availablePorts
-                //                 onActivated: controller.selectedPort = currentText
-
-                //                 background: Rectangle {
-                //                     color: "#3c3c3c"
-                //                     radius: 4
-                //                     border.color: comPortCombo.activeFocus ? "#4caf50" : "#555"
-                //                     border.width: 1
-                //                 }
-
-                //                 contentItem: Text {
-                //                     text: comPortCombo.displayText
-                //                     color: "white"
-                //                     font.pixelSize: 12
-                //                     verticalAlignment: Text.AlignVCenter
-                //                     leftPadding: 8
-                //                 }
-
-                //                 popup: Popup {
-                //                     y: comPortCombo.height
-                //                     width: comPortCombo.width
-                //                     implicitHeight: contentItem.implicitHeight
-                //                     padding: 1
-
-                //                     contentItem: ListView {
-                //                         clip: true
-                //                         implicitHeight: contentHeight
-                //                         model: comPortCombo.popup.visible ? comPortCombo.delegateModel : null
-                //                         currentIndex: comPortCombo.highlightedIndex
-
-                //                         ScrollIndicator.vertical: ScrollIndicator { }
-                //                     }
-
-                //                     background: Rectangle {
-                //                         color: "#3c3c3c"
-                //                         border.color: "#555"
-                //                         radius: 4
-                //                     }
-                //                 }
-                //             }
-
-                //             // Кнопка подключения/отключения
-                //             Rectangle {
-                //                 id: connectButton
-                //                 Layout.preferredWidth: 120
-                //                 Layout.preferredHeight: 30
-                //                 radius: 4
-
-                //                 property color normalColor: controller.connected ? "#e44a2a" : "#2a7be4"
-                //                 property color hoverColor: controller.connected ? "#f55a3a" : "#3a8bff"
-                //                 property color pressedColor: controller.connected ? "#c43a1a" : "#1a6bc4"
-
-                //                 color: {
-                //                     if (mouseArea.pressed) {
-                //                         return pressedColor
-                //                     } else if (mouseArea.containsMouse) {
-                //                         return hoverColor
-                //                     } else {
-                //                         return normalColor
-                //                     }
-                //                 }
-
-                //                 Behavior on color {
-                //                     ColorAnimation { duration: 150 }
-                //                 }
-
-                //                 Text {
-                //                     anchors.centerIn: parent
-                //                     text: controller.connected ? "Отключить" : "Подключить"
-                //                     color: "white"
-                //                     font.pixelSize: 11
-                //                     font.bold: true
-                //                 }
-
-                //                 MouseArea {
-                //                     id: mouseArea
-                //                     anchors.fill: parent
-                //                     hoverEnabled: true
-                //                     cursorShape: Qt.PointingHandCursor
-                //                     onClicked: {
-                //                         if (controller.connected) {
-                //                             controller.disconnectDevice()
-                //                         } else {
-                //                             controller.connectDevice()
-                //                         }
-                //                     }
-
-                //                     ToolTip.visible: tooltipsEnabled && containsMouse
-                //                     ToolTip.text: controller.connected ?
-                //                         "Отключиться от COM-порта" :
-                //                         "Подключиться к выбранному COM-порту"
-                //                 }
-                //             }
-                //         }
-                //     }
-                // }
             }
         }
 
@@ -2953,6 +2912,119 @@ ApplicationWindow {
             // Также обновляем значение слайдера, если он не нажат
             if (!timeSlider.pressed) {
                 timeSlider.value = controller.currentTime
+            }
+        }
+    }
+
+    Connections {
+        target: controller
+        function onConnectionTypeChanged(type) {
+            // Обновляем интерфейс при смене типа подключения
+            console.log("Тип подключения изменен на:", type)
+        }
+
+        function onWifiAddressChanged(address) {
+            wifiAddressField.text = address
+        }
+
+        function onWifiPortChanged(port) {
+            wifiPortField.text = port
+        }
+
+        function onWifiConnectedChanged(connected) {
+            // Обновляем статус в реальном времени
+            if (connected) {
+                showNotification("Успешное подключение к WiFi", false)
+            }
+        }
+    }
+
+    // Обновляем существующий Connections для уведомлений
+    Connections {
+        target: controller
+        function onConnectedChanged(connected) {
+            if (connected) {
+                var message = controller.connectionType === "COM" ?
+                    "Успешное подключение к " + controller.selectedPort :
+                    "Успешное подключение к WiFi";
+                showNotification(message, false)
+            } else {
+                showNotification("Отключено от устройства", false)
+            }
+        }
+    }
+
+    Connections {
+        target: controller
+        function onConnectionTypeChanged(type) {
+            // При смене типа подключения в режиме реального времени сбрасываем данные
+            if (!controller.logMode) {
+                // Обновляем интерфейс при смене типа подключения
+                console.log("Тип подключения изменен на:", type)
+
+                // Если было подключение, переподключаемся
+                if (controller.connected) {
+                    controller.disconnectDevice();
+                    // Даем время на отключение перед возможным переподключением
+                    reconnectTimer.start();
+                }
+            }
+        }
+    }
+
+    // Connections для обновления интерфейса
+    Connections {
+        target: controller
+        function onConnectionTypeChanged(type) {
+            console.log("Тип подключения изменен на:", type)
+        }
+
+        function onWifiAddressChanged(address) {
+            wifiAddressField.text = address
+        }
+
+        function onWifiPortChanged(port) {
+            wifiPortField.text = port
+        }
+
+        function onConnectedChanged(connected) {
+            if (connected) {
+                var message = controller.connectionType === "COM" ?
+                    "Успешное подключение к " + controller.selectedPort :
+                    "Успешное подключение к WiFi";
+                showNotification(message, false)
+            } else {
+                showNotification("Отключено от устройства", false)
+            }
+        }
+
+        function onAvailablePortsChanged() {
+            // Принудительно обновляем комбобокс портов
+            comPortCombo.model = controller.availablePorts
+        }
+    }
+
+    Connections {
+        target: controller
+        function onWifiConnectedChanged(connected) {
+            if (connected) {
+                // Принудительно обновляем графики при подключении WiFi
+                Qt.callLater(function() {
+                    pitchGraph.requestPaint();
+                    rollGraph.requestPaint();
+                    yawGraph.requestPaint();
+                });
+            }
+        }
+    }
+
+    // Таймер для автоматического переподключения при смене типа
+    Timer {
+        id: reconnectTimer
+        interval: 500
+        onTriggered: {
+            if (!controller.connected && !controller.logMode) {
+                controller.connectDevice();
             }
         }
     }
