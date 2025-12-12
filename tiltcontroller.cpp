@@ -15,7 +15,7 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     , m_angularSpeedUpdateFrequencyCOM(4.0f)
     , m_angularSpeedUpdateFrequencyLog(1.2f)
     , m_angularSpeedDisplayRateLog(10.0f)
-    , m_connectionType("COM")  // Инициализируем явно
+    , m_connectionType("WiFi")  // ИЗМЕНЕНО: Инициализируем как WiFi по умолчанию
     , m_wifiAddress("192.168.4.1")
     , m_wifiPort(8080)
     , m_wifiConnected(false)
@@ -41,7 +41,7 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_headModel.resetData();
     refreshPorts();
     m_autoConnectTimer.start();
-    addNotification("Программа запущена. Попытка автоматического подключения к COM-порту...");
+    addNotification("Программа запущена. Готово к подключению по WiFi...");  // ИЗМЕНЕНО: Уведомление
 
     // Количество показываемых секунд на графике
     m_graphDuration = 30;
@@ -296,7 +296,7 @@ void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 
 void TiltController::autoConnect()
 {
-
+    // ИЗМЕНЕНО: Только для COM-порта и только если не подключены и не в режиме лога
     if (m_connected || m_logMode || m_connectionType != "COM") return;
 
     refreshPorts();

@@ -1581,9 +1581,17 @@ ApplicationWindow {
                                 id: connectionTypeCombo
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 25
-                                model: ["COM-порт", "WiFi"]
-                                currentIndex: controller.connectionType === "COM" ? 0 : 1
-                                onActivated: controller.connectionType = currentIndex === 0 ? "COM" : "WiFi"
+                                model: ["WiFi", "COM-порт"]
+                                currentIndex: controller.connectionType === "WiFi" ? 0 : 1
+                                onActivated: {
+                                    var type = currentIndex === 0 ? "WiFi" : "COM"
+                                    controller.connectionType = type
+                                    // Принудительно обновляем видимость панелей после смены
+                                    Qt.callLater(function() {
+                                        comPortSettings.visible = (type === "COM")
+                                        wifiSettings.visible = (type === "WiFi")
+                                    })
+                                }
 
                                 Layout.minimumWidth: 80
                                 Layout.maximumWidth: 80
@@ -1625,6 +1633,13 @@ ApplicationWindow {
                                         radius: 4
                                     }
                                 }
+
+                                Component.onCompleted: {
+                                    // Принудительно устанавливаем видимость панелей при запуске
+                                    var type = controller.connectionType === "WiFi" ? "WiFi" : "COM"
+                                    comPortSettings.visible = (type === "COM")
+                                    wifiSettings.visible = (type === "WiFi")
+                                }
                             }
                         }
 
@@ -1642,16 +1657,18 @@ ApplicationWindow {
 
                                 // НАСТРОЙКИ ПОДКЛЮЧЕНИЯ (растягивается)
                                 ColumnLayout {
+                                    id: connectionSettingsColumn
                                     Layout.fillWidth: true
                                     Layout.alignment: Qt.AlignVCenter
                                     spacing: 5
 
                                     // COM-порт настройки
                                     ColumnLayout {
+                                        id: comPortSettings
                                         Layout.fillWidth: true
                                         Layout.alignment: Qt.AlignVCenter
                                         spacing: 2
-                                        visible: connectionTypeCombo.currentIndex === 0
+                                        visible: false  // ИЗМЕНЕНО: по умолчанию скрыто
 
                                         Text {
                                             text: "COM-порт"
@@ -1711,10 +1728,11 @@ ApplicationWindow {
 
                                     // WiFi настройки
                                     ColumnLayout {
+                                        id: wifiSettings
                                         Layout.fillWidth: true
                                         Layout.alignment: Qt.AlignVCenter
                                         spacing: 5
-                                        visible: connectionTypeCombo.currentIndex === 1
+                                        visible: true  // ИЗМЕНЕНО: по умолчанию видно
 
                                         // Строка IP-адреса
                                         RowLayout {
@@ -2773,9 +2791,16 @@ ApplicationWindow {
 
         function onConnectedChanged(connected) {
             if (connected) {
-                showNotification("Успешное подключение к " + controller.selectedPort, false)
+                // ИЗМЕНЕНО: Единое сообщение для обоих типов подключения
+                var message = controller.connectionType === "COM" ?
+                    "Успешное подключение к COM-порту: " + controller.selectedPort :
+                    "Успешное подключение к WiFi: " + controller.wifiAddress + ":" + controller.wifiPort;
+                showNotification(message, false)
             } else {
-                showNotification("Отключено от COM-порта", false)
+                var disconnectMsg = controller.connectionType === "COM" ?
+                    "Отключено от COM-порта" :
+                    "Отключено от WiFi";
+                showNotification(disconnectMsg, false)
             }
         }
 
@@ -2918,18 +2943,6 @@ ApplicationWindow {
 
     Connections {
         target: controller
-        function onConnectionTypeChanged(type) {
-            // Обновляем интерфейс при смене типа подключения
-            console.log("Тип подключения изменен на:", type)
-        }
-
-        function onWifiAddressChanged(address) {
-            wifiAddressField.text = address
-        }
-
-        function onWifiPortChanged(port) {
-            wifiPortField.text = port
-        }
 
         function onWifiConnectedChanged(connected) {
             // Обновляем статус в реальном времени
@@ -2957,26 +2970,20 @@ ApplicationWindow {
     Connections {
         target: controller
         function onConnectionTypeChanged(type) {
-            // При смене типа подключения в режиме реального времени сбрасываем данные
-            if (!controller.logMode) {
-                // Обновляем интерфейс при смене типа подключения
-                console.log("Тип подключения изменен на:", type)
-
-                // Если было подключение, переподключаемся
-                if (controller.connected) {
-                    controller.disconnectDevice();
-                    // Даем время на отключение перед возможным переподключением
-                    reconnectTimer.start();
-                }
-            }
-        }
-    }
-
-    // Connections для обновления интерфейса
-    Connections {
-        target: controller
-        function onConnectionTypeChanged(type) {
             console.log("Тип подключения изменен на:", type)
+
+            // Автоматически показываем соответствующие настройки
+            if (type === "WiFi") {
+                showNotification("Режим WiFi активирован. Укажите IP-адрес и порт.", false)
+            } else {
+                showNotification("Режим COM-порта активирован. Выберите порт.", false)
+            }
+
+            // Если было подключение, переподключаемся
+            if (controller.connected) {
+                controller.disconnectDevice();
+                reconnectTimer.start();
+            }
         }
 
         function onWifiAddressChanged(address) {
@@ -3014,6 +3021,31 @@ ApplicationWindow {
                     rollGraph.requestPaint();
                     yawGraph.requestPaint();
                 });
+            }
+        }
+    }
+
+    // Добавьте этот Connections блок в существующие Connections (где-то после других Connections)
+    Connections {
+        target: controller
+        function onConnectionTypeChanged(type) {
+            console.log("Тип подключения изменен на:", type)
+
+            // Обновляем видимость панелей настроек
+            comPortSettings.visible = (type === "COM")
+            wifiSettings.visible = (type === "WiFi")
+
+            // Автоматически показываем соответствующие настройки
+            if (type === "WiFi") {
+                showNotification("Режим WiFi активирован. Укажите IP-адрес и порт.", false)
+            } else {
+                showNotification("Режим COM-порта активирован. Выберите порт.", false)
+            }
+
+            // Если было подключение, переподключаемся
+            if (controller.connected) {
+                controller.disconnectDevice();
+                reconnectTimer.start();
             }
         }
     }
@@ -3113,6 +3145,19 @@ ApplicationWindow {
         timer.start()
         console.log("Application started, headModel.hasData:", controller.headModel.hasData)
         console.log("Initial roll value:", controller.headModel.roll)
+        console.log("Default connection type:", controller.connectionType)
+
+        // Принудительно обновляем видимость панелей при запуске
+        var type = controller.connectionType
+        comPortSettings.visible = (type === "COM")
+        wifiSettings.visible = (type === "WiFi")
+
+        // Показываем информацию о режиме по умолчанию
+        if (type === "WiFi") {
+            showNotification("Режим подключения по WiFi установлен по умолчанию", false)
+        } else {
+            showNotification("Режим подключения по COM-порту", false)
+        }
 
         // Инициализация номера исследования
         controller.initializeResearchNumber()
