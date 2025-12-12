@@ -1682,47 +1682,323 @@ ApplicationWindow {
                                             id: comPortCombo
                                             Layout.fillWidth: true
                                             Layout.preferredHeight: 25
-                                            model: controller.availablePorts
-                                            onActivated: controller.selectedPort = currentText
+                                            model: [] // Начально пустой массив
+                                            currentIndex: -1
+                                            enabled: !controller.connected
+                                            editable: false
 
-                                            background: Rectangle {
-                                                color: "#202020"
-                                                radius: 4
-                                                border.color: comPortCombo.activeFocus ? "#4caf50" : "#555"
-                                                border.width: 1
+                                            // Обновляем список при отображении (onVisibleChanged)
+                                            onVisibleChanged: {
+                                                if (visible) {
+                                                    updatePortsList();
+                                                }
                                             }
 
-                                            contentItem: Text {
-                                                text: comPortCombo.displayText
-                                                color: "white"
-                                                font.pixelSize: 12
-                                                verticalAlignment: Text.AlignVCenter
-                                                leftPadding: 8
+                                            // Обновляем список при активации выпадающего списка
+                                            onActivated: {
+                                                // Обновляем список перед показом вариантов
+                                                updatePortsList();
+
+                                                // Устанавливаем выбранный порт
+                                                if (currentIndex >= 0 && currentIndex < model.length) {
+                                                    var port = model[currentIndex];
+                                                    if (port !== controller.selectedPort) {
+                                                        controller.selectedPort = port;
+                                                        showNotification("Выбран порт: " + port, false);
+                                                    }
+                                                }
+                                            }
+
+                                            // Функция для обновления списка портов
+                                            function updatePortsList() {
+                                                var currentPort = controller.selectedPort;
+                                                var ports = controller.availablePorts;
+
+                                                // Устанавливаем модель
+                                                comPortCombo.model = ports;
+
+                                                // Устанавливаем текущий индекс
+                                                var index = ports.indexOf(currentPort);
+                                                if (index >= 0) {
+                                                    comPortCombo.currentIndex = index;
+                                                } else if (ports.length > 0) {
+                                                    // Если выбранный порт не найден, выбираем первый
+                                                    comPortCombo.currentIndex = 0;
+                                                    controller.selectedPort = ports[0];
+                                                } else {
+                                                    comPortCombo.currentIndex = -1;
+                                                }
+
+                                                // Логируем обновление
+                                                console.log("Ports list updated:", ports, "Selected:", currentPort, "Index:", comPortCombo.currentIndex);
+                                            }
+
+                                            // Обновляем список при наведении мыши
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onEntered: {
+                                                    if (!controller.connected) {
+                                                        comPortCombo.updatePortsList();
+                                                    }
+                                                }
+                                                onClicked: {
+                                                    // Открываем список программно
+                                                    if (!controller.connected) {
+                                                        comPortCombo.popup.open();
+                                                    }
+                                                }
+                                            }
+
+                                            // Делегат для элементов списка
+                                            delegate: ItemDelegate {
+                                                width: comPortCombo.width
+                                                height: 30
+                                                padding: 5
+
+                                                contentItem: Text {
+                                                    text: modelData
+                                                    color: "white"
+                                                    font.pixelSize: 12
+                                                    verticalAlignment: Text.AlignVCenter
+                                                    elide: Text.ElideRight
+                                                }
+
+                                                background: Rectangle {
+                                                    color: highlighted ? "#4caf50" : (hovered ? "#3a3a3a" : "transparent")
+                                                    radius: 2
+                                                }
+
+                                                ToolTip.visible: tooltipsEnabled && hovered
+                                                ToolTip.text: "Нажмите для выбора порта " + modelData
+                                                ToolTip.delay: 500
+
+                                                MouseArea {
+                                                    anchors.fill: parent
+                                                    hoverEnabled: true
+                                                    cursorShape: Qt.PointingHandCursor
+                                                    onClicked: {
+                                                        controller.selectedPort = modelData;
+                                                        comPortCombo.popup.close();
+                                                        showNotification("Выбран порт: " + modelData, false);
+                                                    }
+                                                }
                                             }
 
                                             popup: Popup {
-                                                y: comPortCombo.height
+                                                id: portPopup
+                                                y: comPortCombo.height + 2
                                                 width: Math.max(comPortCombo.width, 150)
-                                                implicitHeight: contentItem.implicitHeight
-                                                padding: 1
+                                                implicitHeight: contentItem.implicitHeight + 30 // Учитываем заголовок
+                                                padding: 0 // Убираем внутренние отступы
+                                                modal: true
+                                                focus: true
+                                                closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-                                                contentItem: ListView {
-                                                    clip: true
-                                                    implicitHeight: contentHeight
-                                                    model: comPortCombo.popup.visible ? comPortCombo.delegateModel : null
-                                                    currentIndex: comPortCombo.highlightedIndex
-                                                    ScrollIndicator.vertical: ScrollIndicator { }
-                                                }
-
+                                                // Фон для всего Popup
                                                 background: Rectangle {
                                                     color: "#3c3c3c"
                                                     border.color: "#555"
                                                     radius: 4
+
+                                                    // Заголовок Popup
+                                                    Rectangle {
+                                                        id: popupHeader
+                                                        width: parent.width
+                                                        height: 30
+                                                        color: "#3a3a3a"
+                                                        radius: 4
+
+                                                        RowLayout {
+                                                            anchors.fill: parent
+                                                            anchors.margins: 5
+                                                            spacing: 10
+
+                                                            Text {
+                                                                text: "COM-порты"
+                                                                color: "white"
+                                                                font.pixelSize: 12
+                                                                font.bold: true
+                                                                Layout.fillWidth: true
+                                                            }
+
+                                                            // Кнопка обновления
+                                                            Rectangle {
+                                                                Layout.preferredWidth: 24
+                                                                Layout.preferredHeight: 24
+                                                                radius: 12
+                                                                color: refreshPortsMouseArea.pressed ? "#45a049" :
+                                                                       (refreshPortsMouseArea.containsMouse ? "#4caf50" : "#666")
+
+                                                                Text {
+                                                                    anchors.centerIn: parent
+                                                                    text: "🔄"
+                                                                    color: "white"
+                                                                    font.pixelSize: 12
+                                                                }
+
+                                                                MouseArea {
+                                                                    id: refreshPortsMouseArea
+                                                                    anchors.fill: parent
+                                                                    hoverEnabled: true
+                                                                    cursorShape: Qt.PointingHandCursor
+                                                                    onClicked: {
+                                                                        comPortCombo.updatePortsList();
+                                                                    }
+                                                                }
+
+                                                                ToolTip.visible: tooltipsEnabled && refreshPortsMouseArea.containsMouse
+                                                                ToolTip.text: "Обновить список портов"
+                                                                ToolTip.delay: 500
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                contentItem: Column {
+                                                    width: parent.width
+
+                                                    // Пустой элемент для смещения контента под заголовок
+                                                    Item {
+                                                        width: parent.width
+                                                        height: 30
+                                                    }
+
+                                                    // Список портов
+                                                    ListView {
+                                                        id: portListView
+                                                        width: parent.width
+                                                        height: Math.min(model.length * 30, 300) // Максимальная высота 300px
+                                                        clip: true
+                                                        model: comPortCombo.model
+                                                        currentIndex: comPortCombo.highlightedIndex
+                                                        boundsBehavior: Flickable.StopAtBounds
+
+                                                        ScrollIndicator.vertical: ScrollIndicator {
+                                                            active: true
+                                                        }
+
+                                                        // Обновляем список при открытии
+                                                        Component.onCompleted: {
+                                                            if (portPopup.visible) {
+                                                                comPortCombo.updatePortsList();
+                                                            }
+                                                        }
+
+                                                        // Обновляем при появлении
+                                                        onVisibleChanged: {
+                                                            if (visible) {
+                                                                comPortCombo.updatePortsList();
+                                                            }
+                                                        }
+
+                                                        // Делегат для элементов списка
+                                                        delegate: ItemDelegate {
+                                                            width: portListView.width
+                                                            height: 30
+                                                            padding: 5
+
+                                                            contentItem: Text {
+                                                                text: modelData
+                                                                color: "white"
+                                                                font.pixelSize: 12
+                                                                verticalAlignment: Text.AlignVCenter
+                                                                elide: Text.ElideRight
+                                                            }
+
+                                                            background: Rectangle {
+                                                                color: highlighted ? "#4caf50" : (hovered ? "#3a3a3a" : "transparent")
+                                                                radius: 2
+                                                            }
+
+                                                            ToolTip.visible: tooltipsEnabled && hovered
+                                                            ToolTip.text: "Нажмите для выбора порта " + modelData
+                                                            ToolTip.delay: 500
+
+                                                            MouseArea {
+                                                                anchors.fill: parent
+                                                                hoverEnabled: true
+                                                                cursorShape: Qt.PointingHandCursor
+                                                                onClicked: {
+                                                                    controller.selectedPort = modelData;
+                                                                    comPortCombo.popup.close();
+                                                                    showNotification("Выбран порт: " + modelData, false);
+                                                                    comPortCombo.currentIndex = index;
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                // Автоматическое обновление при открытии
+                                                onOpened: {
+                                                    comPortCombo.updatePortsList();
                                                 }
                                             }
 
+                                            background: Rectangle {
+                                                color: "#202020"
+                                                radius: 4
+                                                border.color: comPortCombo.activeFocus ? "#4caf50" :
+                                                             (comPortCombo.hovered ? "#666" : "#555")
+                                                border.width: 1
+
+                                                // Индикатор активности
+                                                Rectangle {
+                                                    visible: comPortCombo.enabled
+                                                    anchors {
+                                                        right: parent.right
+                                                        rightMargin: 8
+                                                        verticalCenter: parent.verticalCenter
+                                                    }
+                                                    width: 6
+                                                    height: 6
+                                                    radius: 3
+                                                    color: "#4caf50"
+                                                    opacity: comPortCombo.hovered ? 1.0 : 0.7
+
+                                                    SequentialAnimation on opacity {
+                                                        running: comPortCombo.enabled && comPortCombo.hovered
+                                                        loops: Animation.Infinite
+                                                        NumberAnimation { from: 0.3; to: 1.0; duration: 1000 }
+                                                        NumberAnimation { from: 1.0; to: 0.3; duration: 1000 }
+                                                    }
+                                                }
+                                            }
+
+                                            contentItem: Text {
+                                                text: {
+                                                    if (comPortCombo.currentIndex >= 0 && comPortCombo.currentIndex < comPortCombo.model.length) {
+                                                        return comPortCombo.model[comPortCombo.currentIndex];
+                                                    } else if (controller.selectedPort) {
+                                                        return controller.selectedPort;
+                                                    } else {
+                                                        return "Выберите порт";
+                                                    }
+                                                }
+                                                color: comPortCombo.enabled ? "white" : "#888"
+                                                font.pixelSize: 12
+                                                verticalAlignment: Text.AlignVCenter
+                                                leftPadding: 8
+                                                elide: Text.ElideRight
+                                            }
+
                                             ToolTip.visible: tooltipsEnabled && hovered
-                                            ToolTip.text: "Выберите COM-порт для подключения"
+                                            ToolTip.text: {
+                                                if (controller.connected) {
+                                                    return "Порт подключен: " + controller.selectedPort + "\n" +
+                                                           "Для смены порта отключитесь от устройства";
+                                                } else {
+                                                    var count = comPortCombo.model ? comPortCombo.model.length : 0;
+                                                    var hint = count > 0 ?
+                                                        "Доступно портов: " + count + "\n" +
+                                                        "Нажмите для выбора или наведите для обновления списка" :
+                                                        "Порты не обнаружены\nНажмите для обновления списка";
+                                                    return hint;
+                                                }
+                                            }
+                                            ToolTip.delay: 500
                                         }
                                     }
 
@@ -3006,8 +3282,12 @@ ApplicationWindow {
         }
 
         function onAvailablePortsChanged() {
-            // Принудительно обновляем комбобокс портов
-            comPortCombo.model = controller.availablePorts
+            // Принудительно обновляем список портов в UI
+            if (comPortCombo && comPortSettings.visible) {
+                Qt.callLater(function() {
+                    comPortCombo.updatePortsList();
+                });
+            }
         }
     }
 
@@ -3035,6 +3315,15 @@ ApplicationWindow {
             comPortSettings.visible = (type === "COM")
             wifiSettings.visible = (type === "WiFi")
 
+            // Если переключились на COM-порт, обновляем список портов
+            if (type === "COM" && comPortSettings.visible) {
+                Qt.callLater(function() {
+                    if (comPortCombo) {
+                        comPortCombo.updatePortsList();
+                    }
+                });
+            }
+
             // Автоматически показываем соответствующие настройки
             if (type === "WiFi") {
                 showNotification("Режим WiFi активирован. Укажите IP-адрес и порт.", false)
@@ -3042,24 +3331,24 @@ ApplicationWindow {
                 showNotification("Режим COM-порта активирован. Выберите порт.", false)
             }
 
-            // Если было подключение, переподключаемся
-            if (controller.connected) {
-                controller.disconnectDevice();
-                reconnectTimer.start();
-            }
+            // // Если было подключение, переподключаемся
+            // if (controller.connected) {
+            //     controller.disconnectDevice();
+            //     reconnectTimer.start();
+            // }
         }
     }
 
-    // Таймер для автоматического переподключения при смене типа
-    Timer {
-        id: reconnectTimer
-        interval: 500
-        onTriggered: {
-            if (!controller.connected && !controller.logMode) {
-                controller.connectDevice();
-            }
-        }
-    }
+    // // Таймер для автоматического переподключения при смене типа
+    // Timer {
+    //     id: reconnectTimer
+    //     interval: 500
+    //     onTriggered: {
+    //         if (!controller.connected && !controller.logMode) {
+    //             controller.connectDevice();
+    //         }
+    //     }
+    // }
 
     // Обработка критических ошибок
     function handleCriticalError(message) {

@@ -40,7 +40,7 @@ TiltController::TiltController(QObject *parent) : QObject(parent)
     m_researchFrameCounter = 1;
     m_headModel.resetData();
     refreshPorts();
-    m_autoConnectTimer.start();
+    // m_autoConnectTimer.start();  // запуск таймера автопереподключения
     addNotification("Программа запущена. Готово к подключению по WiFi...");  // ИЗМЕНЕНО: Уведомление
 
     // Количество показываемых секунд на графике
@@ -296,16 +296,16 @@ void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 
 void TiltController::autoConnect()
 {
-    // ИЗМЕНЕНО: Только для COM-порта и только если не подключены и не в режиме лога
-    if (m_connected || m_logMode || m_connectionType != "COM") return;
+    // // ИЗМЕНЕНО: Только для COM-порта и только если не подключены и не в режиме лога
+    // if (m_connected || m_logMode || m_connectionType != "COM") return;
 
     refreshPorts();
 
-    if (!m_availablePorts.isEmpty()) {
-        QString portToTry = m_availablePorts.first();
-        setSelectedPort(portToTry);
-        setupCOMPort();
-    }
+    // if (!m_availablePorts.isEmpty()) {
+    //     QString portToTry = m_availablePorts.first();
+    //     setSelectedPort(portToTry);
+    //     setupCOMPort();
+    // }
 }
 
 void TiltController::switchToCOMPortMode()
@@ -346,7 +346,7 @@ void TiltController::switchToCOMPortMode()
         // Форсируем обновление графиков
         emit graphDataChanged();
 
-        m_autoConnectTimer.start();
+        // m_autoConnectTimer.start();
         addNotification("Переключено в режим реального времени. Данные сброшены.");
     }
 }
@@ -392,6 +392,7 @@ void TiltController::setSelectedPort(const QString &port)
 
 void TiltController::refreshPorts()
 {
+    QStringList oldPorts = m_availablePorts;
     m_availablePorts.clear();
 
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
@@ -404,11 +405,42 @@ void TiltController::refreshPorts()
         qDebug() << "No real COM ports found, using simulation ports";
     }
 
-    emit availablePortsChanged();
+    // Сортируем порты для удобства
+    std::sort(m_availablePorts.begin(), m_availablePorts.end());
 
-    if (!m_availablePorts.isEmpty() && m_selectedPort.isEmpty()) {
-        setSelectedPort(m_availablePorts.first());
+    // Проверяем изменения
+    bool changed = (oldPorts != m_availablePorts);
+
+    // Если выбранный порт больше не существует, сбрасываем выбор
+    if (!m_selectedPort.isEmpty() && !m_availablePorts.contains(m_selectedPort)) {
+        m_selectedPort.clear();
+        if (m_availablePorts.size() > 0) {
+            m_selectedPort = m_availablePorts.first();
+        }
+        changed = true;
     }
+
+    // Если порт не выбран и есть доступные порты, выбираем первый
+    if (m_selectedPort.isEmpty() && m_availablePorts.size() > 0) {
+        m_selectedPort = m_availablePorts.first();
+        changed = true;
+    }
+
+    if (changed) {
+        emit availablePortsChanged();
+        emit selectedPortChanged();
+
+        // Логируем обновление портов
+        qDebug() << "COM ports refreshed. Available:" << m_availablePorts
+                 << "Selected:" << m_selectedPort;
+    }
+}
+
+QStringList TiltController::availablePorts()
+{
+    // Автоматически обновляем список при запросе
+    refreshPorts();
+    return m_availablePorts;
 }
 
 void TiltController::updateHeadModel(float pitch, float roll, float yaw,

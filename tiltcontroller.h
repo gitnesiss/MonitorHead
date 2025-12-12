@@ -148,6 +148,8 @@ class TiltController : public QObject
     Q_PROPERTY(int wifiPort READ wifiPort WRITE setWifiPort NOTIFY wifiPortChanged)
     Q_PROPERTY(bool wifiConnected READ wifiConnected NOTIFY wifiConnectedChanged)
 
+    Q_PROPERTY(QStringList availablePorts READ availablePorts NOTIFY availablePortsChanged)
+
 public:
     explicit TiltController(QObject *parent = nullptr);
     ~TiltController();
@@ -207,6 +209,8 @@ public:
     QString wifiAddress() const { return m_wifiAddress; }
     int wifiPort() const { return m_wifiPort; }
     bool wifiConnected() const { return m_wifiConnected; }
+
+    QStringList availablePorts();
 
 public slots:
     void connectDevice();
