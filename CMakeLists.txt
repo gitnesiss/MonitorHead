@@ -23,6 +23,17 @@ qt_add_executable(MonitorHead
     tiltcontroller.cpp
 )
 
+# Устанавливаем иконку для Windows
+if(WIN32)
+    set(APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/images/logo.ico")
+    if(EXISTS "${APP_ICON}")
+        set_target_properties(MonitorHead PROPERTIES
+            WIN32_EXECUTABLE TRUE
+            MACOSX_BUNDLE_ICON_FILE logo.ico
+        )
+    endif()
+endif()
+
 # Создаем папку research если не существует
 if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/research")
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/research")

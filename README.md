@@ -1308,3 +1308,56 @@ void loop() {
 4. **Измените канал Wi-Fi** (сейчас стоит 6, попробуйте 1 или 11)
 
 **13 dBm должно хватить для 99% случаев использования в помещении!** Если нужно больше дальности - увеличьте до 17 dBm.
+
+
+# Подготовка проекта к созданию установочного файла и запускаемого приложения
+
+## Создание запускаемого приложения для выноса на стороннюю машину.
+
+1. В Qt устанавливаем выпуск на релизную версию. Собираем проект.
+У меня проект собирался в папку `C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\build` в папку `Desktop_Qt_6_10_0_MinGW_64_bit-MinSizeRel`.
+
+2. Саму программу можем закрывать. И переходим в папку собранного проекта `C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\build\Desktop_Qt_6_10_0_MinGW_64_bit-MinSizeRel`
+
+```
+bash
+
+cd C:/Users/pomai/programming/code/projects/qt_qml/MonitorHead/build/Desktop_Qt_6_10_0_MinGW_64_bit-MinSizeRel
+```
+
+Зайдя в эту папку и попробовав запустить проект MonitorHead.exe
+```
+./MonitorHead.exe
+```
+мы получим следующие ошибки:
+1. Не удаётся продолжить выполнение кода, поскольку система не обнаружила libgcc_s_seh-1.dll. Для устранения этой проблемы попробуйте переустановить программу.
+2. Не удаётся продолжить выполнение кода, поскольку система не обнаружила libstdc++-6.dll. Для устранения этой проблемы попробуйте переустановить программу.
+
+```
+# 1. Перейдите в папку сборки
+cd C:/Users/pomai/programming/code/projects/qt_qml/MonitorHead/build/Desktop_Qt_6_10_0_MinGW_64_bit-MinSizeRel
+
+# 2. Удалите все DLL (кроме вашего .exe)
+rm *.dll
+
+# 3. Запустите windeployqt
+# C:/ваш_проект/qml - путь где лежат ваши qml файлы (у меня они лежат в корне проекта)
+C:/Qt/6.10.0/mingw_64/bin/windeployqt.exe --release --qmldir C:/Users/pomai/programming/code/projects/qt_qml/MonitorHead MonitorHead.exe
+
+# 4. Запустите приложение
+./MonitorHead.exe
+```
+
+Теперь эту папку можно переносить на другую машину.
+
+## Создание установочного файла.
+
+Для создания установочного файла будем использовать **Inno Setup Compiler**.
+
+Для начала очистим релизный проект от лишних файлов и папок. Для этого я использовал скрипт `prepare_release.sh` из папки `script_exe`.
+
+Далее я использовал программу Inno Setup Compiler для неё создал скрипт `MonitorHead.iss` из папки `script_exe`.
+
+Чтобы запустить компилящию установочного файла можно нажать `Ctrl+F9` или `Build->Compile`.
+
+Выходной файл у меня сохранялся в папку: `C:\Users\pomai\programming\executable_files`.

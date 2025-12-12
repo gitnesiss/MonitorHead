@@ -3,11 +3,16 @@
 #include <QtQml/QQmlContext>
 #include <QtCore/QDebug>
 #include <QtCore/QDir>
+#include <QtGui/QIcon>
 #include "tiltcontroller.h"
 
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+
+    // Устанавливаем иконку
+    QIcon appIcon("images/logo.ico");
+    app.setWindowIcon(appIcon);
 
     app.setApplicationName("Head Tilt Monitor");
     app.setApplicationVersion("1.0.0");
