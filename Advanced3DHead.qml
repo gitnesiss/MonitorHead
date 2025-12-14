@@ -290,9 +290,6 @@ Item {
                     eulerRotation: Qt.vector3d(-90, 0, 0)
                     materials: PrincipledMaterial {
                         id: headMaterial
-                        // baseColorMap: Texture {
-                        //     source: "models/textures/Monkey_base_color.png"
-                        // }
                         baseColorMap: Texture {
                             source: "qrc:/models/textures/Monkey_base_color.png"
                         }

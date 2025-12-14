@@ -134,18 +134,6 @@ void TiltController::updateAngularSpeeds()
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
 void TiltController::initializeResearchNumber()
 {
     QString researchDir = getResearchDirectory();
@@ -182,42 +170,6 @@ void TiltController::initializeResearchNumber()
     emit researchNumberChanged(m_researchNumber);
 }
 
-// void TiltController::initializeResearchNumber()
-// {
-//     QDir researchDir("research");
-//     int maxNumber = 0;
-
-//     // Создаем папку если не существует
-//     if (!researchDir.exists()) {
-//         researchDir.mkpath(".");
-//     }
-
-//     // Ищем файлы исследований
-//     QStringList filters;
-//     filters << "Research_*.txt";
-//     researchDir.setNameFilters(filters);
-//     researchDir.setSorting(QDir::Name);
-
-//     QFileInfoList files = researchDir.entryInfoList();
-
-//     for (const QFileInfo &file : files) {
-//         QString fileName = file.fileName();
-//         // Ищем паттерн Research_000001_2025_11_04_09_51_34.txt
-//         QRegularExpression re("Research_(\\d{6})_\\d{4}_\\d{2}_\\d{2}_\\d{2}_\\d{2}_\\d{2}\\.txt");
-//         QRegularExpressionMatch match = re.match(fileName);
-
-//         if (match.hasMatch()) {
-//             int number = match.captured(1).toInt();
-//             if (number > maxNumber) {
-//                 maxNumber = number;
-//             }
-//         }
-//     }
-
-//     m_researchNumber = QString::number(maxNumber + 1).rightJustified(6, '0');
-//     emit researchNumberChanged(m_researchNumber);
-// }
-
 void TiltController::toggleResearchRecording()
 {
     if (!m_connected) {
@@ -238,9 +190,6 @@ void TiltController::openResearchFolder()
     QDesktopServices::openUrl(QUrl::fromLocalFile(researchDir));
     addNotification("Открыта папка с исследованиями: " + researchDir);
 }
-
-
-
 
 QString TiltController::getResearchDirectory() const
 {
@@ -271,18 +220,6 @@ QString TiltController::generateResearchFileName(const QString &number)
         .arg(dateStr)
         .arg(timeStr);
 }
-
-// QString TiltController::generateResearchFileName(const QString &number)
-// {
-//     QDateTime now = QDateTime::currentDateTime();
-//     QString dateStr = now.toString("yyyy_MM_dd");
-//     QString timeStr = now.toString("hh_mm_ss");
-
-//     return QString("research/Research_%1_%2_%3.txt")
-//         .arg(number)
-//         .arg(dateStr)
-//         .arg(timeStr);
-// }
 
 void TiltController::writeResearchHeader()
 {
@@ -385,16 +322,7 @@ void TiltController::handleCOMPortError(QSerialPort::SerialPortError error)
 
 void TiltController::autoConnect()
 {
-    // // ИЗМЕНЕНО: Только для COM-порта и только если не подключены и не в режиме лога
-    // if (m_connected || m_logMode || m_connectionType != "COM") return;
-
     refreshPorts();
-
-    // if (!m_availablePorts.isEmpty()) {
-    //     QString portToTry = m_availablePorts.first();
-    //     setSelectedPort(portToTry);
-    //     setupCOMPort();
-    // }
 }
 
 void TiltController::switchToCOMPortMode()
@@ -1903,18 +1831,6 @@ void TiltController::setAngularSpeedDisplayRateLog(float rate)
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
 void TiltController::processCOMPortData(const QByteArray &data)
 {
     m_incompleteData.append(data);
@@ -2023,103 +1939,6 @@ void TiltController::processCOMPortData(const QByteArray &data)
         }
     }
 }
-
-// // ОПТИМИЗАЦИЯ: Улучшаем обработку временных меток в processCOMPortData
-// void TiltController::processCOMPortData(const QByteArray &data)
-// {
-//     m_incompleteData.append(data);
-
-//     // Ограничиваем размер буфера неполных данных
-//     if (m_incompleteData.size() > 2048) {
-//         m_incompleteData = m_incompleteData.right(1024); // Оставляем последние данные
-//     }
-
-//     int processedLines = 0;
-//     const int MAX_LINES_PER_CYCLE = 100; // Защита от зацикливания
-
-//     while (processedLines < MAX_LINES_PER_CYCLE) {
-//         int newlinePos = m_incompleteData.indexOf('\n');
-//         if (newlinePos == -1) {
-//             break;
-//         }
-
-//         QByteArray completeLine = m_incompleteData.left(newlinePos).trimmed();
-//         m_incompleteData = m_incompleteData.mid(newlinePos + 1);
-//         processedLines++;
-
-//         if (completeLine.isEmpty()) {
-//             continue;
-//         }
-
-//         QString dataString = QString::fromUtf8(completeLine);
-
-//         // ОПТИМИЗАЦИЯ: Более эффективная очистка строки
-//         QString cleanedString = dataString;
-//         cleanedString.remove(QRegularExpression("[^0-9;.-]"));
-
-//         if (!cleanedString.contains(';') || cleanedString.count(';') < 5) {
-//             continue;
-//         }
-
-//         QStringList parts = cleanedString.split(';');
-
-
-//         if (parts.size() >= 6) {
-//             bool ok1, ok2, ok3, ok4, ok5, ok6;
-
-//             qint64 timestamp;
-//             if (m_useRelativeTime) {
-//                 timestamp = QDateTime::currentMSecsSinceEpoch() - m_startTime;
-//             } else {
-//                 timestamp = parts[0].toLongLong(&ok1);
-//                 if (!ok1) {
-//                     timestamp = QDateTime::currentMSecsSinceEpoch() - m_startTime;
-//                 }
-//             }
-
-//             // ПРИМЕНЯЕМ КАЛИБРОВКУ К СЫРЫМ ДАННЫМ
-//             float rawPitch = parts[1].replace(',', '.').toFloat(&ok2);
-//             float rawRoll = parts[2].replace(',', '.').toFloat(&ok3);
-//             float rawYaw = parts[3].replace(',', '.').toFloat(&ok4);
-
-//             float calibratedPitch = rawPitch - m_calibrationPitch;
-//             float calibratedRoll = rawRoll - m_calibrationRoll;
-//             float calibratedYaw = rawYaw - m_calibrationYaw;
-
-//             bool patientDizziness = (parts[4].toInt(&ok5) == 1);
-//             bool doctorDizziness = (parts[5].toInt(&ok6) == 1);
-
-//             if (ok2 && ok3 && ok4 && ok5 && ok6) {
-//                 // Проверяем корректность калиброванных данных
-//                 if (qIsNaN(calibratedPitch) || qIsNaN(calibratedRoll) || qIsNaN(calibratedYaw) ||
-//                     qIsInf(calibratedPitch) || qIsInf(calibratedRoll) || qIsInf(calibratedYaw)) {
-//                     continue;
-//                 }
-
-//                 // Фильтруем выбросы после калибровки
-//                 if (calibratedPitch < -180 || calibratedPitch > 180 ||
-//                     calibratedRoll < -180 || calibratedRoll > 180 ||
-//                     calibratedYaw < -180 || calibratedYaw > 180) {
-//                     qDebug() << "Calibrated data out of range:" << calibratedPitch << calibratedRoll << calibratedYaw;
-//                     continue;
-//                 }
-
-//                 DataFrame frame;
-//                 frame.timestamp = timestamp;
-//                 frame.pitch = calibratedPitch;    // ЗАПИСЫВАЕМ КАЛИБРОВАННЫЕ ДАННЫЕ
-//                 frame.roll = calibratedRoll;
-//                 frame.yaw = calibratedYaw;
-//                 frame.patientDizziness = patientDizziness;
-//                 frame.doctorDizziness = doctorDizziness;
-
-//                 m_dataBuffer.add(frame);
-//                 processDataFrame(frame);
-
-//                 m_lastDataTime = QDateTime::currentMSecsSinceEpoch();
-//             }
-//         }
-//     }
-// }
 
 void TiltController::calibrateDevice()
 {
