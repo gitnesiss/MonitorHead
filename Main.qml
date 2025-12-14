@@ -116,20 +116,68 @@ ApplicationWindow {
         }
     }
 
-    // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ ===
+    // === ДИАЛОГОВОЕ ОКНО ДЛЯ ЗАГРУЗКИ ФАЙЛА ИССЛЕДОВАНИЯ (упрощенная версия) ===
     FileDialog {
         id: loadResearchDialog
         title: "Выберите файл исследования"
-        currentFolder: "file:///" + applicationDirPath + "/research"
+
+        // Просто используем стандартную папку документов + наш подкаталог
+        currentFolder: StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/MonitorHead/research"
+
+        fileMode: FileDialog.OpenFile
         nameFilters: ["Текстовые файлы (*.txt)", "Все файлы (*)"]
+
         onAccepted: {
-            console.log("Selected file:", selectedFile)
-            controller.loadLogFile(selectedFile)
-        }
-        onRejected: {
-            console.log("File selection canceled")
+            var filePath = selectedFile.toString();
+            // Убираем file:/// префикс
+            if (filePath.startsWith("file:///")) {
+                filePath = filePath.substring(8);
+            }
+            controller.loadLogFile(filePath);
         }
     }
+    // FileDialog {
+    //     id: loadResearchDialog
+    //     title: "Выберите файл исследования"
+
+    //     // Базовые настройки
+    //     fileMode: FileDialog.OpenFile
+    //     nameFilters: ["Текстовые файлы (*.txt)", "Все файлы (*)"]
+
+    //     onAccepted: {
+    //         // Получаем путь к файлу
+    //         var filePath = selectedFile.toString();
+
+    //         // Конвертируем URL в локальный путь
+    //         if (filePath.startsWith("file:///")) {
+    //             // Для Windows
+    //             filePath = filePath.substring(8);
+    //         } else if (filePath.startsWith("file://")) {
+    //             // Для Linux/Mac
+    //             filePath = filePath.substring(7);
+    //         }
+
+    //         console.log("Loading research file:", filePath);
+    //         controller.loadLogFile(filePath);
+    //     }
+
+    //     onRejected: {
+    //         console.log("File selection canceled");
+    //     }
+    // }
+    // FileDialog {
+    //     id: loadResearchDialog
+    //     title: "Выберите файл исследования"
+    //     currentFolder: "file:///" + applicationDirPath + "/research"
+    //     nameFilters: ["Текстовые файлы (*.txt)", "Все файлы (*)"]
+    //     onAccepted: {
+    //         console.log("Selected file:", selectedFile)
+    //         controller.loadLogFile(selectedFile)
+    //     }
+    //     onRejected: {
+    //         console.log("File selection canceled")
+    //     }
+    // }
 
     // === БОКОВОЕ МЕНЮ ===
     Rectangle {
@@ -1492,7 +1540,7 @@ ApplicationWindow {
                             horizontalAlignment: Text.AlignHCenter
                         }
 
-                        // В кнопке загрузки исследования добавляем проверку
+                        // ИСПРАВЛЕННЫЙ MouseArea:
                         MouseArea {
                             id: loadResearchMouseArea
                             anchors.fill: parent
@@ -1511,14 +1559,195 @@ ApplicationWindow {
 
                             onClicked: {
                                 if (enabled) {
-                                    // ПРЕЖДЕ ЧЕМ ЗАГРУЖАТЬ ФАЙЛ, ОТКЛЮЧАЕМСЯ ОТ УСТРОЙСТВА
-                                    if (controller.connected) {
-                                        controller.disconnectDevice();
-                                    }
+                                    // Открываем диалог выбора файла вместо показа папки
                                     loadResearchDialog.open();
                                 } else {
                                     showNotification("Невозможно загрузить исследование во время записи", true)
                                 }
+                            }
+                        }
+                    }
+
+                    // Rectangle {
+                    //     width: 110
+                    //     height: 50
+                    //     radius: 6
+                    //     enabled: !recording
+                    //     anchors.verticalCenter: parent.verticalCenter
+
+                    //     // width: 50
+                    //     // height: 50
+                    //     // radius: 6
+                    //     // enabled: true
+                    //     // anchors.verticalCenter: parent.verticalCenter
+
+                    //     // property color normalColor: enabled ? "#9C27B0" : "#555"
+                    //     // property color hoverColor: enabled ? "#BA68C8" : "#666"
+                    //     // property color pressedColor: enabled ? "#7B1FA2" : "#444"
+
+                    //     property color normalColor: enabled ? "#4caf50" : "#555"
+                    //     property color hoverColor: enabled ? "#5cbf62" : "#666"
+                    //     property color pressedColor: enabled ? "#3a5c42" : "#444"
+
+                    //     color: {
+                    //         if (openFolderMouseArea.pressed) {
+                    //             return pressedColor
+                    //         } else if (openFolderMouseArea.containsMouse) {
+                    //             return hoverColor
+                    //         } else {
+                    //             return normalColor
+                    //         }
+                    //     }
+
+                    //     Behavior on color {
+                    //         ColorAnimation { duration: 150 }
+                    //     }
+
+                    //     // Text {
+                    //     //     anchors.centerIn: parent
+                    //     //     text: "📁"
+                    //     //     color: "white"
+                    //     //     font.pixelSize: 20
+                    //     //     horizontalAlignment: Text.AlignHCenter
+                    //     // }
+
+                    //     Text {
+                    //         anchors.centerIn: parent
+                    //         text: "Загрузить\nисследование"
+                    //         color: enabled ? "white" : "#888"
+                    //         font.pixelSize: 14
+                    //         font.bold: enabled
+                    //         horizontalAlignment: Text.AlignHCenter
+                    //     }
+
+                    //     MouseArea {
+                    //         id: openFolderMouseArea
+                    //         anchors.fill: parent
+                    //         hoverEnabled: true
+                    //         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                    //         ToolTip.visible: tooltipsEnabled && containsMouse
+                    //         ToolTip.delay: 500
+                    //         ToolTip.text: "Открыть папку с исследованиями"
+
+                    //         onClicked: {
+                    //             controller.openResearchFolder()
+                    //         }
+                    //     }
+                    // }
+
+                    // Rectangle {
+                    //     id: loadResearchButton
+                    //     width: 110
+                    //     height: 50
+                    //     radius: 6
+                    //     enabled: !recording
+                    //     anchors.verticalCenter: parent.verticalCenter
+
+                    //     property color normalColor: enabled ? "#4caf50" : "#555"
+                    //     property color hoverColor: enabled ? "#5cbf62" : "#666"
+                    //     property color pressedColor: enabled ? "#3a5c42" : "#444"
+
+                    //     color: {
+                    //         if (loadResearchMouseArea.pressed) {
+                    //             return pressedColor
+                    //         } else if (loadResearchMouseArea.containsMouse) {
+                    //             return hoverColor
+                    //         } else {
+                    //             return normalColor
+                    //         }
+                    //     }
+
+                    //     Behavior on color {
+                    //         ColorAnimation { duration: 150 }
+                    //     }
+
+                    //     Text {
+                    //         anchors.centerIn: parent
+                    //         text: "Загрузить\nисследование"
+                    //         color: enabled ? "white" : "#888"
+                    //         font.pixelSize: 14
+                    //         font.bold: enabled
+                    //         horizontalAlignment: Text.AlignHCenter
+                    //     }
+
+                    //     // В кнопке загрузки исследования добавляем проверку
+                    //     MouseArea {
+                    //         id: loadResearchMouseArea
+                    //         anchors.fill: parent
+                    //         hoverEnabled: true
+                    //         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                    //         ToolTip.visible: tooltipsEnabled && containsMouse
+                    //         ToolTip.delay: 500
+                    //         ToolTip.text: {
+                    //             if (!enabled) {
+                    //                 return "Невозможно загрузить исследование во время записи"
+                    //             } else {
+                    //                 return "Загрузить файл исследования для воспроизведения"
+                    //             }
+                    //         }
+
+                    //         onClicked: {
+                    //             if (enabled) {
+                    //                 // ПРЕЖДЕ ЧЕМ ЗАГРУЖАТЬ ФАЙЛ, ОТКЛЮЧАЕМСЯ ОТ УСТРОЙСТВА
+                    //                 if (controller.connected) {
+                    //                     controller.disconnectDevice();
+                    //                 }
+                    //                 loadResearchDialog.open();
+                    //             } else {
+                    //                 showNotification("Невозможно загрузить исследование во время записи", true)
+                    //             }
+                    //         }
+                    //     }
+                    // }
+
+                    // Кнопка открытия папки исследований (ОТДЕЛЬНАЯ от кнопки загрузки файла)
+                    Rectangle {
+                        width: 50
+                        height: 50
+                        radius: 6
+                        enabled: true
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        property color normalColor: enabled ? "#9C27B0" : "#555"
+                        property color hoverColor: enabled ? "#BA68C8" : "#666"
+                        property color pressedColor: enabled ? "#7B1FA2" : "#444"
+
+                        color: {
+                            if (openFolderMouseArea.pressed) {
+                                return pressedColor
+                            } else if (openFolderMouseArea.containsMouse) {
+                                return hoverColor
+                            } else {
+                                return normalColor
+                            }
+                        }
+
+                        Behavior on color {
+                            ColorAnimation { duration: 150 }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "📁"
+                            color: "white"
+                            font.pixelSize: 20
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        MouseArea {
+                            id: openFolderMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+
+                            ToolTip.visible: tooltipsEnabled && containsMouse
+                            ToolTip.delay: 500
+                            ToolTip.text: "Открыть папку с исследованиями"
+
+                            onClicked: {
+                                controller.openResearchFolder()  // Открывает папку в проводнике
                             }
                         }
                     }

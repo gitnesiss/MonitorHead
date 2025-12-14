@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include <QTcpSocket>
 #include <QHostAddress>
+#include <QStandardPaths>
 #include <algorithm>
 
 TiltController::TiltController(QObject *parent) : QObject(parent)
@@ -133,27 +134,39 @@ void TiltController::updateAngularSpeeds()
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
 void TiltController::initializeResearchNumber()
 {
-    QDir researchDir("research");
+    QString researchDir = getResearchDirectory();
+    QDir dir(researchDir);
     int maxNumber = 0;
 
     // Создаем папку если не существует
-    if (!researchDir.exists()) {
-        researchDir.mkpath(".");
+    if (!dir.exists()) {
+        dir.mkpath(".");
     }
 
     // Ищем файлы исследований
     QStringList filters;
     filters << "Research_*.txt";
-    researchDir.setNameFilters(filters);
-    researchDir.setSorting(QDir::Name);
+    dir.setNameFilters(filters);
+    dir.setSorting(QDir::Name);
 
-    QFileInfoList files = researchDir.entryInfoList();
+    QFileInfoList files = dir.entryInfoList();
 
     for (const QFileInfo &file : files) {
         QString fileName = file.fileName();
-        // Ищем паттерн Research_000001_2025_11_04_09_51_34.txt
         QRegularExpression re("Research_(\\d{6})_\\d{4}_\\d{2}_\\d{2}_\\d{2}_\\d{2}_\\d{2}\\.txt");
         QRegularExpressionMatch match = re.match(fileName);
 
@@ -169,6 +182,42 @@ void TiltController::initializeResearchNumber()
     emit researchNumberChanged(m_researchNumber);
 }
 
+// void TiltController::initializeResearchNumber()
+// {
+//     QDir researchDir("research");
+//     int maxNumber = 0;
+
+//     // Создаем папку если не существует
+//     if (!researchDir.exists()) {
+//         researchDir.mkpath(".");
+//     }
+
+//     // Ищем файлы исследований
+//     QStringList filters;
+//     filters << "Research_*.txt";
+//     researchDir.setNameFilters(filters);
+//     researchDir.setSorting(QDir::Name);
+
+//     QFileInfoList files = researchDir.entryInfoList();
+
+//     for (const QFileInfo &file : files) {
+//         QString fileName = file.fileName();
+//         // Ищем паттерн Research_000001_2025_11_04_09_51_34.txt
+//         QRegularExpression re("Research_(\\d{6})_\\d{4}_\\d{2}_\\d{2}_\\d{2}_\\d{2}_\\d{2}\\.txt");
+//         QRegularExpressionMatch match = re.match(fileName);
+
+//         if (match.hasMatch()) {
+//             int number = match.captured(1).toInt();
+//             if (number > maxNumber) {
+//                 maxNumber = number;
+//             }
+//         }
+//     }
+
+//     m_researchNumber = QString::number(maxNumber + 1).rightJustified(6, '0');
+//     emit researchNumberChanged(m_researchNumber);
+// }
+
 void TiltController::toggleResearchRecording()
 {
     if (!m_connected) {
@@ -183,17 +232,57 @@ void TiltController::toggleResearchRecording()
     }
 }
 
+void TiltController::openResearchFolder()
+{
+    QString researchDir = getResearchDirectory();
+    QDesktopServices::openUrl(QUrl::fromLocalFile(researchDir));
+    addNotification("Открыта папка с исследованиями: " + researchDir);
+}
+
+
+
+
+QString TiltController::getResearchDirectory() const
+{
+    // Используем папку "Документы" пользователя
+    QString documentsDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    QString researchDir = documentsDir + "/MonitorHead/research";
+
+    // Создаем папку, если не существует
+    QDir dir(researchDir);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    return researchDir;
+}
+
 QString TiltController::generateResearchFileName(const QString &number)
 {
+    QString researchDir = getResearchDirectory();
+
     QDateTime now = QDateTime::currentDateTime();
     QString dateStr = now.toString("yyyy_MM_dd");
     QString timeStr = now.toString("hh_mm_ss");
 
-    return QString("research/Research_%1_%2_%3.txt")
+    return QString("%1/Research_%2_%3_%4.txt")
+        .arg(researchDir)
         .arg(number)
         .arg(dateStr)
         .arg(timeStr);
 }
+
+// QString TiltController::generateResearchFileName(const QString &number)
+// {
+//     QDateTime now = QDateTime::currentDateTime();
+//     QString dateStr = now.toString("yyyy_MM_dd");
+//     QString timeStr = now.toString("hh_mm_ss");
+
+//     return QString("research/Research_%1_%2_%3.txt")
+//         .arg(number)
+//         .arg(dateStr)
+//         .arg(timeStr);
+// }
 
 void TiltController::writeResearchHeader()
 {

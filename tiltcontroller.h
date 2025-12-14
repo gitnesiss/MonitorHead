@@ -14,6 +14,7 @@
 #include <QtCore/QTextStream>
 #include <QTcpSocket>
 #include <QHostAddress>
+#include <QDesktopServices>
 #include "headmodel.h"
 #include "log_reader.h"
 
@@ -148,8 +149,6 @@ class TiltController : public QObject
     Q_PROPERTY(int wifiPort READ wifiPort WRITE setWifiPort NOTIFY wifiPortChanged)
     Q_PROPERTY(bool wifiConnected READ wifiConnected NOTIFY wifiConnectedChanged)
 
-    Q_PROPERTY(QStringList availablePorts READ availablePorts NOTIFY availablePortsChanged)
-
 public:
     explicit TiltController(QObject *parent = nullptr);
     ~TiltController();
@@ -233,6 +232,7 @@ public slots:
     void setWifiAddress(const QString &address);
     void setWifiPort(int port);
     void switchToRealtimeMode();
+    void openResearchFolder();
 
 private slots:
     void updateLogPlayback();
@@ -445,6 +445,8 @@ private:
     void handleWiFiStateChanged(QAbstractSocket::SocketState state);
 
     void resetAllData();
+
+    QString getResearchDirectory() const;
 
 signals:
     void connectedChanged(bool connected);
