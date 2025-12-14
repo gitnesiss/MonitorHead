@@ -2203,7 +2203,8 @@ ApplicationWindow {
 
                 // === PITCH (тангаж) - ПЕРВАЯ СТРОКА ===
                 AxisPanel {
-                    axisName: "ТАНГАЖ / PITCH"
+                    // axisName: "ТАНГАЖ / PITCH"
+                    axisName: "ФРОНТАЛЬНАЯ ОСЬ"
                     axisColor: "#BB86FC"
                     graphData: controller.pitchGraphData
                     lineColor: "#BB86FC"
@@ -2228,7 +2229,8 @@ ApplicationWindow {
 
                 // === ROLL (крен) - ВТОРАЯ СТРОКА ===
                 AxisPanel {
-                    axisName: "КРЕН / ROLL"
+                    // axisName: "КРЕН / ROLL"
+                    axisName: "САГИТТАЛЬНАЯ ОСЬ"
                     axisColor: "#03DAC6"
                     graphData: controller.rollGraphData
                     lineColor: "#03DAC6"
@@ -2253,7 +2255,8 @@ ApplicationWindow {
 
                 // === YAW (рыскание) - ТРЕТЬЯ СТРОКА ===
                 AxisPanel {
-                    axisName: "РЫСКАНЬЕ / YAW"
+                    // axisName: "РЫСКАНЬЕ / YAW"
+                    axisName: "РОТАЦИОННАЯ ОСЬ"
                     axisColor: "#CF6679"
                     graphData: controller.yawGraphData
                     lineColor: "#CF6679"

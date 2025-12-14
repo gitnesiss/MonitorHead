@@ -2,11 +2,10 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 ; Non-commercial use only
 
-#define MyAppName "Head Tilt Monitor"
+#define MyAppName "MonitorHead"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "genesiss"
 #define MyAppExeName "MonitorHead.exe"
-#define MyAppIconName "logo.ico"
 #define MyAppAssocName MyAppName + " File"
 #define MyAppAssocExt ".myp"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
@@ -14,13 +13,13 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{26967621-3F68-492E-A08C-93635280824E}
+AppId={{9AF0653A-A429-4B64-9C2E-678B79264FC6}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
-DefaultGroupName={#MyAppName}
+UninstallDisplayIcon={app}\{#MyAppExeName}
 ; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run
 ; on anything but x64 and Windows 11 on Arm.
 ArchitecturesAllowed=x64compatible
@@ -34,11 +33,10 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
 OutputDir=C:\Users\pomai\programming\executable_files
-OutputBaseFilename=HeadTiltMonitorSetup
-SetupIconFile=C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\images\Logo.ico
+OutputBaseFilename=Monitor_Head_Setup
+SetupIconFile=C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\images\logo.ico
 SolidCompression=yes
 WizardStyle=modern dynamic
-UninstallDisplayIcon={app}\{#MyAppIconName}  ; Иконка для деинсталлятора
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -50,23 +48,18 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\Release_For_Installer\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\Release_For_Installer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Добавляем иконку отдельно
-Source: "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\images\Logo.ico"; DestDir: "{app}"; DestName: "{#MyAppIconName}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocExt}\OpenWithProgids"; ValueType: string; ValueName: "{#MyAppAssocKey}"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}"; ValueType: string; ValueName: ""; ValueData: "{#MyAppAssocName}"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppIconName},0"
+Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#MyAppExeName},0"
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocKey}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Icons]
-; Ярлык в меню Пуск с иконкой
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppIconName}"
-; Ярлык на рабочем столе с иконкой
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppIconName}"; Tasks: desktopicon
-; Ярлык для деинсталляции
-Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+

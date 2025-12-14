@@ -9,13 +9,13 @@
 
 # Вариант 1: Абсолютные пути (рекомендуется)
 PROJECT_ROOT="/c/Users/pomai/programming/code/projects/qt_qml/MonitorHead"
-BUILD_DIR="$PROJECT_ROOT/build/Desktop_Qt_6_10_0_MinGW_64_bit-MinSizeRel"
+BUILD_DIR="$PROJECT_ROOT/build/Desktop_Qt_6_10_0_MinGW_64_bit-Release"
 RELEASE_DIR="$PROJECT_ROOT/Release_For_Installer"
 QT_PATH="/c/Qt/6.10.0/mingw_64/bin"
 
 # Вариант 2: Относительные пути (если запускать из корня проекта)
 # PROJECT_ROOT="."  # Текущая папка
-# BUILD_DIR="./build/Desktop_Qt_6_10_0_MinGW_64_bit-MinSizeRel"
+# BUILD_DIR="./build/Desktop_Qt_6_10_0_MinGW_64_bit-Reliase"
 # RELEASE_DIR="./Release_For_Installer"
 # QT_PATH="/c/Qt/6.10.0/mingw_64/bin"
 
@@ -219,7 +219,7 @@ echo "========================================"
 
 # Шаг 8: Создание ISS файла для Inno Setup (опционально)
 print_info "Создание скрипта Inno Setup..."
-ISS_FILE="$PROJECT_ROOT/MonitorHead.iss"
+ISS_FILE="$PROJECT_ROOT/script_exe/MonitorHead.iss"
 
 cat > "$ISS_FILE" << EOF
 ; ========================================

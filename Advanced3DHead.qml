@@ -40,9 +40,9 @@ Item {
 
     // ТЕКСТЫ ДЛЯ ГОЛОВОКРУЖЕНИЯ
     property string patientDizzinessText: "ГОЛОВОКРУЖЕНИЕ"
-    property string doctorDizzinessText: "ГОЛОВОКРУЖЕНИЕ 2"
+    property string doctorDizzinessText: "НИСТАГМ"
     property string combinedPatientText: "ГОЛОВОКРУЖЕНИЕ"
-    property string combinedDoctorText: "ГОЛОВОКРУЖЕНИЕ 2"
+    property string combinedDoctorText: "НИСТАГМ"
 
     // ЦВЕТА ТЕКСТОВ (более яркие для лучшей видимости)
     property color patientTextColor: "#FFFFA000"  // Яркий оранжевый
@@ -617,10 +617,14 @@ Item {
             id: angleText
             anchors.centerIn: parent
             text: hasData ?
-                "Pitch: " + headPitch.toFixed(1) + "° | " +
-                "Roll: " + headRoll.toFixed(1) + "° | " +
-                "Yaw: " + headYaw.toFixed(1) + "°" :
-                "нет данных"
+                  "Фронт: " + headPitch.toFixed(1) + "° | " +
+                  "Сагит: " + headRoll.toFixed(1) + "° | " +
+                  "Ротац: " + headYaw.toFixed(1) + "°" :
+                  "нет данных"
+                // "Pitch: " + headPitch.toFixed(1) + "° | " +
+                // "Roll: " + headRoll.toFixed(1) + "° | " +
+                // "Yaw: " + headYaw.toFixed(1) + "°" :
+                // "нет данных"
             color: hasData ? "white" : "#888"
             font.pixelSize: 14
             font.bold: hasData
