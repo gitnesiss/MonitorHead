@@ -66,11 +66,10 @@ qt_add_resources(MonitorHead "models_and_textures"
     FILES
         # Модели
         models/suzanne_mesh.mesh
-        models/Inner_ear.mesh
+        # models/Inner_ear.mesh
         # Текстуры
         models/textures/Monkey_base_color.png
-        models/textures/Inner_ear_texture.png
-        models/maps/Monkey_base_color.png
+        # models/textures/Inner_ear_texture.png
 )
 
 # QML модуль
@@ -159,6 +158,26 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/info")
         "${CMAKE_CURRENT_SOURCE_DIR}/info"
         "$<TARGET_FILE_DIR:MonitorHead>/info"
         COMMENT "Copying info directory to build directory"
+    )
+endif()
+
+# Копируем licenses директорию
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/licenses")
+    add_custom_command(TARGET MonitorHead POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/licenses"
+        "$<TARGET_FILE_DIR:MonitorHead>/licenses"
+        COMMENT "Copying info directory to build directory"
+    )
+endif()
+
+# Копируем README.txt в корень билд директории
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/README.txt")
+    add_custom_command(TARGET MonitorHead POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_SOURCE_DIR}/README.txt"
+        "$<TARGET_FILE_DIR:MonitorHead>/README.txt"
+        COMMENT "Copying README.txt to build directory"
     )
 endif()
 

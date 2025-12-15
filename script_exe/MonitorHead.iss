@@ -3,7 +3,7 @@
 
 #define MyAppName "MonitorHead"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "genesiss"
+#define MyAppPublisher "Trofimov RV"
 #define MyAppExeName "MonitorHead.exe"
 #define MyIconPath "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\images\logo.ico"
 
@@ -14,7 +14,7 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=C:\Users\pomai\programming\executable_files
+OutputDir=C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\executable_files
 OutputBaseFilename=MonitorHead_Setup
 SetupIconFile={#MyIconPath}
 Compression=lzma
@@ -22,12 +22,16 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
+VersionInfoVersion={#MyAppVersion}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName} Setup
+VersionInfoCopyright=Copyright © {#MyAppPublisher}
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
 [Files]
 Source: "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\Release_For_Installer\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion

@@ -8,6 +8,7 @@ Rectangle {
 
     // Основные свойства
     required property string axisName
+    required property string axisNameGraph
     required property color axisColor
     required property var graphData
     required property color lineColor
@@ -328,7 +329,8 @@ Rectangle {
                 spacing: 0
 
                 Text {
-                    text: "График " + axisName.split(" / ")[1] + " (" + graphDuration + " сек)"
+                    // text: "График " + axisName.split(" / ")[1] + " (" + graphDuration + " сек)"
+                    text: "График " + axisNameGraph + " (" + graphDuration + " сек)"
                     color: graphTextColor
                     font.pixelSize: 12
                     Layout.topMargin: 5

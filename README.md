@@ -1354,10 +1354,16 @@ C:/Qt/6.10.0/mingw_64/bin/windeployqt.exe --release --qmldir C:/Users/pomai/prog
 
 Для создания установочного файла будем использовать **Inno Setup Compiler**.
 
-Для начала очистим релизный проект от лишних файлов и папок. Для этого я использовал скрипт `prepare_release.sh` из папки `script_exe`.
+Для начала очистим релизный проект от лишних файлов и папок. Для этого я использовал скрипт `prepare_release.sh` из папки `script_exe`. Запускаем из следующую строку из корня проекта:
+
+```
+./script_exe/prepare_release.sh
+```
 
 Далее я использовал программу Inno Setup Compiler для неё создал скрипт `MonitorHead.iss` из папки `script_exe`.
 
 Чтобы запустить компилящию установочного файла можно нажать `Ctrl+F9` или `Build->Compile`.
 
-Выходной файл у меня сохранялся в папку: `C:\Users\pomai\programming\executable_files`.
+Выходной файл у меня сохраняется в папку: `C:\Users\pomai\programming\executable_files\`. По этому пути можно найти файл `MonitorHead_Setup.exe`
+
+# Код проекта для ESP32.

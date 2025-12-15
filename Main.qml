@@ -136,48 +136,6 @@ ApplicationWindow {
             controller.loadLogFile(filePath);
         }
     }
-    // FileDialog {
-    //     id: loadResearchDialog
-    //     title: "Выберите файл исследования"
-
-    //     // Базовые настройки
-    //     fileMode: FileDialog.OpenFile
-    //     nameFilters: ["Текстовые файлы (*.txt)", "Все файлы (*)"]
-
-    //     onAccepted: {
-    //         // Получаем путь к файлу
-    //         var filePath = selectedFile.toString();
-
-    //         // Конвертируем URL в локальный путь
-    //         if (filePath.startsWith("file:///")) {
-    //             // Для Windows
-    //             filePath = filePath.substring(8);
-    //         } else if (filePath.startsWith("file://")) {
-    //             // Для Linux/Mac
-    //             filePath = filePath.substring(7);
-    //         }
-
-    //         console.log("Loading research file:", filePath);
-    //         controller.loadLogFile(filePath);
-    //     }
-
-    //     onRejected: {
-    //         console.log("File selection canceled");
-    //     }
-    // }
-    // FileDialog {
-    //     id: loadResearchDialog
-    //     title: "Выберите файл исследования"
-    //     currentFolder: "file:///" + applicationDirPath + "/research"
-    //     nameFilters: ["Текстовые файлы (*.txt)", "Все файлы (*)"]
-    //     onAccepted: {
-    //         console.log("Selected file:", selectedFile)
-    //         controller.loadLogFile(selectedFile)
-    //     }
-    //     onRejected: {
-    //         console.log("File selection canceled")
-    //     }
-    // }
 
     // === БОКОВОЕ МЕНЮ ===
     Rectangle {
@@ -398,7 +356,7 @@ ApplicationWindow {
                         anchors.margins: 5
 
                         Text {
-                            text: "Тангаж: вид слева"
+                            text: "Фронтальная ось: вид слева"
                             color: "white"
                             font.pixelSize: 14
                             Layout.fillWidth: true
@@ -448,7 +406,7 @@ ApplicationWindow {
                         anchors.margins: 5
 
                         Text {
-                            text: "Крен: вид спереди"
+                            text: "Сагиттальная ось: вид спереди"
                             color: "white"
                             font.pixelSize: 14
                             Layout.fillWidth: true
@@ -498,7 +456,7 @@ ApplicationWindow {
                         anchors.margins: 5
 
                         Text {
-                            text: "Рысканье: взгляд вверх"
+                            text: "Ротационная ось: взгляд вверх"
                             color: "white"
                             font.pixelSize: 14
                             Layout.fillWidth: true
@@ -871,7 +829,6 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         height: 40
                         color: getButtonColors(true, helpButtonMouseArea, "primary").normal
-                        // color: helpButtonMouseArea.pressed ? "#5a5a3a" : (helpButtonMouseArea.containsMouse ? "#7c7c5c" : "#FFC107")
                         radius: 4
 
                         Row {
@@ -904,7 +861,6 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         height: 40
                         color: getButtonColors(true, aboutButtonMouseArea, "primary").normal
-                        // color: aboutButtonMouseArea.pressed ? "#3a5c5c" : (aboutButtonMouseArea.containsMouse ? "#5c8f8f" : "#009688")
                         radius: 4
 
                         Row {
@@ -1018,8 +974,8 @@ ApplicationWindow {
     // ДИАЛОГ "О ПРОГРАММЕ"
     Popup {
         id: aboutDialog
-        width: 450
-        height: 260
+        width: 500
+        height: 320
         modal: true
         focus: true
         anchors.centerIn: parent
@@ -1120,6 +1076,21 @@ ApplicationWindow {
 
                 Text {
                     text: "Разработано для медицинских исследований\nи диагностики вестибулярных нарушений"
+                    color: "#aaa"
+                    font.pixelSize: 12
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 1
+                    color: "#555"
+                }
+
+                Text {
+                    text: "Программа использует библиотеку Qt (https://www.qt.io) под лицензией GNU LGPL v3.\nCopyright (C) The Qt Company."
                     color: "#aaa"
                     font.pixelSize: 12
                     wrapMode: Text.Wrap
@@ -2433,7 +2404,9 @@ ApplicationWindow {
                 // === PITCH (тангаж) - ПЕРВАЯ СТРОКА ===
                 AxisPanel {
                     // axisName: "ТАНГАЖ / PITCH"
-                    axisName: "ФРОНТАЛЬНАЯ ОСЬ"
+                    // axisName: "ФРОНТАЛЬНАЯ ОСЬ"
+                    axisName: "Наклон\nВПЕРЁД / НАЗАД"
+                    axisNameGraph: "ТАНГАЖ / PITCH"
                     axisColor: "#BB86FC"
                     graphData: controller.pitchGraphData
                     lineColor: "#BB86FC"
@@ -2459,7 +2432,9 @@ ApplicationWindow {
                 // === ROLL (крен) - ВТОРАЯ СТРОКА ===
                 AxisPanel {
                     // axisName: "КРЕН / ROLL"
-                    axisName: "САГИТТАЛЬНАЯ ОСЬ"
+                    // axisName: "САГИТТАЛЬНАЯ ОСЬ"
+                    axisName: "Наклон\nВЛЕВО / ВПРАВО"
+                    axisNameGraph: "КРЕН / ROLL"
                     axisColor: "#03DAC6"
                     graphData: controller.rollGraphData
                     lineColor: "#03DAC6"
@@ -2485,7 +2460,9 @@ ApplicationWindow {
                 // === YAW (рыскание) - ТРЕТЬЯ СТРОКА ===
                 AxisPanel {
                     // axisName: "РЫСКАНЬЕ / YAW"
-                    axisName: "РОТАЦИОННАЯ ОСЬ"
+                    // axisName: "РОТАЦИОННАЯ ОСЬ"
+                    axisName: "Вращение\nВЛЕВО / ВПРАВО"
+                    axisNameGraph: "РЫСКАНЬЕ / YAW"
                     axisColor: "#CF6679"
                     graphData: controller.yawGraphData
                     lineColor: "#CF6679"

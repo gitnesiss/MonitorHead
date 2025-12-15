@@ -1,0 +1,47 @@
+Third-Party Licenses
+====================
+
+This software uses the following third-party components:
+
+1. Qt Framework (version 6.10.0)
+   - License: GNU Lesser General Public License v3.0 (LGPL v3)
+   - Copyright: The Qt Company Ltd and contributors
+   - Source Code: https://download.qt.io/official_releases/qt/6.10/6.10.0/submodules/
+   - Website: https://www.qt.io
+
+In accordance with the LGPL v3 requirements:
+- You have the right to replace the Qt libraries with modified versions.
+- Complete license texts are provided in the 'licenses' folder.
+- This software uses Qt under the LGPL v3 with dynamic linking.
+
+For more information about Qt licensing, see: https://www.qt.io/licensing/
+
+--
+MonitorHead v1.0.0
+Copyright © 2025 Trofimov R.V.
+All rights reserved.
+
+
+
+УВЕДОМЛЕНИЕ О СТОРОННИХ БИБЛИОТЕКАХ
+===================================
+
+Данное программное обеспечение использует следующие компоненты с открытым исходным кодом:
+
+1. Qt Framework версия 6.10.0
+   - Лицензия: GNU Lesser General Public License v3.0 (LGPL v3)
+   - Авторское право: The Qt Company Ltd и разработчики Qt
+   - Исходный код: https://download.qt.io/official_releases/qt/6.10/6.10.0/submodules/
+   - Веб-сайт: https://www.qt.io
+
+В соответствии с требованиями лицензии LGPL v3:
+- Вы имеете право заменить библиотеки Qt на модифицированные версии.
+- Полные тексты лицензий LGPL v3 и GPL v3 находятся в файлах
+  "LGPL-3.0-only.txt" и "GPL-3.0-only.txt" в данной папке.
+
+Это уведомление не отменяет действия лицензий на данные компоненты.
+
+--
+MonitorHead v1.0.0
+Copyright © 2025 Trofimov R.V.
+Все права защищены.

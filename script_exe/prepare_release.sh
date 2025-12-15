@@ -124,6 +124,11 @@ print_info "Копирование MonitorHead.exe..."
 cp "$BUILD_DIR/MonitorHead.exe" "$RELEASE_DIR/"
 print_info "✓ MonitorHead.exe скопирован"
 
+# Шаг 2.1: Копирование README.txt файла
+print_info "Копирование README.txt..."
+cp "$BUILD_DIR/README.txt" "$RELEASE_DIR/"
+print_info "✓ README.txt скопирован"
+
 # Шаг 3: Копирование DLL файлов
 print_info "Копирование DLL файлов..."
 dll_count=0
@@ -160,7 +165,7 @@ done
 # Шаг 5: Копирование пользовательских данных
 print_info "Копирование пользовательских данных..."
 
-declare -a user_folders=("models" "research" "info" "qml")
+declare -a user_folders=("models" "research" "info" "qml" "licenses")
 for folder in "${user_folders[@]}"; do
     if [ -d "$BUILD_DIR/$folder" ]; then
         cp -r "$BUILD_DIR/$folder" "$RELEASE_DIR/"
@@ -219,69 +224,82 @@ echo "========================================"
 
 # Шаг 8: Создание ISS файла для Inno Setup (опционально)
 print_info "Создание скрипта Inno Setup..."
-ISS_FILE="$PROJECT_ROOT/script_exe/MonitorHead.iss"
+ISS_FILE="$PROJECT_ROOT/script/MonitorHead.iss"
 
 cat > "$ISS_FILE" << EOF
 ; ========================================
+; MonitorHead Setup Script
 ; Inno Setup Script для MonitorHead
 ; Сгенерировано автоматически
 ; ========================================
 
 #define MyAppName "MonitorHead"
-#define MyAppVersion "1.0"
-#define MyAppPublisher "Your Company"
+#define MyAppVersion "1.0.0"
+#define MyAppPublisher "Trofimov RV"
 #define MyAppExeName "MonitorHead.exe"
-#define BuildDir "$(echo $RELEASE_DIR | sed 's/\//\\/g')\\"
+#define MyIconPath "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\images\logo.ico"
 
 [Setup]
-AppId={{$(uuidgen | tr '[:lower:]' '[:upper:]')}}
+AppId={{90DBD8C4-7E9F-44C1-8DFF-28ED15470F1B}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=..\Installer
+OutputDir=C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\executable_files
 OutputBaseFilename=MonitorHead_Setup
-Compression=lzma2
+SetupIconFile={#MyIconPath}
+Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
+VersionInfoVersion={#MyAppVersion}
+VersionInfoCompany={#MyAppPublisher}
+VersionInfoDescription={#MyAppName} Setup
+VersionInfoCopyright=Copyright © {#MyAppPublisher}
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
 [Files]
-; Главный файл
-Source: "{#BuildDir}{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-
-; DLL файлы
-Source: "{#BuildDir}*.dll"; DestDir: "{app}"; Flags: ignoreversion
-
-; Плагины Qt
-Source: "{#BuildDir}platforms\*"; DestDir: "{app}\platforms"; Flags: ignoreversion recursesubdirs
-Source: "{#BuildDir}imageformats\*"; DestDir: "{app}\imageformats"; Flags: ignoreversion recursesubdirs
-
-; Пользовательские данные
-Source: "{#BuildDir}models\*"; DestDir: "{app}\models"; Flags: ignoreversion recursesubdirs
-Source: "{#BuildDir}research\*"; DestDir: "{app}\research"; Flags: ignoreversion recursesubdirs
-Source: "{#BuildDir}info\*"; DestDir: "{app}\info"; Flags: ignoreversion recursesubdirs
+Source: "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\Release_For_Installer\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\Release_For_Installer\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyIconPath}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\logo.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\logo.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-procedure InitializeWizard;
+procedure InitializeWizard();
 begin
-  WizardForm.LicenseAcceptedRadio.Checked := True;
+  // Инициализация мастера установки
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResearchPath: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    ResearchPath := ExpandConstant('{userdocs}') + '\MonitorHead\research';
+    if not DirExists(ResearchPath) then
+      ForceDirectories(ResearchPath);
+      
+    SaveStringToFile(
+      ResearchPath + '\README.txt',
+      'Папка для сохранения исследований MonitorHead' + #13#10 +
+      'Файлы: Research_номер_дата_время.txt',
+      False
+    );
+  end;
 end;
 EOF
 
