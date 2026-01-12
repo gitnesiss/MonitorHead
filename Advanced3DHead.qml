@@ -10,6 +10,7 @@ Item {
     property real headYaw: 0
     property bool showInnerEar: false
     property string currentModelPath: "qrc:/models/suzanne_mesh.mesh"
+    // property string currentModelPath: "qrc:/models/Inner_ear.mesh"
 
     property bool patientDizziness: false
     property bool doctorDizziness: false
@@ -292,6 +293,7 @@ Item {
                         id: headMaterial
                         baseColorMap: Texture {
                             source: "qrc:/models/textures/Monkey_base_color.png"
+                            // source: "qrc:/models/textures/Inner_ear_texture.png"
                         }
                         metalness: 0.0
                         roughness: 0.3
@@ -614,14 +616,14 @@ Item {
             id: angleText
             anchors.centerIn: parent
             text: hasData ?
-                  "Фронт: " + headPitch.toFixed(1) + "° | " +
-                  "Сагит: " + headRoll.toFixed(1) + "° | " +
-                  "Ротац: " + headYaw.toFixed(1) + "°" :
-                  "нет данных"
-                // "Pitch: " + headPitch.toFixed(1) + "° | " +
-                // "Roll: " + headRoll.toFixed(1) + "° | " +
-                // "Yaw: " + headYaw.toFixed(1) + "°" :
-                // "нет данных"
+                  // "Фронт: " + headPitch.toFixed(1) + "° | " +
+                  // "Сагит: " + headRoll.toFixed(1) + "° | " +
+                  // "Ротац: " + headYaw.toFixed(1) + "°" :
+                  // "нет данных"
+                "Pitch: " + headPitch.toFixed(1) + "° | " +
+                "Roll: " + headRoll.toFixed(1) + "° | " +
+                "Yaw: " + headYaw.toFixed(1) + "°" :
+                "нет данных"
             color: hasData ? "white" : "#888"
             font.pixelSize: 14
             font.bold: hasData

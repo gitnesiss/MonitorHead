@@ -66,10 +66,10 @@ qt_add_resources(MonitorHead "models_and_textures"
     FILES
         # Модели
         models/suzanne_mesh.mesh
-        # models/Inner_ear.mesh
+        models/Inner_ear.mesh
         # Текстуры
         models/textures/Monkey_base_color.png
-        # models/textures/Inner_ear_texture.png
+        models/textures/Inner_ear_texture.png
 )
 
 # QML модуль

@@ -243,7 +243,7 @@ ApplicationWindow {
                 // Переключатель отключения подсказок
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 30
+                    height: 40
                     color: tooltipsToggleMouseArea.pressed ? "#3a3a3a" : (tooltipsToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
                     radius: 4
 
@@ -293,10 +293,160 @@ ApplicationWindow {
                     }
                 }
 
+                // Переключатель вида тангажа
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: pitchToggleMouseArea.pressed ? "#3a3a3a" : (pitchToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 5
+
+                        Text {
+                            text: "Наклон вперёд / назад:\nвид слева"
+                            color: "white"
+                            font.pixelSize: 14
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 40
+                            height: 20
+                            radius: 10
+                            color: pitchIsLeftView ? "#4CAF50" : "#666"
+
+                            Rectangle {
+                                x: pitchIsLeftView ? parent.width - width - 2 : 2
+                                y: 2
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: "white"
+                                Behavior on x {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: pitchToggleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: pitchIsLeftView = !pitchIsLeftView
+                    }
+                }
+
+                // Переключатель вида крена
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: rollToggleMouseArea.pressed ? "#3a3a3a" : (rollToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 5
+
+                        Text {
+                            text: "Наклон влево / вправо:\nвид спереди"
+                            color: "white"
+                            font.pixelSize: 14
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 40
+                            height: 20
+                            radius: 10
+                            color: rollIsFrontView ? "#4CAF50" : "#666"
+
+                            Rectangle {
+                                x: rollIsFrontView ? parent.width - width - 2 : 2
+                                y: 2
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: "white"
+                                Behavior on x {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: rollToggleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: rollIsFrontView = !rollIsFrontView
+                    }
+                }
+
+                // Переключатель рыскания
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 40
+                    color: yawToggleMouseArea.pressed ? "#3a3a3a" : (yawToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
+                    radius: 4
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 5
+
+                        Text {
+                            text: "Поворот влево / вправо:\nвзгляд вверх"
+                            color: "white"
+                            font.pixelSize: 14
+                            Layout.fillWidth: true
+                        }
+
+                        Rectangle {
+                            width: 40
+                            height: 20
+                            radius: 10
+                            color: yawIsFlipped ? "#4CAF50" : "#666"
+
+                            Rectangle {
+                                x: yawIsFlipped ? parent.width - width - 2 : 2
+                                y: 2
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: "white"
+                                Behavior on x {
+                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                                }
+                            }
+                            Behavior on color {
+                                ColorAnimation { duration: 200 }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: yawToggleMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: yawIsFlipped = !yawIsFlipped
+                    }
+                }
+
                 // Переключатель модели головы
                 Rectangle {
                     Layout.fillWidth: true
-                    height: 30
+                    height: 40
                     color: headToggleMouseArea.pressed ? "#3a3a3a" : (headToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
                     radius: 4
 
@@ -341,156 +491,6 @@ ApplicationWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: innerHeadVisible = !innerHeadVisible
-                    }
-                }
-
-                // Переключатель вида тангажа
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 30
-                    color: pitchToggleMouseArea.pressed ? "#3a3a3a" : (pitchToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
-                    radius: 4
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 5
-
-                        Text {
-                            text: "Фронтальная ось: вид слева"
-                            color: "white"
-                            font.pixelSize: 14
-                            Layout.fillWidth: true
-                        }
-
-                        Rectangle {
-                            width: 40
-                            height: 20
-                            radius: 10
-                            color: pitchIsLeftView ? "#4CAF50" : "#666"
-
-                            Rectangle {
-                                x: pitchIsLeftView ? parent.width - width - 2 : 2
-                                y: 2
-                                width: 16
-                                height: 16
-                                radius: 8
-                                color: "white"
-                                Behavior on x {
-                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                                }
-                            }
-                            Behavior on color {
-                                ColorAnimation { duration: 200 }
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: pitchToggleMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: pitchIsLeftView = !pitchIsLeftView
-                    }
-                }
-
-                // Переключатель вида крена
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 30
-                    color: rollToggleMouseArea.pressed ? "#3a3a3a" : (rollToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
-                    radius: 4
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 5
-
-                        Text {
-                            text: "Сагиттальная ось: вид спереди"
-                            color: "white"
-                            font.pixelSize: 14
-                            Layout.fillWidth: true
-                        }
-
-                        Rectangle {
-                            width: 40
-                            height: 20
-                            radius: 10
-                            color: rollIsFrontView ? "#4CAF50" : "#666"
-
-                            Rectangle {
-                                x: rollIsFrontView ? parent.width - width - 2 : 2
-                                y: 2
-                                width: 16
-                                height: 16
-                                radius: 8
-                                color: "white"
-                                Behavior on x {
-                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                                }
-                            }
-                            Behavior on color {
-                                ColorAnimation { duration: 200 }
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: rollToggleMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: rollIsFrontView = !rollIsFrontView
-                    }
-                }
-
-                // Переключатель рыскания
-                Rectangle {
-                    Layout.fillWidth: true
-                    height: 30
-                    color: yawToggleMouseArea.pressed ? "#3a3a3a" : (yawToggleMouseArea.containsMouse ? "#2a2a2a" : "transparent")
-                    radius: 4
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 5
-
-                        Text {
-                            text: "Ротационная ось: взгляд вверх"
-                            color: "white"
-                            font.pixelSize: 14
-                            Layout.fillWidth: true
-                        }
-
-                        Rectangle {
-                            width: 40
-                            height: 20
-                            radius: 10
-                            color: yawIsFlipped ? "#4CAF50" : "#666"
-
-                            Rectangle {
-                                x: yawIsFlipped ? parent.width - width - 2 : 2
-                                y: 2
-                                width: 16
-                                height: 16
-                                radius: 8
-                                color: "white"
-                                Behavior on x {
-                                    NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-                                }
-                            }
-                            Behavior on color {
-                                ColorAnimation { duration: 200 }
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: yawToggleMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: yawIsFlipped = !yawIsFlipped
                     }
                 }
             }
@@ -1539,140 +1539,6 @@ ApplicationWindow {
                         }
                     }
 
-                    // Rectangle {
-                    //     width: 110
-                    //     height: 50
-                    //     radius: 6
-                    //     enabled: !recording
-                    //     anchors.verticalCenter: parent.verticalCenter
-
-                    //     // width: 50
-                    //     // height: 50
-                    //     // radius: 6
-                    //     // enabled: true
-                    //     // anchors.verticalCenter: parent.verticalCenter
-
-                    //     // property color normalColor: enabled ? "#9C27B0" : "#555"
-                    //     // property color hoverColor: enabled ? "#BA68C8" : "#666"
-                    //     // property color pressedColor: enabled ? "#7B1FA2" : "#444"
-
-                    //     property color normalColor: enabled ? "#4caf50" : "#555"
-                    //     property color hoverColor: enabled ? "#5cbf62" : "#666"
-                    //     property color pressedColor: enabled ? "#3a5c42" : "#444"
-
-                    //     color: {
-                    //         if (openFolderMouseArea.pressed) {
-                    //             return pressedColor
-                    //         } else if (openFolderMouseArea.containsMouse) {
-                    //             return hoverColor
-                    //         } else {
-                    //             return normalColor
-                    //         }
-                    //     }
-
-                    //     Behavior on color {
-                    //         ColorAnimation { duration: 150 }
-                    //     }
-
-                    //     // Text {
-                    //     //     anchors.centerIn: parent
-                    //     //     text: "📁"
-                    //     //     color: "white"
-                    //     //     font.pixelSize: 20
-                    //     //     horizontalAlignment: Text.AlignHCenter
-                    //     // }
-
-                    //     Text {
-                    //         anchors.centerIn: parent
-                    //         text: "Загрузить\nисследование"
-                    //         color: enabled ? "white" : "#888"
-                    //         font.pixelSize: 14
-                    //         font.bold: enabled
-                    //         horizontalAlignment: Text.AlignHCenter
-                    //     }
-
-                    //     MouseArea {
-                    //         id: openFolderMouseArea
-                    //         anchors.fill: parent
-                    //         hoverEnabled: true
-                    //         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-
-                    //         ToolTip.visible: tooltipsEnabled && containsMouse
-                    //         ToolTip.delay: 500
-                    //         ToolTip.text: "Открыть папку с исследованиями"
-
-                    //         onClicked: {
-                    //             controller.openResearchFolder()
-                    //         }
-                    //     }
-                    // }
-
-                    // Rectangle {
-                    //     id: loadResearchButton
-                    //     width: 110
-                    //     height: 50
-                    //     radius: 6
-                    //     enabled: !recording
-                    //     anchors.verticalCenter: parent.verticalCenter
-
-                    //     property color normalColor: enabled ? "#4caf50" : "#555"
-                    //     property color hoverColor: enabled ? "#5cbf62" : "#666"
-                    //     property color pressedColor: enabled ? "#3a5c42" : "#444"
-
-                    //     color: {
-                    //         if (loadResearchMouseArea.pressed) {
-                    //             return pressedColor
-                    //         } else if (loadResearchMouseArea.containsMouse) {
-                    //             return hoverColor
-                    //         } else {
-                    //             return normalColor
-                    //         }
-                    //     }
-
-                    //     Behavior on color {
-                    //         ColorAnimation { duration: 150 }
-                    //     }
-
-                    //     Text {
-                    //         anchors.centerIn: parent
-                    //         text: "Загрузить\nисследование"
-                    //         color: enabled ? "white" : "#888"
-                    //         font.pixelSize: 14
-                    //         font.bold: enabled
-                    //         horizontalAlignment: Text.AlignHCenter
-                    //     }
-
-                    //     // В кнопке загрузки исследования добавляем проверку
-                    //     MouseArea {
-                    //         id: loadResearchMouseArea
-                    //         anchors.fill: parent
-                    //         hoverEnabled: true
-                    //         cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-
-                    //         ToolTip.visible: tooltipsEnabled && containsMouse
-                    //         ToolTip.delay: 500
-                    //         ToolTip.text: {
-                    //             if (!enabled) {
-                    //                 return "Невозможно загрузить исследование во время записи"
-                    //             } else {
-                    //                 return "Загрузить файл исследования для воспроизведения"
-                    //             }
-                    //         }
-
-                    //         onClicked: {
-                    //             if (enabled) {
-                    //                 // ПРЕЖДЕ ЧЕМ ЗАГРУЖАТЬ ФАЙЛ, ОТКЛЮЧАЕМСЯ ОТ УСТРОЙСТВА
-                    //                 if (controller.connected) {
-                    //                     controller.disconnectDevice();
-                    //                 }
-                    //                 loadResearchDialog.open();
-                    //             } else {
-                    //                 showNotification("Невозможно загрузить исследование во время записи", true)
-                    //             }
-                    //         }
-                    //     }
-                    // }
-
                     // Кнопка открытия папки исследований (ОТДЕЛЬНАЯ от кнопки загрузки файла)
                     Rectangle {
                         width: 50
@@ -2398,7 +2264,7 @@ ApplicationWindow {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredWidth: parent.width * 0.6
+                Layout.preferredWidth: parent.width * 0.5
                 spacing: 10
 
                 // === PITCH (тангаж) - ПЕРВАЯ СТРОКА ===
@@ -2406,7 +2272,7 @@ ApplicationWindow {
                     // axisName: "ТАНГАЖ / PITCH"
                     // axisName: "ФРОНТАЛЬНАЯ ОСЬ"
                     axisName: "Наклон\nВПЕРЁД / НАЗАД"
-                    axisNameGraph: "ТАНГАЖ / PITCH"
+                    axisNameGraph: "ТАНГАЖ (PITCH)   "
                     axisColor: "#BB86FC"
                     graphData: controller.pitchGraphData
                     lineColor: "#BB86FC"
@@ -2434,7 +2300,7 @@ ApplicationWindow {
                     // axisName: "КРЕН / ROLL"
                     // axisName: "САГИТТАЛЬНАЯ ОСЬ"
                     axisName: "Наклон\nВЛЕВО / ВПРАВО"
-                    axisNameGraph: "КРЕН / ROLL"
+                    axisNameGraph: "КРЕН (ROLL)   "
                     axisColor: "#03DAC6"
                     graphData: controller.rollGraphData
                     lineColor: "#03DAC6"
@@ -2462,7 +2328,7 @@ ApplicationWindow {
                     // axisName: "РЫСКАНЬЕ / YAW"
                     // axisName: "РОТАЦИОННАЯ ОСЬ"
                     axisName: "Вращение\nВЛЕВО / ВПРАВО"
-                    axisNameGraph: "РЫСКАНЬЕ / YAW"
+                    axisNameGraph: "РЫСКАНЬЕ (YAW)   "
                     axisColor: "#CF6679"
                     graphData: controller.yawGraphData
                     lineColor: "#CF6679"
