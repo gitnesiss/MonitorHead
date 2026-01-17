@@ -16,10 +16,12 @@ ApplicationWindow {
     width: 1400
     height: 900
     minimumWidth: 1280
-    minimumHeight: 720
+    minimumHeight: 790
     visible: true
     title: "Монитор положения головы"
     color: "#1e1e1e"
+
+    property string programVersion: "Версия 1.1.0"
 
     // Минималистичная черно-серая цветовая схема для кнопок
     property color buttonNormal: "#404040"
@@ -41,9 +43,11 @@ ApplicationWindow {
     // Свойство для управления подсказками
     property bool tooltipsEnabled: false
 
+    // Свойство для установки начальных положений переключателей в
+    // боковом меню 2D изображений
     property bool pitchIsLeftView: true
     property bool rollIsFrontView: true
-    property bool yawIsFlipped: false
+    property bool yawIsFlipped: true
 
     // Свойства для управления 3D видом
     property bool innerEarVisible: true
@@ -305,7 +309,7 @@ ApplicationWindow {
                         anchors.margins: 5
 
                         Text {
-                            text: "Наклон вперёд / назад:\nвид слева"
+                            text: "Наклон вперёд-назад:\nвид слева"
                             color: "white"
                             font.pixelSize: 14
                             Layout.fillWidth: true
@@ -355,7 +359,7 @@ ApplicationWindow {
                         anchors.margins: 5
 
                         Text {
-                            text: "Наклон влево / вправо:\nвид спереди"
+                            text: "Наклон влево-вправо:\nвид спереди"
                             color: "white"
                             font.pixelSize: 14
                             Layout.fillWidth: true
@@ -405,7 +409,7 @@ ApplicationWindow {
                         anchors.margins: 5
 
                         Text {
-                            text: "Поворот влево / вправо:\nвзгляд вверх"
+                            text: "Поворот влево-вправо:\nвзгляд вверх"
                             color: "white"
                             font.pixelSize: 14
                             Layout.fillWidth: true
@@ -492,6 +496,127 @@ ApplicationWindow {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: innerHeadVisible = !innerHeadVisible
                     }
+                }
+
+                // Слайдер прозрачности головы
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 60
+                    color: "transparent"
+                    radius: 4
+
+                    // Локальное свойство для хранения значения прозрачности
+                    property real localHeadOpacity: advanced3DHead.headOpacity
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 5
+                        spacing: 2
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 5
+
+                            Text {
+                                text: "Прозрачность головы"
+                                color: "white"
+                                font.pixelSize: 14
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                id: headOpacityValueText
+                                text: Math.round(advanced3DHead.headOpacity * 100) + "%"
+                                color: "#4CAF50"
+                                font.pixelSize: 12
+                                font.bold: true
+                                Layout.preferredWidth: 40
+                                horizontalAlignment: Text.AlignRight
+                            }
+                        }
+
+                        // Контейнер для слайдера прозрачности
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 30
+
+                            Slider {
+                                id: headOpacitySlider
+                                anchors.fill: parent
+                                from: 0.0
+                                to: 1.0
+                                stepSize: 0.01
+                                value: advanced3DHead.headOpacity
+                                snapMode: Slider.SnapAlways
+                                live: true
+
+                                onValueChanged: {
+                                    // Обновляем только когда пользователь взаимодействует со слайдером
+                                    if (pressed) {
+                                        advanced3DHead.headOpacity = Math.round(value * 100) / 100
+                                        headOpacityValueText.text = Math.round(value * 100) + "%"
+                                    }
+                                }
+
+                                onMoved: {
+                                    // Дополнительная обработка для перемещения
+                                    advanced3DHead.headOpacity = Math.round(value * 100) / 100
+                                    headOpacityValueText.text = Math.round(value * 100) + "%"
+                                }
+
+                                background: Rectangle {
+                                    color: "#3c3c3c"
+                                    radius: 2
+                                    height: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+
+                                    Rectangle {
+                                        width: headOpacitySlider.visualPosition * parent.width
+                                        height: parent.height
+                                        // color: "#FFA500" // Оранжевый для прозрачности
+                                        color: "#4CAF50"  // Зеленый цвет трека (было: "#FFA500" - оранжевый)
+                                        radius: 2
+                                    }
+                                }
+
+                                handle: Rectangle {
+                                    x: headOpacitySlider.visualPosition * (headOpacitySlider.availableWidth - width)
+                                    y: headOpacitySlider.availableHeight / 2 - height / 2
+                                    width: 20
+                                    height: 20
+                                    radius: 10
+                                    // color: headOpacitySlider.pressed ? "#e69500" : "#FFA500"
+                                    color: headOpacitySlider.pressed ? "#45a049" : "#4CAF50"  // Темно-зеленый при нажатии, зеленый обычно (было: "#e69500" и "#FFA500")
+                                    border.color: "#ffffff"
+                                    border.width: 2
+
+                                    scale: headOpacitySlider.hovered ? 1.2 : 1.0
+                                    Behavior on scale {
+                                        NumberAnimation { duration: 150 }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Связь для обновления слайдера при изменении headOpacity извне
+                    Connections {
+                        target: advanced3DHead
+                        function onHeadOpacityChanged() {
+                            // Обновляем значение слайдера только если пользователь не взаимодействует с ним
+                            if (!headOpacitySlider.pressed) {
+                                headOpacitySlider.value = advanced3DHead.headOpacity
+                                headOpacityValueText.text = Math.round(advanced3DHead.headOpacity * 100) + "%"
+                            }
+                        }
+                    }
+
+                    ToolTip.visible: tooltipsEnabled && headOpacitySlider.hovered
+                    ToolTip.text: "Прозрачность модели головы: " + Math.round(advanced3DHead.headOpacity * 100) + "%\n" +
+                                 "0% - полностью прозрачная\n" +
+                                 "100% - полностью непрозрачная"
                 }
             }
 
@@ -904,7 +1029,7 @@ ApplicationWindow {
                 }
 
                 Text {
-                    text: "Версия 1.0.0"
+                    text: programVersion
                     color: "#888"
                     font.pixelSize: 12
                     Layout.alignment: Qt.AlignHCenter
@@ -1053,7 +1178,7 @@ ApplicationWindow {
                 }
 
                 Text {
-                    text: "Версия 1.0.0"
+                    text: programVersion
                     color: "#aaa"
                     font.pixelSize: 14
                     Layout.alignment: Qt.AlignHCenter
@@ -1267,7 +1392,7 @@ ApplicationWindow {
 
                 // === ЛЕВАЯ ЧАСТЬ - ИССЛЕДОВАНИЕ И КНОПКИ ===
                 Row {
-                    spacing: 15
+                    spacing: 5
                     anchors.verticalCenter: parent.verticalCenter
 
                     // Блок исследования
@@ -2399,31 +2524,55 @@ ApplicationWindow {
                                 hasData: controller.headModel.hasData
                             }
 
-                            // Кнопка управления головой в правом верхнем углу
-                            Button {
+                            // Кнопка управления головой в правом верхнем углу 3D сцены
+                            Rectangle {
                                 anchors {
                                     top: parent.top
                                     right: parent.right
                                     margins: 10
                                 }
-                                width: 120
+                                width: 140
                                 height: 40
-                                text: innerHeadVisible ? "Скрыть голову" : "Показать голову"
-                                onClicked: innerHeadVisible = !innerHeadVisible
-                                ToolTip.text: innerHeadVisible ? "Скрыть модель головы" : "Показать модель головы"
-                                ToolTip.visible: tooltipsEnabled && containsMouse
-                                background: Rectangle {
-                                    color: parent.down ? "#5a3c3c" : (innerHeadVisible ? "#7c3a3a" : "#3a5c3a")
-                                    radius: 4
-                                    border.color: "#666"
-                                    border.width: 1
+                                radius: 6
+
+                                // Цвета в зависимости от состояния
+                                property color normalColor: innerHeadVisible ? "#3a5c3a" : "#7c3a3a"
+                                property color hoverColor: "#5a5a5a"
+                                property color pressedColor: "#4a4a4a"
+
+                                color: {
+                                    if (headToggleMouseArea.pressed) return pressedColor
+                                    else if (headToggleMouseArea.containsMouse) return hoverColor
+                                    else return normalColor
                                 }
-                                contentItem: Text {
-                                    text: parent.text
+
+                                border.color: "#666"
+                                border.width: 1
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 150 }
+                                }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: innerHeadVisible ? "Скрыть голову" : "Показать голову"
                                     color: "white"
-                                    font.pixelSize: 12
+                                    font.pixelSize: 14
+                                    font.bold: true
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
+                                }
+
+                                MouseArea {
+                                    id: headToggleMouseAreaButton
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: innerHeadVisible = !innerHeadVisible
+
+                                    ToolTip.visible: tooltipsEnabled && containsMouse
+                                    ToolTip.text: innerHeadVisible ? "Скрыть модель головы" : "Показать модель головы"
+                                    ToolTip.delay: 500
                                 }
                             }
 
@@ -2440,7 +2589,8 @@ ApplicationWindow {
                                 Button {
                                     width: 40
                                     height: 40
-                                    text: "🎯"
+                                    // text: "🎯"
+                                    text: "🌐"
                                     onClicked: advanced3DHead.setCameraView("isometric")
                                     ToolTip.text: "Изометрический вид"
                                     ToolTip.visible: tooltipsEnabled && containsMouse
@@ -2459,7 +2609,14 @@ ApplicationWindow {
                                         id: frontBackButton
                                         width: 40
                                         height: 40
-                                        text: "👁️"
+                                        // text: "👁️"
+                                        text: {
+                                            switch(advanced3DHead.currentView) {
+                                                case "front": return "⬆️"
+                                                case "back": return "⬇️"
+                                                default: return "↕️"
+                                            }
+                                        }
                                         onClicked: advanced3DHead.toggleFrontBack()
                                         ToolTip.text: advanced3DHead.currentView === "front" ?
                                             "Переключить на вид сзади" : "Переключить на вид спереди"
@@ -2475,7 +2632,14 @@ ApplicationWindow {
                                         id: leftRightButton
                                         width: 40
                                         height: 40
-                                        text: "👈"
+                                        // text: "👈"
+                                        text: {
+                                            switch(advanced3DHead.currentView) {
+                                                case "left": return "⬅️"
+                                                case "right": return "➡️"
+                                                default: return "↔️"
+                                            }
+                                        }
                                         onClicked: advanced3DHead.toggleLeftRight()
                                         ToolTip.text: advanced3DHead.currentView === "left" ?
                                             "Переключить на вид справа" : "Переключить на вид слева"
@@ -2491,7 +2655,14 @@ ApplicationWindow {
                                         id: topBottomButton
                                         width: 40
                                         height: 40
-                                        text: "⬇️"
+                                        // text: "⬇️"
+                                        text: {
+                                            switch(advanced3DHead.currentView) {
+                                                case "top": return "⏫"
+                                                case "bottom": return "⏬"
+                                                default: return "↕️"
+                                            }
+                                        }
                                         onClicked: advanced3DHead.toggleTopBottom()
                                         ToolTip.text: advanced3DHead.currentView === "top" ?
                                             "Переключить на вид снизу" : "Переключить на вид сверху"

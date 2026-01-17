@@ -9,8 +9,11 @@ Item {
     property real headRoll: 0
     property real headYaw: 0
     property bool showInnerEar: false
-    property string currentModelPath: "qrc:/models/suzanne_mesh.mesh"
-    // property string currentModelPath: "qrc:/models/Inner_ear.mesh"
+    // property string currentModelPathHeadMonkey: "qrc:/models/suzanne_mesh.mesh" // Голова обезъяны
+    property string currentModelPathHead: "qrc:/models/Head_poligon.mesh" // Голова полигональная
+    property string currentModelPathEarLeft: "qrc:/models/Inner_ear_left.mesh"
+    property real headScale: 50 // Масштаб головы: для полигональной - 15, для обезъяны - 5
+    property real earScale: 28 // Масштаб ушей относительно головы
 
     property bool patientDizziness: false
     property bool doctorDizziness: false
@@ -69,6 +72,9 @@ Item {
     property real mainLightBrightness: 2.0
     property real secondaryLightBrightness: 0.8
     property real backLightBrightness: 0.7  // 35% от основного (2.0 * 0.35 = 0.7)
+
+    // ПРОЗРАЧНОСТЬ ГОЛОВЫ (при запуске программы)
+    property real headOpacity: 0.15  // Прозрачность головы (0.0 - полностью прозрачная, 1.0 - полностью непрозрачная)
 
     View3D {
         id: view3D
@@ -273,11 +279,40 @@ Item {
                 }
             }
 
-            // Основная модель головы
+            // // Основная модель Голова обезъяны
+            // Node {
+            //     id: headModelNode
+            //     position: Qt.vector3d(0, 0, 0)
+            //     scale: Qt.vector3d(5, 5, 5)
+            //     // Правильное соответствие осей и вращений:
+            //     // X (фиолетовый) = Pitch (тангаж)
+            //     // Y (кораловый) = Yaw (рыскание)
+            //     // Z (бирюзовый) = Roll (крен)
+            //     eulerRotation: Qt.vector3d(-headPitch, -headYaw, headRoll)
+
+            //     Model {
+            //         id: headModel
+            //         source: currentModelPathHeadMonkey
+            //         // Начальная ориентация: смотрит вперед по оси Z
+            //         eulerRotation: Qt.vector3d(-90, 0, 0)
+            //         materials: PrincipledMaterial {
+            //             id: headMaterial
+            //             baseColorMap: Texture {
+            //                 source: "qrc:/models/textures/Monkey_base_color.png"
+            //             }
+            //             metalness: 0.0
+            //             roughness: 0.3
+            //             specularAmount: 0.8
+            //         }
+            //         visible: showHead
+            //     }
+            // }
+
+            // Основная модель Голова полигональная
             Node {
                 id: headModelNode
-                position: Qt.vector3d(0, 0, 0)
-                scale: Qt.vector3d(5, 5, 5)
+                position: Qt.vector3d(0, 4, 0)
+
                 // Правильное соответствие осей и вращений:
                 // X (фиолетовый) = Pitch (тангаж)
                 // Y (кораловый) = Yaw (рыскание)
@@ -286,20 +321,81 @@ Item {
 
                 Model {
                     id: headModel
-                    source: currentModelPath
+                    source: currentModelPathHead
+                    scale: Qt.vector3d(headScale, headScale, headScale)
                     // Начальная ориентация: смотрит вперед по оси Z
-                    eulerRotation: Qt.vector3d(-90, 0, 0)
+                    eulerRotation: Qt.vector3d(0, -90, 0)
                     materials: PrincipledMaterial {
                         id: headMaterial
-                        baseColorMap: Texture {
-                            source: "qrc:/models/textures/Monkey_base_color.png"
-                            // source: "qrc:/models/textures/Inner_ear_texture.png"
-                        }
+                        // baseColor: "#03DAC6" // Бирюзовый цвет для ушей
+                        // baseColor: "#FFE0BD"  // Очень светлый теплый бежевый
+                        // baseColor: "#F5D0A9"  // Светлый бежево-персиковый
+                        // baseColor: "#E8C39E"  // Светлый бежевый
+                        baseColor: "#D2B48C"  // Классический "tan" (загар)
                         metalness: 0.0
                         roughness: 0.3
                         specularAmount: 0.8
+                        opacity: headOpacity  // Используем свойство прозрачности
+                        alphaMode: PrincipledMaterial.Blend  // Включаем режим прозрачности
                     }
                     visible: showHead
+                }
+
+                // Левое внутреннее ухо
+                Node {
+                    id: leftEarNode
+                    position: Qt.vector3d(2, 3, 0) // Смещение относительно головы
+                    scale: Qt.vector3d(earScale, earScale, earScale)
+                    // eulerRotation: Qt.vector3d(-headPitch, -headYaw, headRoll)
+
+                    Model {
+                        id: leftEarModel
+                        source: currentModelPathEarLeft
+                        // Начальная ориентация левого уха
+                        eulerRotation: Qt.vector3d(270, 0, 0) // Ориентация
+                        materials: PrincipledMaterial {
+                            baseColorMap: Texture {
+                                source: "qrc:/models/textures/Inner_ear_texture.png"
+                            }
+                            metalness: 0.0
+                            roughness: 0.5
+                            specularAmount: 0.3
+                            opacity: 1.0
+                        }
+                        visible: showLeftEar && showHead // Видно только если голова видна
+                    }
+                }
+
+                // Правое внутреннее ухо (зеркальная копия левого)
+                Node {
+                    id: rightEarNode
+                    position: Qt.vector3d(-2, 3, 0) // Симметричная позиция по оси X
+
+                    // ЗЕРКАЛЬНОЕ ОТРАЖЕНИЕ по оси X:
+                    scale: Qt.vector3d(-earScale, earScale, earScale) // Отрицательный scale.X = зеркало
+
+                    // eulerRotation: Qt.vector3d(-headPitch, -headYaw, headRoll)
+
+                    // Используем ТУ ЖЕ модель
+                    Model {
+                        id: rightEarModel
+                        source: currentModelPathEarLeft
+                        // Начальная ориентация левого уха
+                        // Корректировка поворота для зеркальной модели:
+                        eulerRotation: Qt.vector3d(270, 0, 0)
+                        materials: PrincipledMaterial {
+                            baseColorMap: Texture {
+                                source: "qrc:/models/textures/Inner_ear_texture.png"
+                            }
+                            metalness: 0.0
+                            roughness: 0.5
+                            specularAmount: 0.3
+                            opacity: 1.0
+
+                            // cullMode: Material.BackFaceCulling // или NoCulling
+                            cullMode: Material.NoCulling // Делает правильную видимость модели правого внутреннего уха, исправляет отображение нормалей.
+                        }
+                    }
                 }
             }
         }
@@ -336,6 +432,205 @@ Item {
                     showGrid = true
                     showAxisArrows = true
                 }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+    // Мини-компас с 3D проекцией осей в правом нижнем углу
+    Rectangle {
+        id: axisCompass
+        anchors {
+            right: parent.right
+            bottom: parent.bottom
+            margins: 10
+        }
+        width: 120
+        height: 120
+        color: "#252b2b2b"  // Очень прозрачный фон
+        radius: 8
+
+        Canvas {
+            id: compassCanvas
+            anchors.fill: parent
+
+            onPaint: {
+                var ctx = getContext("2d")
+                ctx.clearRect(0, 0, width, height)
+
+                // Центр виджета
+                var centerX = width / 2
+                var centerY = height / 2
+
+                // Максимальная длина стрелки (не более половины ширины виджета минус отступ)
+                var maxArrowLength = 45
+
+                // Преобразуем углы камеры из градусов в радианы
+                var yawRad = advanced3DHead.cameraYaw * Math.PI / 180
+                var pitchRad = advanced3DHead.cameraPitch * Math.PI / 180
+
+                // Определяем базовые векторы осей в 3D пространстве
+                var axes3D = [
+                    {x: -1, y: 0, z: 0, color: "#BB86FC", label: "Y"}, // Ось X (фиолетовый)
+                    {x: 0, y: 1, z: 0, color: "#CF6679", label: "Z"}, // Ось Y (коралловый)
+                    {x: 0, y: 0, z: 1, color: "#03DAC6", label: "X"}  // Ось Z (бирюзовый)
+                ]
+
+                // Создаем матрицу вращения для учета углов камеры
+                // Вращение по Yaw (рыскание) - вращение вокруг оси Y
+                var cosYaw = Math.cos(yawRad)
+                var sinYaw = Math.sin(yawRad)
+
+                // Вращение по Pitch (тангаж) - вращение вокруг оси X
+                var cosPitch = Math.cos(pitchRad)
+                var sinPitch = Math.sin(pitchRad)
+
+                // Применяем вращение к каждой оси
+                for (var i = 0; i < axes3D.length; i++) {
+                    var axis = axes3D[i]
+
+                    // Применяем вращение по Yaw (вокруг Y)
+                    var x1 = axis.x * cosYaw + axis.z * sinYaw
+                    var z1 = -axis.x * sinYaw + axis.z * cosYaw
+                    var y1 = axis.y
+
+                    // Применяем вращение по Pitch (вокруг X)
+                    var y2 = y1 * cosPitch - z1 * sinPitch
+                    var z2 = y1 * sinPitch + z1 * cosPitch
+                    var x2 = x1
+
+                    // ЗЕРКАЛЬНОЕ ОТОБРАЖЕНИЕ ОТНОСИТЕЛЬНО ПЛОСКОСТИ XY
+                    // Инвертируем горизонтальные компоненты осей Y и X
+                    if (axis.label === "Y" || axis.label === "X") {
+                        x2 = -x2  // Зеркалим горизонтальную компоненту
+                    }
+
+                    // Рассчитываем длину проекции на плоскость XY
+                    var projectionLength = Math.sqrt(x2*x2 + y2*y2)
+
+                    // Если проекция слишком короткая (меньше 0.05), не рисуем ось
+                    if (projectionLength < 0.05) {
+                        continue
+                    }
+
+                    // Нормализуем проекцию (приводим к единичному вектору в плоскости XY)
+                    var nx = x2 / projectionLength
+                    var ny = y2 / projectionLength
+
+                    // Перспективная проекция: уменьшаем длину, если ось направлена от/к камере
+                    var perspectiveFactor = 1.0 / (1.0 + Math.abs(z2) * 0.3)
+
+                    // Длина стрелки зависит от проекции и перспективы
+                    var arrowLength = projectionLength * maxArrowLength * perspectiveFactor
+
+                    // Координаты конца стрелки
+                    var endX = centerX + nx * arrowLength
+                    var endY = centerY - ny * arrowLength  // Инвертируем Y для Canvas
+
+                    // Угол стрелки для рисования наконечника
+                    var angle = Math.atan2(endY - centerY, endX - centerX)
+
+                    // 1. Рисуем стрелку (БЕЗ свечения)
+                    // Убедимся, что свечение отключено
+                    ctx.shadowColor = 'transparent'
+                    ctx.shadowBlur = 0
+                    ctx.shadowOffsetX = 0
+                    ctx.shadowOffsetY = 0
+
+                    ctx.beginPath()
+                    ctx.moveTo(centerX, centerY)
+                    ctx.lineTo(endX, endY)
+                    ctx.strokeStyle = axis.color
+                    ctx.lineWidth = 3
+                    ctx.stroke()
+
+                    // 2. Рисуем наконечник стрелки (треугольник, БЕЗ свечения)
+                    var arrowSize = 6
+                    var arrowAngle = Math.PI / 6  // 30 градусов
+
+                    ctx.beginPath()
+                    ctx.moveTo(endX, endY)
+                    ctx.lineTo(
+                        endX - arrowSize * Math.cos(angle - arrowAngle),
+                        endY - arrowSize * Math.sin(angle - arrowAngle)
+                    )
+                    ctx.lineTo(
+                        endX - arrowSize * Math.cos(angle + arrowAngle),
+                        endY - arrowSize * Math.sin(angle + arrowAngle)
+                    )
+                    ctx.closePath()
+                    ctx.fillStyle = axis.color
+                    ctx.fill()
+
+                    // 3. Рассчитываем позицию метки (5px от конца стрелки в том же направлении)
+                    var labelDistance = 5
+                    var labelX = endX + labelDistance * Math.cos(angle)
+                    var labelY = endY + labelDistance * Math.sin(angle)
+
+                    // 4. Рисуем метку С эффектом свечения
+                    // Включаем свечение только для текста
+                    ctx.shadowColor = axis.color
+                    ctx.shadowBlur = 5
+                    ctx.shadowOffsetX = 0
+                    ctx.shadowOffsetY = 0
+
+                    ctx.fillStyle = axis.color
+                    ctx.font = "bold 13px Arial"
+                    ctx.textAlign = "center"
+                    ctx.textBaseline = "middle"
+                    ctx.fillText(axis.label, labelX, labelY)
+
+                    // Сбрасываем тень для следующих элементов
+                    ctx.shadowBlur = 0
+                    ctx.shadowColor = 'transparent'
+                }
+
+                // Рисуем центр компаса (точка, БЕЗ свечения)
+                ctx.shadowBlur = 0
+                ctx.shadowColor = 'transparent'
+
+                ctx.beginPath()
+                ctx.arc(centerX, centerY, 2, 0, Math.PI * 2)
+                ctx.fillStyle = "#FFFFFF"
+                ctx.fill()
+            }
+        }
+
+        // Таймер для обновления компаса
+        Timer {
+            id: compassUpdateTimer
+            interval: 50  // 20 FPS - достаточно плавно
+            running: true
+            repeat: true
+            onTriggered: {
+                compassCanvas.requestPaint()
+            }
+        }
+
+        // Подсказка при наведении
+        ToolTip.visible: tooltipsEnabled && compassMouseArea.containsMouse
+        ToolTip.text: "3D мини-компас осей\n" +
+                     "Показывает проекцию системы координат на 2D плоскость\n" +
+                     "X (бирюзовый) - Roll (крен)\n" +
+                     "Y (Фиолетовый) - Pitch (тангаж)\n" +
+                     "Z (коралловый) - Yaw (рыскание)"
+
+        // MouseArea для подсказки
+        MouseArea {
+            id: compassMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                advanced3DHead.setCameraView("isometric")
             }
         }
     }
