@@ -2,7 +2,7 @@
 ; Created with Inno Setup 6
 
 #define MyAppName "MonitorHead"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Trofimov RV"
 #define MyAppExeName "MonitorHead.exe"
 #define MyIconPath "C:\Users\pomai\programming\code\projects\qt_qml\MonitorHead\images\logo.ico"
