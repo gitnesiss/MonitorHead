@@ -1731,7 +1731,7 @@ ApplicationWindow {
                     }
 
                     Text {
-                        text: controller.logMode ? "Чтение данных из файла" : "Получение данных с датчика"
+                        text: controller.logMode ? "Чтение данных из файла" : "Ожидание действий пользователя"
                         color: "#aaa"
                         font.pixelSize: 12
                         anchors.horizontalCenter: parent.horizontalCenter
